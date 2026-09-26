@@ -1,0 +1,23 @@
+{
+  "id": "windows-v1",
+  "trade": "windows",
+  "steps": [
+    { "id": "walk", "en": "Walk the job with the homeowner; confirm count, sizes and grid pattern against the order", "es": "Recorre el trabajo con el propietario; confirma cantidad, medidas y rejillas contra la orden" },
+    { "id": "protect", "en": "Drop cloths inside and out; move or cover furniture and blinds", "es": "Lonas adentro y afuera; mueve o cubre muebles y persianas" },
+    { "id": "before-photos", "en": "Before photos of every opening (inside and outside)", "es": "Fotos de antes de cada abertura (interior y exterior)" },
+    { "id": "remove", "en": "Remove old units; check rough opening for rot, set aside anything the homeowner asked to keep", "es": "Retira las unidades viejas; revisa el marco por podredumbre y aparta lo que el propietario pidió conservar" },
+    { "id": "flash", "en": "Sill pan and flashing tape per manufacturer sequence", "es": "Bandeja de umbral y cinta de sellado según la secuencia del fabricante" },
+    { "id": "set", "en": "Set, shim, plumb and square; check operation before fastening", "es": "Coloca, calza, aploma y escuadra; prueba el funcionamiento antes de fijar" },
+    { "id": "foam", "en": "Low-expansion foam and interior air seal", "es": "Espuma de baja expansión y sello interior" },
+    { "id": "trim", "en": "Exterior capping or trim and sealant; interior stops and trim", "es": "Capuchón o moldura exterior con sellador; topes y molduras interiores" },
+    { "id": "serials", "en": "Photograph the serial label on every unit", "es": "Fotografía la etiqueta de serie de cada unidad" },
+    { "id": "clean", "en": "Clean glass, vacuum, haul debris and old units", "es": "Limpia vidrios, aspira, retira escombros y unidades viejas" },
+    { "id": "after-photos", "en": "After photos of every opening; walkthrough with the homeowner", "es": "Fotos de después de cada abertura; recorrido final con el propietario" }
+  ],
+  "photos": [
+    { "kind": "before", "min": 1, "en": "Before, each opening", "es": "Antes, cada abertura" },
+    { "kind": "flashing", "min": 1, "en": "Flashing before trim", "es": "Sellado antes de la moldura" },
+    { "kind": "serial", "min": 1, "en": "Serial label, each unit", "es": "Etiqueta de serie, cada unidad" },
+    { "kind": "after", "min": 1, "en": "After, each opening", "es": "Después, cada abertura" }
+  ]
+}

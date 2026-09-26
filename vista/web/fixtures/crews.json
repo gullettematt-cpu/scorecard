@@ -1,0 +1,24 @@
+[
+  {
+    "id": "crew-12",
+    "name": "Crew 12 · Tucker",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": "windows",
+    "lead": { "name": "Dwayne Tucker", "phone": "+17065550112" },
+    "members": ["Dwayne Tucker", "Marcus Bell"],
+    "pm": { "name": "Mike", "phone": "+17065550100" },
+    "fixture": "crew-12.json"
+  },
+  {
+    "id": "crew-7",
+    "name": "Cuadrilla 7 · Hernández",
+    "branch": "Augusta",
+    "lang": "es",
+    "trade": "siding",
+    "lead": { "name": "Luis Hernández", "phone": "+17065550107" },
+    "members": ["Luis Hernández", "Javier Ortiz", "Tomás Reyes"],
+    "pm": { "name": "Mike", "phone": "+17065550100" },
+    "fixture": "crew-7.json"
+  }
+]

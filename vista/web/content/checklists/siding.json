@@ -1,0 +1,22 @@
+{
+  "id": "siding-v1",
+  "trade": "siding",
+  "steps": [
+    { "id": "walk", "en": "Walk the elevations with the homeowner; confirm color, profile and trim details", "es": "Recorre las fachadas con el propietario; confirma color, perfil y detalles de moldura" },
+    { "id": "before-photos", "en": "Before photos of all four elevations", "es": "Fotos de antes de las cuatro fachadas" },
+    { "id": "protect", "en": "Protect landscaping, AC unit, windows and walkways", "es": "Protege jardín, aire acondicionado, ventanas y pasillos" },
+    { "id": "tearoff", "en": "Tear off old siding; inspect sheathing and mark rot for the PM before covering", "es": "Retira el revestimiento viejo; revisa el tablero y marca la podredumbre para el PM antes de cubrir" },
+    { "id": "wrap", "en": "House wrap, shingled and taped; flash windows and doors", "es": "Membrana, traslapada y con cinta; sella ventanas y puertas" },
+    { "id": "starter", "en": "Starter strip level; corners and J-channel set", "es": "Tira de arranque nivelada; esquinas y canal J colocados" },
+    { "id": "install", "en": "Install courses; nail centered and loose, overlaps away from view", "es": "Instala hiladas; clavos centrados y sin apretar, traslapes fuera de la vista" },
+    { "id": "penetrations", "en": "Blocks and sealant at lights, hose bibs, vents and meter", "es": "Bloques y sellador en luces, llaves, ventilas y medidor" },
+    { "id": "clean", "en": "Magnet sweep for nails; haul debris", "es": "Barrido con imán por clavos; retira escombros" },
+    { "id": "after-photos", "en": "After photos of all four elevations; walkthrough with the homeowner", "es": "Fotos de después de las cuatro fachadas; recorrido final con el propietario" }
+  ],
+  "photos": [
+    { "kind": "before", "min": 4, "en": "Before, each elevation", "es": "Antes, cada fachada" },
+    { "kind": "wrap", "min": 2, "en": "House wrap and flashing", "es": "Membrana y sellado" },
+    { "kind": "rot", "min": 0, "en": "Any rot found, before covering", "es": "Podredumbre encontrada, antes de cubrir" },
+    { "kind": "after", "min": 4, "en": "After, each elevation", "es": "Después, cada fachada" }
+  ]
+}

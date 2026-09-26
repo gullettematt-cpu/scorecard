@@ -1,0 +1,80 @@
+{
+  "workOrders": [
+    {
+      "Id": "0WO5e00000A1k9pEAB", "WorkOrderNumber": "00041872",
+      "Subject": "Window replacement — 9 units", "Status": "New", "Priority": "High",
+      "_schedule": { "dayOffset": 0, "startHour": 8, "endHour": 16 },
+      "Street": "2317 Walton Way", "City": "Augusta", "State": "GA", "PostalCode": "30904",
+      "Latitude": 33.4712, "Longitude": -82.0019,
+      "Account": { "Id": "001A", "Name": "Patricia Simmons" },
+      "Contact": { "Id": "003A", "Phone": "+17065551931" },
+      "WorkType": { "Name": "Windows & Doors" },
+      "Description": "Replace 8 double-hung and 1 picture window, white vinyl, low-E, colonial grids top sash only. Homeowner keeping the old shutters. Dog in back yard — use the front.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL1", "LineItemNumber": "1", "Description": "Double-hung 36x60, white, colonial grids", "Quantity": 8, "Status": "New" },
+        { "Id": "1WL2", "LineItemNumber": "2", "Description": "Picture window 72x48, white, low-E", "Quantity": 1, "Status": "New" },
+        { "Id": "1WL3", "LineItemNumber": "3", "Description": "Exterior aluminum capping, white", "Quantity": 9, "Status": "New" }
+      ],
+      "_assumed": { "Job__c": "a0J1", "gate": "Front door, knock loud" }
+    },
+    {
+      "Id": "0WO5e00000A1kBcEAJ", "WorkOrderNumber": "00041866",
+      "Subject": "Entry door + storm door", "Status": "In Progress", "Priority": "Medium",
+      "_schedule": { "dayOffset": 0, "startHour": 13, "endHour": 17 },
+      "Street": "418 Blue Ridge Dr", "City": "Evans", "State": "GA", "PostalCode": "30809",
+      "Latitude": 33.5430, "Longitude": -82.1301,
+      "Account": { "Id": "001B", "Name": "Gerald & Tina Whitfield" },
+      "Contact": { "Id": "003B", "Phone": "+17065554407" },
+      "WorkType": { "Name": "Windows & Doors" },
+      "Description": "Fiberglass entry door, 36x80, left-hand inswing, oil-rubbed bronze hardware. Full-view storm door. Day 2: hardware and storm door.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL4", "LineItemNumber": "1", "Description": "Fiberglass entry door 36x80 LH inswing", "Quantity": 1, "Status": "Completed" },
+        { "Id": "1WL5", "LineItemNumber": "2", "Description": "Full-view storm door, bronze", "Quantity": 1, "Status": "New" }
+      ],
+      "_assumed": { "Job__c": "a0J2", "gate": "Code 4471" }
+    },
+    {
+      "Id": "0WO5e00000A1kD4EAJ", "WorkOrderNumber": "00041901",
+      "Subject": "Window replacement — 4 units", "Status": "New", "Priority": "Medium",
+      "_schedule": { "dayOffset": 1, "startHour": 8, "endHour": 13 },
+      "Street": "3609 Wheeler Rd", "City": "Augusta", "State": "GA", "PostalCode": "30909",
+      "Account": { "Id": "001C", "Name": "Andre Bolton" },
+      "Contact": { "Id": "003C", "Phone": "+17065558820" },
+      "WorkType": { "Name": "Windows & Doors" },
+      "Description": "4 sliders on the back of the house, bronze exterior / white interior.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL6", "LineItemNumber": "1", "Description": "Slider 72x48, bronze/white", "Quantity": 4, "Status": "New" }
+      ],
+      "_assumed": { "Job__c": "a0J3" }
+    },
+    {
+      "Id": "0WO5e00000A1kF7EAJ", "WorkOrderNumber": "00041833",
+      "Subject": "Service: fogged IGU swap", "Status": "New", "Priority": "Low",
+      "_schedule": { "dayOffset": 3, "startHour": 9, "endHour": 11 },
+      "Street": "1204 Georgia Ave", "City": "North Augusta", "State": "SC", "PostalCode": "29841",
+      "Account": { "Id": "001D", "Name": "Carol Mendenhall" },
+      "Contact": { "Id": "003D", "Phone": "+18035552109" },
+      "WorkType": { "Name": "Windows & Doors" },
+      "CaseId": "500W1",
+      "Description": "Warranty: replace fogged glass unit in kitchen double-hung, lower sash.",
+      "WorkOrderLineItems": [],
+      "_assumed": { "Job__c": "a0J4" }
+    }
+  ],
+  "jobs": [
+    { "Id": "a0J1", "Name": "J-24-1187", "_assumed": { "Contract_Amount__c": 14850, "Project_Manager__c": "Mike" } },
+    { "Id": "a0J2", "Name": "J-24-1164", "_assumed": { "Contract_Amount__c": 6200, "Project_Manager__c": "Mike" } },
+    { "Id": "a0J3", "Name": "J-24-1203", "_assumed": { "Contract_Amount__c": 7900, "Project_Manager__c": "Mike" } },
+    { "Id": "a0J4", "Name": "J-23-0876", "_assumed": { "Contract_Amount__c": 0, "Project_Manager__c": "Mike" } }
+  ],
+  "draws": [
+    { "Id": "a0X1", "Name": "SA-009121", "CreatedDate_dayOffset": -1,
+      "_assumed": { "Work_Order__c": "0WO5e00000A1kBcEAJ", "Amount__c": 2400, "Status__c": "Approved", "TEST_SA__c": false, "photos": 6 } },
+    { "Id": "a0X2", "Name": "SA-009087", "CreatedDate_dayOffset": -9,
+      "_assumed": { "Work_Order__c": "0WO5e00000A1kBcEAJ", "Amount__c": 1800, "Status__c": "Paid", "TEST_SA__c": false, "photos": 4 } }
+  ],
+  "cases": [
+    { "Id": "500W2", "CaseNumber": "00318841", "Subject": "Rot in sill at picture window opening", "Status": "New", "CreatedDate_dayOffset": 0,
+      "_assumed": { "Work_Order__c": "0WO5e00000A1k9pEAB", "Work_Type__c": "Windows", "Service_Type__c": "Install issue", "Warranty_Type__c": "Not warranty" } }
+  ]
+}

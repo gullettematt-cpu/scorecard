@@ -1,0 +1,63 @@
+{
+  "workOrders": [
+    {
+      "Id": "0WO5e00000B2m1qEAB", "WorkOrderNumber": "00041859",
+      "Subject": "Vinyl siding — full house", "Status": "In Progress", "Priority": "High",
+      "_schedule": { "dayOffset": 0, "startHour": 7, "endHour": 17 },
+      "Street": "512 Lakeside Dr", "City": "Martinez", "State": "GA", "PostalCode": "30907",
+      "Latitude": 33.5220, "Longitude": -82.0980,
+      "Account": { "Id": "001E", "Name": "Robert & Denise Hall" },
+      "Contact": { "Id": "003E", "Phone": "+17065553364" },
+      "WorkType": { "Name": "Siding" },
+      "Description": "Tear off wood lap siding, house wrap, install D4 vinyl in Pewter, white trim. Day 3 of 4: front and left elevations. Rot found on rear sheathing day 1 — PM approved 3 sheets OSB.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL7", "LineItemNumber": "1", "Description": "D4 vinyl siding, Pewter — 22 sq", "Quantity": 22, "Status": "In Progress" },
+        { "Id": "1WL8", "LineItemNumber": "2", "Description": "House wrap + flashing tape", "Quantity": 1, "Status": "Completed" },
+        { "Id": "1WL9", "LineItemNumber": "3", "Description": "Aluminum fascia + soffit, white", "Quantity": 180, "Status": "New" },
+        { "Id": "1WL10", "LineItemNumber": "4", "Description": "OSB sheathing replacement (PM approved)", "Quantity": 3, "Status": "Completed" }
+      ],
+      "_assumed": { "Job__c": "a0J5", "gate": "Dumpster on the left side of the driveway" }
+    },
+    {
+      "Id": "0WO5e00000B2m3sEAB", "WorkOrderNumber": "00041880",
+      "Subject": "Siding repair — rear elevation", "Status": "New", "Priority": "Medium",
+      "_schedule": { "dayOffset": 0, "startHour": 15, "endHour": 17 },
+      "Street": "4478 Columbia Rd", "City": "Grovetown", "State": "GA", "PostalCode": "30813",
+      "Account": { "Id": "001F", "Name": "Yolanda Pierce" },
+      "Contact": { "Id": "003F", "Phone": "+17065557712" },
+      "WorkType": { "Name": "Siding" },
+      "Description": "Storm damage: replace 6 courses on rear elevation, match existing Clay color. Homeowner has 1 box of leftover siding in the garage.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL11", "LineItemNumber": "1", "Description": "D4 vinyl, Clay — 1 sq", "Quantity": 1, "Status": "New" }
+      ],
+      "_assumed": { "Job__c": "a0J6" }
+    },
+    {
+      "Id": "0WO5e00000B2m5uEAB", "WorkOrderNumber": "00041905",
+      "Subject": "Vinyl siding — full house", "Status": "New", "Priority": "High",
+      "_schedule": { "dayOffset": 2, "startHour": 7, "endHour": 17 },
+      "Street": "1910 Central Ave", "City": "Augusta", "State": "GA", "PostalCode": "30904",
+      "Account": { "Id": "001G", "Name": "Marcus Greene" },
+      "Contact": { "Id": "003G", "Phone": "+17065559090" },
+      "WorkType": { "Name": "Siding" },
+      "Description": "Full tear-off and replace, board-and-batten front, D4 sides and rear, color Harbor Blue.",
+      "WorkOrderLineItems": [
+        { "Id": "1WL12", "LineItemNumber": "1", "Description": "Board & batten, Harbor Blue — front", "Quantity": 6, "Status": "New" },
+        { "Id": "1WL13", "LineItemNumber": "2", "Description": "D4 vinyl, Harbor Blue — sides/rear", "Quantity": 18, "Status": "New" }
+      ],
+      "_assumed": { "Job__c": "a0J7" }
+    }
+  ],
+  "jobs": [
+    { "Id": "a0J5", "Name": "J-24-1171", "_assumed": { "Contract_Amount__c": 28400, "Project_Manager__c": "Mike" } },
+    { "Id": "a0J6", "Name": "J-24-1210", "_assumed": { "Contract_Amount__c": 1650, "Project_Manager__c": "Mike" } },
+    { "Id": "a0J7", "Name": "J-24-1215", "_assumed": { "Contract_Amount__c": 31900, "Project_Manager__c": "Mike" } }
+  ],
+  "draws": [
+    { "Id": "a0X3", "Name": "SA-009130", "CreatedDate_dayOffset": 0,
+      "_assumed": { "Work_Order__c": "0WO5e00000B2m1qEAB", "Amount__c": 6500, "Status__c": "Submitted", "TEST_SA__c": false, "photos": 0 } },
+    { "Id": "a0X4", "Name": "SA-009102", "CreatedDate_dayOffset": -2,
+      "_assumed": { "Work_Order__c": "0WO5e00000B2m1qEAB", "Amount__c": 8000, "Status__c": "Approved", "TEST_SA__c": false, "photos": 11 } }
+  ],
+  "cases": []
+}
