@@ -6,6 +6,8 @@
 //   const { replies, actions } = await engine.handle(fromPhone, body, mediaUrls);
 //
 // store   : { people, jobs, draws, rollout, checklists: { windows, siding, … }, drawRules }  (a working snapshot)
+// tr      : free-text translator (web/src/translate.js makeTranslator); the API warms its cache before calling.
+// Languages: 'en', 'es', or 'bi' (every line in English and Spanish).
 // strings : { en: {...}, es: {...} }  (i18n/en.json, i18n/es.json)
 // replies : [{ to, text }]  — the sender's reply plus any notices to other people
 // actions : [{ kind, payload }]  — Salesforce writes for the API to perform
@@ -34,31 +36,44 @@ const WORDS = {
   all: ['all', 'todas', 'todos', 'todo'],
   en: ['english', 'ingles'],
   es: ['espanol', 'spanish'],
+  bi: ['bilingual', 'bilingue', 'dual'],
+  langReq: ['language', 'idioma', 'lang'],
+  original: ['original'],
   chApp: ['app'], chText: ['text', 'texto', 'sms'], chBoth: ['both', 'ambos', 'las dos']
 };
 const is = (w, k) => WORDS[k].includes(w);
 const REASONS = { blurry: 'unclear', borrosa: 'unclear', borroso: 'unclear', unclear: 'unclear', wrong: 'mismatch', incorrecta: 'mismatch', incorrecto: 'mismatch', incomplete: 'incomplete', incompleto: 'incomplete', incompleta: 'incomplete', missing: 'missing', falta: 'missing' };
 
-export function createEngine({ store, strings, links = {}, askVi = null, now = () => new Date() }) {
+export function createEngine({ store, strings, links = {}, askVi = null, tr = null, now = () => new Date() }) {
   const sessions = new Map();
   const mapsUrl = w => `https://maps.apple.com/?daddr=${w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`)}`;
   const photosLink = d => (links.photos ? links.photos(d) : `https://vista.example/r/${d.Id}`);
 
+  const fill = (s, vars) => { for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v)); return s; };
+  const both = (en, es) => (!es || en === es ? en : `${en} / ${es}`);
   const t = (lang, key, vars = {}) => {
-    let s = strings[lang]?.[key] ?? strings.en[key] ?? key;
-    for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
-    return s;
+    const en = fill(strings.en[key] ?? key, vars);
+    if (lang === 'bi') return both(en, fill(strings.es[key] ?? strings.en[key] ?? key, vars));
+    return lang === 'es' ? fill(strings.es[key] ?? strings.en[key] ?? key, vars) : en;
+  };
+  // Free text (job descriptions, line items, what people typed), translated for the reader.
+  const trans = (lang, text, raw = false) => {
+    if (!text || raw || !tr) return { text: text || '', translated: false };
+    const r = tr(text, lang);
+    if (!r.translated) return { text, translated: false };
+    return { text: lang === 'bi' ? `${r.original} / ${r.text}` : r.text, translated: true };
   };
   const money = (lang, n) => new Intl.NumberFormat(lang === 'es' ? 'es-US' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
   const time = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
   const day = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { weekday: 'short', day: 'numeric' }).format(new Date(iso));
   const sameDay = iso => new Date(iso).toDateString() === now().toDateString();
-  const pick = (lang, o) => o?.[lang] ?? o?.en ?? '';
+  const pick = (lang, o) => (lang === 'bi' ? both(o?.en ?? '', o?.es ?? '') : o?.[lang] ?? o?.en ?? '');
 
   const personByPhone = p => store.people.find(x => x.lead?.phone === p);
   const ctxOf = person => ({ role: person.role || 'installer', crewId: person.id, account: person.account || null, rollout: store.rollout });
   const session = person => {
     if (!sessions.has(person.id)) sessions.set(person.id, { lang: person.lang || 'en', list: [], reviews: [], flow: null, confirm: null, lastJob: null });
+    else sessions.get(person.id).lang = person.lang || sessions.get(person.id).lang; // follows changes made in the app
     return sessions.get(person.id);
   };
   const wantsText = person => (person.channel || 'both') !== 'app';
@@ -88,15 +103,19 @@ export function createEngine({ store, strings, links = {}, askVi = null, now = (
     }));
     return [heading || t(L, 'txt.listHead'), ...lines, t(L, person.role === 'measure' ? 'txt.listFootMeasure' : 'txt.listFootInstaller')].join('\n');
   }
-  function detailsText(person, s, w) {
+  function detailsText(person, s, w, raw = false) {
     const L = s.lang, pm = pmOf(w), doneSt = WOLI_DONE[visitKind(w)];
     s.lastJob = w.Id;
-    const items = (w.WorkOrderLineItems || []).map((li, i) => t(L, 'txt.itemLine', { n: i + 1, desc: li.Description, q: li.Quantity, mark: li.Status === doneSt ? ' ✔' : '' }));
+    const subj = trans(L, w.Subject, raw), desc = trans(L, w.Description, raw);
+    const lis = (w.WorkOrderLineItems || []).map(li => trans(L, li.Description, raw));
+    const items = (w.WorkOrderLineItems || []).map((li, i) => t(L, 'txt.itemLine', { n: i + 1, desc: lis[i].text, q: li.Quantity, mark: li.Status === doneSt ? ' ✔' : '' }));
+    const translated = !raw && L !== 'bi' && [subj, desc, ...lis].some(x => x.translated);
     return [
-      t(L, 'txt.details', { subject: w.Subject, wo: w.WorkOrderNumber, street: w.Street, city: w.City, map: mapsUrl(w), phone: w.Contact?.Phone || '—' }),
-      (w.Description || '').slice(0, 280),
+      t(L, 'txt.details', { subject: subj.text, wo: w.WorkOrderNumber, street: w.Street, city: w.City, map: mapsUrl(w), phone: w.Contact?.Phone || '—' }),
+      desc.text.slice(0, L === 'bi' ? 560 : 280),
       items.length ? [t(L, 'txt.itemsHead'), ...items].join('\n') : '',
-      pm ? t(L, 'txt.pmLine', { name: pm.Name, phone: pm.MobilePhone }) : ''
+      pm ? t(L, 'txt.pmLine', { name: pm.Name, phone: pm.MobilePhone }) : '',
+      translated ? t(L, 'txt.translated', { n: refOf(s, w) }) : ''
     ].filter(Boolean).join('\n');
   }
   function helpText(person, s) { return t(s.lang, 'txt.help.' + (person.role || 'installer')); }
@@ -294,7 +313,7 @@ export function createEngine({ store, strings, links = {}, askVi = null, now = (
     const w = store.jobs.find(j => j.Id === d.Work_Order__c), lines = reviewLines(d, w, store.checklists[tradeKey(w)]);
     return t(L, 'txt.pm.review', {
       who: w.Account?.Name || '', wo: w.WorkOrderNumber, amount: money(L, drawAmount(d)), crew: w._crewName || '', n: ref || 1,
-      desc: (d.Description_of_Work_Performed__c || '—').slice(0, 200), link: photosLink(d),
+      desc: trans(L, d.Description_of_Work_Performed__c || '—').text.slice(0, L === 'bi' ? 400 : 200), link: photosLink(d),
       lines: lines.map((l, i) => `${i + 1}) ${l.ok ? '✔' : '✖'} ${lineLabel(L, l, d)}`).join('\n')
     });
   }
@@ -374,8 +393,20 @@ export function createEngine({ store, strings, links = {}, askVi = null, now = (
     const s = session(person), L = () => s.lang;
     const words = norm(body).split(/[\s,]+/).filter(Boolean), w0 = words[0] || '', args = words.slice(1);
 
-    // Language and channel switches work at any time.
-    if (is(w0, 'en') || is(w0, 'es')) { s.lang = is(w0, 'en') ? 'en' : 'es'; reply(t(L(), 'txt.lang')); return out; }
+    // Language and channel switches work at any time. One setting per person, shared with the app.
+    const setLang = lang => { s.lang = lang; person.lang = lang; out.actions.push({ kind: 'person.prefs', payload: { personId: person.id, lang } }); reply(t(lang, lang === 'bi' ? 'txt.langBi' : 'txt.lang')); return out; };
+    if (is(w0, 'en') && !args.length) return setLang('en');
+    if (is(w0, 'es') && !args.length) return setLang('es');
+    if (is(w0, 'bi') || (w0 === 'ambos' && args[0] === 'idiomas') || (w0 === 'both' && args[0] === 'languages')) return setLang('bi');
+    if (is(w0, 'langReq')) {
+      const language = body.trim().split(/\s+/).slice(1).join(' ');
+      if (!language) { reply(t(L(), 'txt.langOptions')); return out; }
+      if (['english', 'ingles'].includes(norm(language))) return setLang('en');
+      if (['espanol', 'spanish'].includes(norm(language))) return setLang('es');
+      person.requested = language;
+      out.actions.push({ kind: 'language.request', payload: { personId: person.id, name: person.lead.name, language, channel: 'sms' } });
+      reply(t(L(), 'lang.requested', { language })); return out;
+    }
     if (words.length === 1 && (is(w0, 'chApp') || is(w0, 'chText') || is(w0, 'chBoth'))) {
       person.channel = is(w0, 'chApp') ? 'app' : is(w0, 'chText') ? 'text' : 'both';
       out.actions.push({ kind: 'person.channel', payload: { phone: from, channel: person.channel } });
@@ -410,6 +441,7 @@ export function createEngine({ store, strings, links = {}, askVi = null, now = (
     } else {
       if (is(w0, 'today')) { reply(listText(person, s)); return out; }
       if (/^\d{1,2}$/.test(w0) && !args.length) { const w = resolveJob(person, s, w0); reply(w ? detailsText(person, s, w) : t(L(), 'txt.notFound', { ref: w0 })); return out; }
+      if (is(w0, 'original')) { const w = resolveJob(person, s, args[0]); reply(w ? detailsText(person, s, w, true) : t(L(), 'txt.notFound', { ref: args[0] || '' })); return out; }
       if (is(w0, 'draw')) { const w = resolveJob(person, s, args[0]) || jobsFor(person)[0]; const pm = w && pmOf(w); reply(t(L(), 'txt.drawAsk', { name: pm?.Name || 'PM', phone: pm?.MobilePhone || '' })); return out; }
       const verb = ['start', 'done', 'finish', 'pay'].find(k => is(w0, k));
       if (verb) {
@@ -425,8 +457,9 @@ export function createEngine({ store, strings, links = {}, askVi = null, now = (
     }
     // Anything else is a question for Vi, about the job in focus.
     const job = s.lastJob ? store.jobs.find(j => j.Id === s.lastJob) : null;
-    out.actions.push({ kind: 'vi.ask', payload: { phone: from, lang: L(), workOrderId: job?.Id || null, question: body } });
-    const answer = askVi ? await askVi({ person, lang: L(), job, question: body }) : t(L(), 'txt.viSoon');
+    out.actions.push({ kind: 'vi.ask', payload: { phone: from, lang: L(), viLanguage: person.requested || null, workOrderId: job?.Id || null, question: body } });
+    // Vi answers in the person's language, or in a language they asked for that Vista doesn't have yet.
+    const answer = askVi ? await askVi({ person, lang: L(), viLanguage: person.requested || null, job, question: body }) : t(L(), 'txt.viSoon');
     reply(`Vi: ${answer}`);
     return out;
   }

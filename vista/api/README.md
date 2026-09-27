@@ -17,6 +17,9 @@ Three jobs and one cron. Every handler is stateless; the phone is the only clien
 | `PATCH /sf/line-item/:id` `{status}` | Salesforce | `Installation Completed` (installer) or `Measurement Completed` (measure tech), only on the caller's in-progress visit. |
 | `POST /photos/sign` `{workOrderId, expenseId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
 | `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
+| `GET /me/prefs`, `PATCH /me/prefs` `{lang, channel}` | Prefs | One language (`en` / `es` / `bi`) and channel per person, shared by the app and texts. Stored by the API, not Salesforce. |
+| `POST /translate` `{texts[], target}` | Vi | Free-text translation via Vi, cached once per text and language. The app and the text engine read the cache; Salesforce keeps the original. |
+| `POST /language-request` `{language}` | Prefs | Saves the request on the person and notifies Matt (`ADMIN_NOTIFY`). Vi answers that person in the requested language meanwhile. |
 | `POST /sms/inbound` (text provider webhook) | Text | Verifies the provider signature, runs `web/src/sms/engine.js` for the sender, performs the returned actions (same Salesforce writes as the app), copies picture messages to object storage, sends the replies. |
 | cron 6:30 AM | Text | Morning list for people on `TEXT`. |
 | cron 7:30 AM and 9:30 AM | Text | Review list for PMs with requests waiting. |
@@ -39,4 +42,5 @@ ALERT_PHONES                      # Matt, Mike
 STORAGE_BUCKET, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY, STORAGE_ENDPOINT
 ANTHROPIC_API_KEY, VI_MODEL=claude-sonnet-5
 APP_JWT_SECRET
+ADMIN_NOTIFY                      # where language requests go (Matt)
 ```

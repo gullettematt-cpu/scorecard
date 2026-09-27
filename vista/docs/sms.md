@@ -8,7 +8,7 @@ Everything in Vista also works by text message, in English or Spanish. Each pers
 | `TEXT` / `TEXTO` | Text only |
 | `BOTH` / `AMBOS` (default) | App and texts |
 
-The text channel follows exactly the same rules as the app: only **dispatched** visits, the **rollout** switch, **no photos, no pay**, the **PM deliverables checklist**, and **"Are you sure?"** before any money moves. The same engine (`web/src/sms/engine.js`) will run in the Vista API. Try it locally at `/dev/sms.html` (two phones side by side). Example conversations: `docs/sms-examples.md`.
+The text channel follows exactly the same rules as the app: only **dispatched** visits, the **rollout** switch, **no photos, no pay**, the **PM deliverables checklist**, and **"Are you sure?"** before any money moves. The same engine (`web/src/sms/engine.js`) will run in the Vista API. Try it locally at `/dev/sms.html` (two phones side by side). Example conversations: `docs/sms-examples.md`. Languages, bilingual mode and translation: `docs/languages.md`.
 
 ## Commands
 
@@ -47,7 +47,9 @@ Jobs can be referenced by list number or by the last digits of the WO number.
 | Text | Does |
 |---|---|
 | `HELP` / `AYUDA` | The commands for your role |
-| `ENGLISH` / `ESPAÑOL` | Switch language |
+| `ENGLISH` / `ESPAÑOL` / `BILINGUAL` | Switch language (shared with the app; bilingual sends every line in both) |
+| `LANGUAGE Português` / `IDIOMA …` | Request another language; Vi answers in it meanwhile |
+| `ORIGINAL 1` | Job 1 as written in Salesforce, untranslated |
 | `APP` / `TEXT` / `BOTH` | Choose your channel |
 | Anything else | Goes to **Vi**, with the job you last looked at as context. Vi answers in your language. |
 | `STOP` / `START` | Handled by the text provider (carrier opt-out). |

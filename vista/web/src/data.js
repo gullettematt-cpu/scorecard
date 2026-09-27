@@ -23,6 +23,7 @@ const fixtureAdapter = {
   name: 'fixture',
   async crews() { return (await fetch('./fixtures/crews.json')).json(); },
   async rollout() { return (await fetch('./fixtures/rollout.json')).json(); },
+  async translations() { return (await fetch('./fixtures/translations.json')).json(); },
   async load(crew) {
     const crews = await this.crews();
     const files = crew.fixtures || [crew.fixture];

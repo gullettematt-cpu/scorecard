@@ -1,0 +1,200 @@
+{
+  "_comment": "Fixture translation cache. In production the Vista API asks Vi to translate free text once per text and language and stores it here-shaped; 'src' is the language it was written in.",
+  "pairs": [
+    {
+      "en": "Window replacement — 9 units",
+      "es": "Reemplazo de ventanas — 9 unidades",
+      "src": "en"
+    },
+    {
+      "en": "Replace 8 double-hung and 1 picture window, white vinyl, low-E, colonial grids top sash only. Homeowner keeping the old shutters. Dog in back yard — use the front. Access: front door, knock loud.",
+      "es": "Reemplazar 8 ventanas de guillotina doble y 1 ventana fija, vinilo blanco, low-E, rejillas coloniales solo en la hoja superior. El propietario conserva las contraventanas viejas. Perro en el patio trasero — usa la entrada del frente. Acceso: puerta principal, toca fuerte.",
+      "src": "en"
+    },
+    {
+      "en": "Double-hung 36x60, white, colonial grids",
+      "es": "Guillotina doble 36x60, blanca, rejillas coloniales",
+      "src": "en"
+    },
+    {
+      "en": "Picture window 72x48, white, low-E",
+      "es": "Ventana fija 72x48, blanca, low-E",
+      "src": "en"
+    },
+    {
+      "en": "Exterior aluminum capping, white",
+      "es": "Revestimiento exterior de aluminio, blanco",
+      "src": "en"
+    },
+    {
+      "en": "Entry door + storm door",
+      "es": "Puerta de entrada + puerta de tormenta",
+      "src": "en"
+    },
+    {
+      "en": "Fiberglass entry door, 36x80, left-hand inswing, oil-rubbed bronze hardware. Full-view storm door. Day 2: hardware and storm door. Gate code 4471.",
+      "es": "Puerta de entrada de fibra de vidrio, 36x80, abre hacia adentro a la izquierda, herrajes de bronce envejecido. Puerta de tormenta de vista completa. Día 2: herrajes y puerta de tormenta. Código del portón 4471.",
+      "src": "en"
+    },
+    {
+      "en": "Fiberglass entry door 36x80 LH inswing",
+      "es": "Puerta de entrada de fibra de vidrio 36x80, izquierda hacia adentro",
+      "src": "en"
+    },
+    {
+      "en": "Full-view storm door, bronze",
+      "es": "Puerta de tormenta de vista completa, bronce",
+      "src": "en"
+    },
+    {
+      "en": "Window replacement — 4 units",
+      "es": "Reemplazo de ventanas — 4 unidades",
+      "src": "en"
+    },
+    {
+      "en": "4 sliders on the back of the house, bronze exterior / white interior.",
+      "es": "4 ventanas corredizas en la parte trasera de la casa, exterior bronce / interior blanco.",
+      "src": "en"
+    },
+    {
+      "en": "Slider 72x48, bronze/white",
+      "es": "Corrediza 72x48, bronce/blanco",
+      "src": "en"
+    },
+    {
+      "en": "Service: fogged IGU swap",
+      "es": "Servicio: cambio de vidrio empañado",
+      "src": "en"
+    },
+    {
+      "en": "Warranty: replace fogged glass unit in kitchen double-hung, lower sash.",
+      "es": "Garantía: reemplazar la unidad de vidrio empañada en la ventana de guillotina doble de la cocina, hoja inferior.",
+      "src": "en"
+    },
+    {
+      "en": "Storm door installed, hardware on entry door, final caulk and cleanup. Homeowner walked it and signed off.",
+      "es": "Puerta de tormenta instalada, herrajes en la puerta de entrada, sellado final y limpieza. El propietario la revisó y dio su visto bueno.",
+      "src": "en"
+    },
+    {
+      "en": "Entry door set, shimmed, foamed. Storm door tomorrow.",
+      "es": "Puerta de entrada colocada, calzada y con espuma. La puerta de tormenta, mañana.",
+      "src": "en"
+    },
+    {
+      "en": "Demo and prep, day 1.",
+      "es": "Demolición y preparación, día 1.",
+      "src": "en"
+    },
+    {
+      "en": "[Vista] Rot in sill at picture window opening",
+      "es": "[Vista] Podredumbre en el umbral de la ventana fija",
+      "src": "en"
+    },
+    {
+      "en": "Vinyl siding — full house",
+      "es": "Revestimiento de vinilo — casa completa",
+      "src": "en"
+    },
+    {
+      "en": "Tear off wood lap siding, house wrap, install D4 vinyl in Pewter, white trim. Day 3 of 4: front and left elevations. Rot found on rear sheathing day 1 — PM approved 3 sheets OSB. Dumpster on the left side of the driveway.",
+      "es": "Quitar el revestimiento de madera, poner membrana, instalar vinilo D4 color Pewter, molduras blancas. Día 3 de 4: fachadas frontal e izquierda. Se encontró podredumbre en el tablero trasero el día 1 — el PM aprobó 3 hojas de OSB. El contenedor está a la izquierda de la entrada.",
+      "src": "en"
+    },
+    {
+      "en": "D4 vinyl siding, Pewter — 22 sq",
+      "es": "Revestimiento de vinilo D4, Pewter — 22 sq",
+      "src": "en"
+    },
+    {
+      "en": "House wrap + flashing tape",
+      "es": "Membrana + cinta de sellado",
+      "src": "en"
+    },
+    {
+      "en": "Aluminum fascia + soffit, white",
+      "es": "Fascia y plafón de aluminio, blanco",
+      "src": "en"
+    },
+    {
+      "en": "OSB sheathing replacement (PM approved)",
+      "es": "Reemplazo de tablero OSB (aprobado por el PM)",
+      "src": "en"
+    },
+    {
+      "en": "Siding repair — rear elevation",
+      "es": "Reparación de revestimiento — fachada trasera",
+      "src": "en"
+    },
+    {
+      "en": "Storm damage: replace 6 courses on rear elevation, match existing Clay color. Homeowner has 1 box of leftover siding in the garage.",
+      "es": "Daño por tormenta: reemplazar 6 hiladas en la fachada trasera, igualar el color Clay existente. El propietario tiene 1 caja de revestimiento sobrante en el garaje.",
+      "src": "en"
+    },
+    {
+      "en": "D4 vinyl, Clay — 1 sq",
+      "es": "Vinilo D4, Clay — 1 sq",
+      "src": "en"
+    },
+    {
+      "en": "Full tear-off and replace, board-and-batten front, D4 sides and rear, color Harbor Blue.",
+      "es": "Quitar todo y reemplazar: frente en tabla y listón, D4 en los lados y atrás, color Harbor Blue.",
+      "src": "en"
+    },
+    {
+      "en": "Board & batten, Harbor Blue — front",
+      "es": "Tabla y listón, Harbor Blue — frente",
+      "src": "en"
+    },
+    {
+      "en": "D4 vinyl, Harbor Blue — sides/rear",
+      "es": "Vinilo D4, Harbor Blue — lados/atrás",
+      "src": "en"
+    },
+    {
+      "en": "Replaced 6 courses on the rear elevation, Clay color. Used the leftover box from the garage.",
+      "es": "Cambié 6 hiladas en la fachada trasera, color Clay. Usé la caja sobrante del garaje.",
+      "src": "es"
+    },
+    {
+      "en": "Day 1: full tear-off and house wrap.",
+      "es": "Día 1: demolición completa y membrana.",
+      "src": "es"
+    },
+    {
+      "en": "Measure — windows, 11 openings",
+      "es": "Medición — ventanas, 11 aberturas",
+      "src": "en"
+    },
+    {
+      "en": "Measure 11 openings for double-hung replacement. Two upstairs bedrooms have window AC units — ask homeowner before removing.",
+      "es": "Medir 11 aberturas para reemplazo con guillotina doble. Dos recámaras de arriba tienen aires acondicionados de ventana — pregunta al propietario antes de quitarlos.",
+      "src": "en"
+    },
+    {
+      "en": "Double-hung, first floor (7)",
+      "es": "Guillotina doble, primer piso (7)",
+      "src": "en"
+    },
+    {
+      "en": "Double-hung, second floor (4)",
+      "es": "Guillotina doble, segundo piso (4)",
+      "src": "en"
+    },
+    {
+      "en": "Measure — siding, full house",
+      "es": "Medición — revestimiento, casa completa",
+      "src": "en"
+    },
+    {
+      "en": "Full-house siding measure, include soffit and fascia.",
+      "es": "Medición de revestimiento de toda la casa, incluye plafón y fascia.",
+      "src": "en"
+    },
+    {
+      "en": "Siding, all elevations",
+      "es": "Revestimiento, todas las fachadas",
+      "src": "en"
+    }
+  ]
+}

@@ -45,3 +45,55 @@ export function confirmSheet({ title, lines = [], note = '', yes, no }) {
     wrap.querySelector('[data-no]').focus();
   });
 }
+
+// ---- Language -------------------------------------------------------------------------------
+export const LANG_LABEL = { en: 'EN', es: 'ES', bi: 'EN·ES' };
+
+// Language picker sheet. Labels are always native so anyone can find their language.
+// Resolves { lang } or { request: 'Portuguese' } or null.
+export function languageSheet({ current, title, bothHint, requestLabel, requestPlaceholder, requestSend, cancel }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-wrap';
+    const opt = (v, label, hint = '') => `<button class="act lang-opt ${current === v ? 'on' : ''}" data-lang="${v}" aria-pressed="${current === v}"><span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="langTitle">
+      <h2 id="langTitle">${esc(title)}</h2>
+      <div class="stack">
+        ${opt('en', 'English')}${opt('es', 'Español')}${opt('bi', 'English + Español', bothHint)}
+      </div>
+      <form class="lang-req">
+        <label for="langReq">${esc(requestLabel)}</label>
+        <div class="row"><input id="langReq" name="language" placeholder="${esc(requestPlaceholder)}" autocomplete="off"><button class="act" type="submit">${esc(requestSend)}</button></div>
+      </form>
+      <button class="act" data-cancel style="width:100%;margin-top:8px">${esc(cancel)}</button>
+    </div>`;
+    const done = v => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', e => { if (e.target === wrap) done(null); });
+    wrap.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => done({ lang: b.dataset.lang }));
+    wrap.querySelector('[data-cancel]').onclick = () => done(null);
+    wrap.querySelector('.lang-req').onsubmit = e => { e.preventDefault(); const v = e.target.language.value.trim(); if (v) done({ request: v }); };
+    document.body.appendChild(wrap);
+    wrap.querySelector(`[data-lang="${current}"]`)?.focus();
+  });
+}
+
+// Free text from Salesforce or another person, translated for the reader.
+//   en/es: shows the translation; the screen's "Show original" toggle swaps every .ft back.
+//   bi:    shows the original and the translation together.
+export function freeText(tr, text, target) {
+  const r = tr(text, target);
+  if (!r.translated) return esc(text || '');
+  if (target === 'bi') return `${esc(r.original)}<span class="ft-alt">${esc(r.text)}</span>`;
+  return `<span class="ft" data-tr="${esc(r.text)}" data-orig="${esc(r.original)}">${esc(r.text)}</span>`;
+}
+export function wireOriginalToggle(root, labels) {
+  const btn = root.querySelector('.ft-toggle');
+  if (!btn) return;
+  let showingOrig = false;
+  btn.onclick = () => {
+    showingOrig = !showingOrig;
+    root.querySelectorAll('.ft').forEach(s => { s.textContent = showingOrig ? s.dataset.orig : s.dataset.tr; });
+    btn.textContent = showingOrig ? labels.showTranslation : labels.showOriginal;
+    btn.setAttribute('aria-pressed', String(showingOrig));
+  };
+}

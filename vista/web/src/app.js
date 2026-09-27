@@ -2,8 +2,10 @@
 import { loadLang, lang, t } from './i18n.js';
 import { db } from './db.js';
 import { adapter, seedIfNeeded } from './data.js';
-import { pendingCount, onSync, flush } from './sync.js';
-import { esc, icons } from './ui.js';
+import { pendingCount, onSync, flush, enqueue } from './sync.js';
+import { getPrefs, setPrefs } from './prefs.js';
+import { makeTranslator } from './translate.js';
+import { esc, icons, languageSheet, LANG_LABEL, toast } from './ui.js';
 import { renderToday } from './screens/today.js';
 import { renderJob } from './screens/job.js';
 import { renderSoon } from './screens/soon.js';
@@ -21,12 +23,15 @@ export function header(ctx, body) {
       <div class="hdr-meta">
         <span class="pill ${navigator.onLine ? '' : 'offline'}" id="netPill"><i class="dot"></i>${esc(navigator.onLine ? t('app.online') : t('app.offline'))}</span>
         ${ctx.pending ? `<span class="pill pending">${esc(t('app.pendingSync', { n: ctx.pending }))}</span>` : ''}
-        <button class="pill btn" id="langBtn">${esc(t('app.switchLang'))}</button>
+        <button class="pill btn" id="langBtn" aria-label="${esc(t('lang.title'))}">🌐 ${esc(LANG_LABEL[lang()])}</button>
       </div>
     </div>
     ${body}
   </header>`;
 }
+
+// Bilingual labels stack in two lines so the bottom bar stays readable.
+const navLabel = s => { const [a, b] = s.split(' / '); return b ? `<span>${esc(a)}</span><span class="alt">${esc(b)}</span>` : `<span>${esc(s)}</span>`; };
 
 function renderNav(route) {
   const items = [
@@ -37,22 +42,46 @@ function renderNav(route) {
     ['vi', 'nav.vi', icons.vi, '#/vi']
   ];
   nav.innerHTML = items.map(([k, key, ic, href]) =>
-    `<a href="${href}" class="${route === k ? 'on' : ''}" ${(k === 'approve' && ctx.role !== 'pm') || (k === 'draw' && ctx.role === 'measure') ? 'aria-disabled="true"' : ''}>${ic}<span>${esc(t(key))}</span></a>`).join('');
+    `<a href="${href}" class="${route === k ? 'on' : ''}" ${(k === 'approve' && ctx.role !== 'pm') || (k === 'draw' && ctx.role === 'measure') ? 'aria-disabled="true"' : ''}>${ic}${navLabel(t(key))}</a>`).join('');
+}
+
+const LANG_NAME = { en: 'English', es: 'Español', bi: 'English + Español' };
+
+// Language picker, used from the header and from sign-in. Returns true if the language changed.
+async function openLanguage() {
+  const r = await languageSheet({ current: lang(), title: t('lang.title'), bothHint: t('lang.biHint'), requestLabel: t('lang.request'),
+    requestPlaceholder: t('lang.requestPlaceholder'), requestSend: t('lang.requestSend'), cancel: t('confirm.no') });
+  if (!r) return false;
+  if (r.lang) {
+    await loadLang(r.lang);
+    ctx.pickedLang = r.lang;
+    if (ctx.crew) { setPrefs(ctx.crew.id, { lang: r.lang }); await enqueue('person.prefs', { personId: ctx.crew.id, lang: r.lang }); }
+    return true;
+  }
+  if (ctx.crew) { setPrefs(ctx.crew.id, { requested: r.request }); await enqueue('language.request', { personId: ctx.crew.id, name: ctx.crew.lead.name, language: r.request }); }
+  else ctx.pendingRequest = r.request;
+  toast(t('lang.requested', { language: r.request }));
+  return false;
 }
 
 async function pickCrew() {
   const crews = await adapter.crews();
   root.innerHTML = `<div class="picker">
-    <div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
+    <div class="hdr-row"><div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
+      <button class="act" id="pickLang" style="flex:none;min-height:40px;padding:0 12px" aria-label="${esc(t('lang.title'))}">🌐 ${esc(LANG_LABEL[lang()])}</button></div>
     <h1>${esc(t('app.pickCrew'))}</h1><p>${esc(t('app.pickCrewHint'))}</p>
-    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${c.lang === 'es' ? 'Español' : 'English'}</div></button>`).join('')}
+    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${esc(LANG_NAME[getPrefs(c.id).lang || c.lang])}</div></button>`).join('')}
   </div>`;
   nav.innerHTML = '';
-  return new Promise(resolve => root.querySelectorAll('[data-crew]').forEach(b => b.onclick = () => resolve(crews.find(c => c.id === b.dataset.crew))));
+  return new Promise(resolve => {
+    root.querySelector('#pickLang').onclick = async () => { if (await openLanguage()) resolve(pickCrew()); };
+    root.querySelectorAll('[data-crew]').forEach(b => b.onclick = () => resolve(crews.find(c => c.id === b.dataset.crew)));
+  });
 }
 
 async function switchCrew() {
   localStorage.removeItem('vista.crew'); localStorage.removeItem('vista.lang');
+  ctx.pickedLang = null; ctx.pendingRequest = null;
   await db.wipe();
   location.hash = '#/today'; boot();
 }
@@ -69,7 +98,7 @@ async function route() {
   else await renderToday(root, ctx);
   renderNav(screen === 'problem' ? 'job' : screen || 'today');
   window.scrollTo(0, 0);
-  root.querySelector('#langBtn')?.addEventListener('click', async () => { await loadLang(lang() === 'en' ? 'es' : 'en'); route(); });
+  root.querySelector('#langBtn')?.addEventListener('click', async () => { if (await openLanguage()) route(); });
   if (q.get('job')) ctx.lastJob = q.get('job');
 }
 
@@ -77,9 +106,17 @@ async function boot() {
   let crewId = localStorage.getItem('vista.crew');
   let crews = await adapter.crews();
   let crew = crews.find(c => c.id === crewId);
-  await loadLang(localStorage.getItem('vista.lang') || crew?.lang || (navigator.language.startsWith('es') ? 'es' : 'en'));
-  if (!crew) { crew = await pickCrew(); localStorage.setItem('vista.crew', crew.id); await loadLang(crew.lang); }
+  // Language: the person's saved choice (shared with texts) > their record > the phone's language.
+  await loadLang(getPrefs(crew?.id).lang || crew?.lang || (navigator.language.startsWith('es') ? 'es' : 'en'));
+  if (!crew) {
+    crew = await pickCrew(); localStorage.setItem('vista.crew', crew.id);
+    // A language picked on the sign-in screen becomes this person's choice.
+    if (ctx.pickedLang) { setPrefs(crew.id, { lang: ctx.pickedLang }); await enqueue('person.prefs', { personId: crew.id, lang: ctx.pickedLang }); }
+    if (ctx.pendingRequest) { setPrefs(crew.id, { requested: ctx.pendingRequest }); await enqueue('language.request', { personId: crew.id, name: crew.lead.name, language: ctx.pendingRequest }); }
+    await loadLang(getPrefs(crew.id).lang || crew.lang);
+  }
   ctx.crew = crew;
+  ctx.tr = makeTranslator(await adapter.translations());
   ctx.role = crew.role || 'installer';
   ctx.account = crew.account || null;
   ctx.crewId = crew.id;

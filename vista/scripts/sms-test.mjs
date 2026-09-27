@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 globalThis.fetch = async url => { const f = path.join(root, 'web', String(url).replace(/^\.\//, '')); return { ok: fs.existsSync(f), json: async () => JSON.parse(fs.readFileSync(f, 'utf8')) }; };
 const { adapter } = await import('../web/src/data.js');
 const { createEngine } = await import('../web/src/sms/engine.js');
+const { makeTranslator } = await import('../web/src/translate.js');
 const J = f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8'));
 
 async function freshStore() {
@@ -34,7 +35,9 @@ const photo = n => Array.from({ length: n }, (_, i) => `https://mms.example/p${D
 
 // ---------------------------------------------------------------------------------------------
 const store = await freshStore();
-const e = createEngine({ store, strings, askVi: async ({ lang, question }) => lang === 'es' ? '(respuesta de Vi)' : '(Vi answers here)' });
+let lastVi = null;
+const e = createEngine({ store, strings, tr: makeTranslator(J('web/fixtures/translations.json')),
+  askVi: async a => { lastVi = a; return a.viLanguage ? `(Vi answers in ${a.viLanguage})` : a.lang === 'es' ? '(respuesta de Vi)' : a.lang === 'bi' ? '(Vi answers here) / (respuesta de Vi)' : '(Vi answers here)'; } });
 let r;
 
 console.log('Unknown number'); transcript('Unknown number');
@@ -83,6 +86,8 @@ const idxOf = name => r.me.split('\n').find(l => l.includes(name))?.match(/^(\d+
 const simmons = idxOf('Patricia Simmons'), pierce = idxOf('Yolanda Pierce');
 r = await say(e, 'mike', `review ${simmons}`);
 check(/✔ Before, each opening: 2 \(need 1\)/.test(r.me) && /Photos: https/.test(r.me), 'checklist lines with photo link');
+r = await say(e, 'mike', `review ${pierce}`);
+check(/Replaced 6 courses on the rear elevation/.test(r.me), "installer's Spanish description translated for the PM");
 r = await say(e, 'mike', `approve ${simmons}`);
 check(/Are you sure you want to submit this pay request\?/.test(r.me), 'confirmation question');
 r = await say(e, 'mike', 'yes');
@@ -151,6 +156,27 @@ check(/^Vi: /.test(r.me) && r.actions.some(a => a.kind === 'vi.ask'), 'free text
 check(e.morningDigest(store.people.find(p => p.id === 'crew-12')) === null, 'no morning text for app-only people');
 const luisDigest = e.morningDigest(store.people.find(p => p.id === 'crew-7'));
 check(/Buenos días, Luis/.test(luisDigest || ''), 'morning digest in Spanish');
+
+console.log('Languages: translation, original, bilingual, request'); transcript('Languages: translated job text, ORIGINAL, bilingual, requesting a language');
+r = await say(e, 'luis', 'hoy');
+r = await say(e, 'luis', '1');
+check(/Quitar el revestimiento de madera/.test(r.me) && /Traducido para ti/.test(r.me) && /Revestimiento de vinilo D4/.test(r.me), 'job text from Salesforce translated to Spanish');
+r = await say(e, 'luis', 'original 1');
+check(/Tear off wood lap siding/.test(r.me) && !/Traducido/.test(r.me), 'ORIGINAL shows it as written');
+r = await say(e, 'luis', 'bilingue');
+check(/Got it: English and Spanish/.test(r.me) && /Listo: inglés y español/.test(r.me) && r.actions.some(a => a.kind === 'person.prefs' && a.payload.lang === 'bi'), 'bilingual mode, saved as a preference');
+r = await say(e, 'luis', 'hoy');
+check(/Your jobs: \/ Tus trabajos:/.test(r.me) && /In progress \/ En curso/.test(r.me), 'bilingual list');
+r = await say(e, 'luis', '1');
+check(/Tear off wood lap siding.* \/ Quitar el revestimiento/s.test(r.me), 'bilingual details show original and translation');
+r = await say(e, 'tucker', 'idioma');
+check(/LANGUAGE Português/.test(r.me), 'LANGUAGE alone lists the options');
+r = await say(e, 'tucker', 'language Português');
+check(r.actions.some(a => a.kind === 'language.request' && a.payload.language === 'Português') && /Sent to Matt: Português/.test(r.me), 'language request sent to Matt');
+r = await say(e, 'tucker', 'what sealant do I use on bronze capping?');
+check(lastVi?.viLanguage === 'Português' && /Vi answers in Português/.test(r.me), 'Vi answers in the requested language');
+r = await say(e, 'luis', 'español');
+check(/en español/.test(r.me), 'back to Spanish');
 
 console.log('Rollout off'); transcript('Crew not switched on');
 store.rollout.locations.Augusta.optOutAccounts = ['Hernández Siding'];

@@ -13,6 +13,7 @@ Spanish and English at launch.
 6. **PMs submit everything to accounting.** The installer's pay request (at completion) waits at *New*; the PM reviews it against a deliverables checklist and submits it once, after an "Are you sure?" question. It lands in Salesforce as Approved and moves through as today (payable invoice, Angie's daily ACH run). Not submitted by 10:00 AM = not paid that day, and the sub gets a text listing what was missed. A **draw** is a payment before completion: the installer asks the PM directly and the PM issues it, on jobs the PM chooses. Mike Duncan is emailed about every draw. Details: `docs/approval-flow.md`.
 7. **Roll out by location, opt out by account.** `config/rollout.json` turns Vista on per location (`off` / `pilot` / `on`); when on, every account there uses Vista except those that opt out. Jotform keeps running for everyone else. Details: `docs/rollout.md`.
 8. **App, text, or both.** Everything works by text message too (English or Spanish), with the same rules. Each person replies `APP`, `TEXT` or `BOTH`. Details: `docs/sms.md`; try it at `/dev/sms.html`.
+9. **English, Español, or both.** One language setting per person, shared by the app and texts, including a bilingual mode. Job text from Salesforce and what people type is translated, with the original one tap away. Anyone can request another language. Details: `docs/languages.md`.
 
 ## Layout
 
@@ -52,5 +53,6 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Step 1d — pay request vs draw: PM-issued draws with progress-photo rule
 - [x] Step 1e — rollout switch by location/account; production deploy path (`--prod`)
 - [x] Step 1f — Vista by text: shared engine, two-phone simulator, conversation tests
+- [x] Step 1g — language picker, bilingual mode, free-text translation, language requests
 - [ ] Step 2 — Submit for Pay (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`); deploy `salesforce/` to DevSandi
 - [ ] Step 3 — Ask Vi (Claude API), SMS login, cutoff notices, heartbeat

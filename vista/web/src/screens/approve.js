@@ -5,7 +5,7 @@ import { t, tIn, pick, fmtDate, fmtMoney, moneyIn, lang } from '../i18n.js';
 import { db } from '../db.js';
 import { pendingReview, reviewLines, checklistFor, tradeKey, manifestOf, photoCount, drawAmount, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
-import { esc, icons, toast, confirmSheet } from '../ui.js';
+import { esc, icons, toast, confirmSheet, freeText, wireOriginalToggle } from '../ui.js';
 import { header } from '../app.js';
 
 const REASONS = ['missing', 'unclear', 'mismatch', 'incomplete'];
@@ -62,8 +62,9 @@ export async function renderApprove(root, ctx, id) {
       </div>`)}
     <section class="sec">
       <h2>${esc(t('review.work'))}</h2>
-      <div class="card"><p class="scope">${esc(d.Description_of_Work_Performed__c || '—')}</p>
-        <div class="hint">${esc(t('review.scopeRef'))}: ${esc(w.Subject)}</div></div>
+      <div class="card"><p class="scope">${freeText(ctx.tr, d.Description_of_Work_Performed__c || '—', lang())}</p>
+        <div class="hint">${esc(t('review.scopeRef'))}: ${freeText(ctx.tr, w.Subject, lang())}</div>
+        ${lang() !== 'bi' && ctx.tr(d.Description_of_Work_Performed__c || '', lang()).translated ? `<button class="ft-toggle" aria-pressed="false">${esc(t('tr.showOriginal'))}</button>` : ''}</div>
     </section>
     <section class="sec">
       <h2>${esc(t('review.photos'))} <span>${esc(String(photoCount(d)))}</span></h2>
@@ -91,6 +92,7 @@ export async function renderApprove(root, ctx, id) {
       </div>
     </section>`;
 
+  wireOriginalToggle(root, { showOriginal: t('tr.showOriginal'), showTranslation: t('tr.showTranslation') });
   const refresh = async () => {
     const missed = lines.filter(l => !state.get(l.id).checked);
     root.querySelector('#tally').textContent = t('review.tally', { done: lines.length - missed.length, total: lines.length });

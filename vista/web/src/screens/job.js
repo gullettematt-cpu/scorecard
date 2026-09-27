@@ -2,7 +2,7 @@ import { t, pick, fmtDate, fmtTime, fmtMoney, lang } from '../i18n.js';
 import { db } from '../db.js';
 import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, visibleFor, manifestOf, WOLI_DONE, visitKind, isDraw, drawRules, drawEligible, remaining, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
-import { esc, icons, drawTone, mapsUrl, toast, confirmSheet } from '../ui.js';
+import { esc, icons, drawTone, mapsUrl, toast, confirmSheet, freeText, wireOriginalToggle } from '../ui.js';
 import { header } from '../app.js';
 
 export async function renderJob(root, ctx, id) {
@@ -17,6 +17,13 @@ export async function renderJob(root, ctx, id) {
   const pm = pmOf(w) || ctx.crew.pm;
   // Start sets ServiceAppointment.Status = In Progress. There is no Finish: submitting the draw
   // completes the visit and closes the WorkOrder (Flow A, docs/approval-flow.md).
+  // Free text from Salesforce, translated for the reader (original one tap away).
+  const L = lang(), ft = s => freeText(ctx.tr, s, L);
+  const texts = [w.Subject, w.Description, ...(w.WorkOrderLineItems || []).map(li => li.Description), ...cs.map(c => c.Subject)].filter(Boolean);
+  const trs = texts.map(s => ctx.tr(s, L));
+  const trNote = L !== 'bi' && trs.some(r => r.translated)
+    ? `<button class="ft-toggle" aria-pressed="false">${esc(t('tr.showOriginal'))}</button>`
+    : trs.some(r => r.pending) ? `<div class="ft-note">${esc(t('tr.pending'))}</div>` : '';
   const isMeasure = ctx.role === 'measure';
   const isInstaller = ctx.role === 'installer';
   const isField = isMeasure || isInstaller;
@@ -38,7 +45,7 @@ export async function renderJob(root, ctx, id) {
     ${header(ctx, `
       <a class="back" href="#/today">${icons.back}${esc(t('job.back'))}</a>
       <div class="jobhead">
-        <h1>${esc(w.Subject)}</h1>
+        <h1>${ft(w.Subject)}</h1>
         <div class="sub">WO ${esc(w.WorkOrderNumber)}${w.Job_Number__r ? ` · ${esc(w.Job_Number__r.Name)}` : ''} · ${esc(fmtDate(w.StartDate, { weekday: 'short', month: 'short', day: 'numeric' }))} ${esc(fmtTime(w.StartDate))}–${esc(fmtTime(w.EndDate))}</div>
         <div class="chips"><span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('sa.' + sa.Status))}</span>${w.RecordType?.Name === 'Service' ? `<span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('wo.service'))}</span>` : ''}<span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('trade.' + trade))}</span></div>
       </div>`)}
@@ -58,13 +65,14 @@ export async function renderJob(root, ctx, id) {
     <section class="sec">
       <h2>${esc(t('job.scope'))}</h2>
       <div class="card">
-        <p class="scope">${esc(w.Description || '')}</p>
+        <p class="scope">${ft(w.Description || '')}</p>
+        ${trNote}
         ${w.WorkOrderLineItems?.length ? `<h2 style="margin-top:14px">${esc(t('job.lineItems'))}</h2>
         <ul class="lines woli" style="margin-top:6px">${w.WorkOrderLineItems.map(li => {
           const doneLi = li.Status === doneStatus;
           return `<li class="${doneLi ? 'done' : ''}">
             ${canMarkItems && li.Status !== 'Canceled' ? `<input type="checkbox" data-woli="${esc(li.Id)}" ${doneLi ? 'checked' : ''} aria-label="${esc(t('job.markDone'))}">` : ''}
-            <span class="d">${esc(li.Description)}<small>${esc(t('woli.' + li.Status))}</small></span><span class="q">×${esc(li.Quantity)}</span></li>`; }).join('')}</ul>
+            <span class="d">${ft(li.Description)}<small>${esc(t('woli.' + li.Status))}</small></span><span class="q">×${esc(li.Quantity)}</span></li>`; }).join('')}</ul>
         ${canMarkItems ? `<div class="hint">${esc(t(visitKind(w) === 'Measurement' ? 'job.markHintMeasure' : 'job.markHint'))}</div>` : ''}` : ''}
       </div>
     </section>
@@ -113,7 +121,7 @@ export async function renderJob(root, ctx, id) {
 
     ${cs.length ? `<section class="sec">
       <h2>${esc(t('job.problems'))}</h2>
-      ${cs.map(c => `<div class="card"><div class="card-top"><div><h3 style="font-size:16px">${esc(c.Subject)}</h3><div class="sub">Case ${esc(c.CaseNumber)} · ${esc(fmtDate(c.CreatedDate, { month: 'short', day: 'numeric' }))}</div></div><span class="chip warn">${esc((k => t(k) === k ? c.Status : t(k))('case.' + c.Status))}</span></div></div>`).join('')}
+      ${cs.map(c => `<div class="card"><div class="card-top"><div><h3 style="font-size:16px">${ft(c.Subject)}</h3><div class="sub">Case ${esc(c.CaseNumber)} · ${esc(fmtDate(c.CreatedDate, { month: 'short', day: 'numeric' }))}</div></div><span class="chip warn">${esc((k => t(k) === k ? c.Status : t(k))('case.' + c.Status))}</span></div></div>`).join('')}
     </section>` : ''}
 
     <section class="sec" style="padding-bottom:28px">
@@ -174,6 +182,8 @@ export async function renderJob(root, ctx, id) {
     cb.closest('li').querySelector('small').textContent = t('woli.' + li.Status);
     if (isMeasure) renderJob(root, ctx, id);
   });
+
+  wireOriginalToggle(root, { showOriginal: t('tr.showOriginal'), showTranslation: t('tr.showTranslation') });
 
   // Measure tech finishes the visit: ServiceAppointment.Status = Completed + ActualEndTime.
   root.querySelector('#finishMeasure')?.addEventListener('click', async () => {
