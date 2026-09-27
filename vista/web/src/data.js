@@ -13,18 +13,24 @@ const fixtureAdapter = {
   name: 'fixture',
   async crews() { return (await fetch('./fixtures/crews.json')).json(); },
   async load(crew) {
-    const fx = await (await fetch(`./fixtures/${crew.fixture}`)).json();
-    const jobs = fx.workOrders.map(w => ({
-      ...w,
-      StartDate: dayAt(w._schedule.dayOffset, w._schedule.startHour),
-      EndDate: dayAt(w._schedule.dayOffset, w._schedule.endHour),
-      LastModifiedDate: new Date().toISOString(),
-      _crew: crew.id, _trade: crew.trade,
-      Job_Number__r: fx.jobs.find(j => j.Id === w.Job_Number__c) || null
-    }));
-    const draws = fx.draws.map(d => ({ ...d, CreatedDate: dayOff(d.CreatedDate_dayOffset || 0), Date__c: dayOff(d.CreatedDate_dayOffset || 0).slice(0, 10), _crew: crew.id }));
-    const cases = fx.cases.map(c => ({ ...c, CreatedDate: dayOff(c.CreatedDate_dayOffset || 0), _crew: crew.id }));
-    return { jobs, draws, cases };
+    const crews = await this.crews();
+    const files = crew.fixtures || [crew.fixture];
+    const out = { jobs: [], draws: [], cases: [] };
+    for (const file of files) {
+      const owner = crews.find(c => c.fixture === file) || crew;
+      const fx = await (await fetch(`./fixtures/${file}`)).json();
+      out.jobs.push(...fx.workOrders.map(w => ({
+        ...w,
+        StartDate: dayAt(w._schedule.dayOffset, w._schedule.startHour),
+        EndDate: dayAt(w._schedule.dayOffset, w._schedule.endHour),
+        LastModifiedDate: new Date().toISOString(),
+        _crew: owner.id, _crewName: owner.name, _trade: owner.trade, _lang: owner.lang,
+        Job_Number__r: fx.jobs.find(j => j.Id === w.Job_Number__c) || null
+      })));
+      out.draws.push(...fx.draws.map(d => ({ ...d, CreatedDate: dayOff(d.CreatedDate_dayOffset || 0), Date__c: dayOff(d.CreatedDate_dayOffset || 0).slice(0, 10), _crew: owner.id, _lang: owner.lang })));
+      out.cases.push(...fx.cases.map(c => ({ ...c, CreatedDate: dayOff(c.CreatedDate_dayOffset || 0), _crew: owner.id })));
+    }
+    return out;
   },
   // Outbox entries are just logged in fixture mode. Step 2 posts them to /sf/*.
   async push(entry) { console.info('[vista:fixture] would sync', entry); return { ok: true }; }
@@ -34,11 +40,11 @@ export const adapter = fixtureAdapter;
 
 export async function seedIfNeeded(crew) {
   const seeded = await db.meta('seeded');
-  if (seeded === crew.id + ':v2') return;
+  if (seeded === crew.id + ':v3') return;
   const { jobs, draws, cases } = await adapter.load(crew);
   await Promise.all([db.clear('jobs'), db.clear('draws'), db.clear('cases'), db.clear('checklist'), db.clear('outbox')]);
   await db.putAll('jobs', jobs); await db.putAll('draws', draws); await db.putAll('cases', cases);
-  await db.meta('seeded', crew.id + ':v2');
+  await db.meta('seeded', crew.id + ':v3');
 }
 
 export async function checklistFor(trade) {
@@ -77,7 +83,32 @@ export function tradeKey(w) {
   return w._trade || 'windows';
 }
 
-// WorkOrder.Status values installers act on (confirmed picklist; there is no "In Progress").
-export const WO_SCHEDULED = 'Installation Scheduled';
-export const WO_INSTALLED = 'Installation Completed';
-export const WO_HIDDEN = new Set(['Completed', 'Canceled']);
+// --- Field Service gating -----------------------------------------------------------------
+// Dispatch is the gate: nothing reaches the installer until the ServiceAppointment is Dispatched
+// (which is also what fires the PulseM bio). See docs/approval-flow.md.
+export const SA_VISIBLE = new Set(['Dispatched', 'In Progress', 'Completed']);
+export const visit = w => w.ServiceAppointment || null;
+export const isVisible = w => { const v = visit(w); return !!v && SA_VISIBLE.has(v.Status) && (v.Status !== 'Completed' || sameLocalDay(w.StartDate)); };
+const sameLocalDay = iso => new Date(iso).toDateString() === new Date().toDateString();
+
+// --- PM review: the deliverables checklist -------------------------------------------------
+// Every required line must be ticked to approve. Unticked lines are "what was missed".
+export function reviewLines(draw, w, checklist) {
+  const m = manifestOf(draw) || {};
+  const count = k => (m.photos || []).filter(p => p.kind === k).length;
+  const lines = [];
+  for (const p of checklist?.photos || []) {
+    if (!p.min) continue;
+    const have = count(p.kind);
+    lines.push({ id: 'photo:' + p.kind, kind: 'photo', label: p, have, need: p.min, ok: have >= p.min, required: true });
+  }
+  const total = checklist?.steps?.length || 0, done = (m.checklist?.done || []).length;
+  lines.push({ id: 'checklist', kind: 'checklist', have: done, need: total, ok: done >= total, required: true });
+  lines.push({ id: 'scope', kind: 'scope', ok: true, required: true, text: draw.Description_of_Work_Performed__c || '' });
+  lines.push({ id: 'complete', kind: 'complete', ok: true, required: true, value: draw.Did_you_complete_the_job_or_service__c || 'No' });
+  const room = contractAmount(w) ? contractAmount(w) - laborDrawn(w) : null;
+  lines.push({ id: 'amount', kind: 'amount', amount: drawAmount(draw), room, ok: room == null || drawAmount(draw) <= room, required: true });
+  if (draw.Additional_Work_Performed__c === 'Yes') lines.push({ id: 'additional', kind: 'additional', ok: !!m.additional_work?.note, required: true });
+  return lines;
+}
+export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && d.Status__c === 'Submitted' && !d.TEST_SA__c);

@@ -5,9 +5,18 @@
     "branch": "Augusta",
     "lang": "en",
     "trade": "windows",
-    "lead": { "name": "Dwayne Tucker", "phone": "+17065550112" },
-    "members": ["Dwayne Tucker", "Marcus Bell"],
-    "pm": { "name": "Mike", "phone": "+17065550100" },
+    "lead": {
+      "name": "Dwayne Tucker",
+      "phone": "+17065550112"
+    },
+    "members": [
+      "Dwayne Tucker",
+      "Marcus Bell"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
     "fixture": "crew-12.json"
   },
   {
@@ -16,9 +25,40 @@
     "branch": "Augusta",
     "lang": "es",
     "trade": "siding",
-    "lead": { "name": "Luis Hernández", "phone": "+17065550107" },
-    "members": ["Luis Hernández", "Javier Ortiz", "Tomás Reyes"],
-    "pm": { "name": "Mike", "phone": "+17065550100" },
+    "lead": {
+      "name": "Luis Hernández",
+      "phone": "+17065550107"
+    },
+    "members": [
+      "Luis Hernández",
+      "Javier Ortiz",
+      "Tomás Reyes"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
     "fixture": "crew-7.json"
+  },
+  {
+    "id": "pm-mike",
+    "name": "Mike · PM",
+    "role": "pm",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": null,
+    "lead": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "members": [
+      "Crew 12",
+      "Cuadrilla 7"
+    ],
+    "pm": null,
+    "fixtures": [
+      "crew-12.json",
+      "crew-7.json"
+    ]
   }
 ]

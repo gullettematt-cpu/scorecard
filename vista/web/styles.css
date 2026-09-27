@@ -121,3 +121,17 @@ ul { list-style: none; }
 .soon .big { font-size: 56px; }
 .soon h1 { font-size: 22px; margin: 10px 0; }
 .soon p { color: var(--muted); }
+.missed { display: block !important; background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 10px 12px !important; margin: 4px 0 8px; border-top: 0 !important; font-size: 15px; }
+.missed ul { list-style: disc; padding-left: 18px; margin-top: 4px; }
+.missed li { display: list-item; border: 0; padding: 2px 0; }
+.phgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ph { aspect-ratio: 1; border-radius: 10px; background: linear-gradient(135deg, #d9e0e6, #eef2f5); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: center; padding: 4px; }
+.ph small { font-weight: 400; color: var(--muted); }
+.review li.short label { color: var(--bad); }
+.review .flag { display: block; font-size: 13px; font-weight: 600; }
+.review .reason { display: block; margin-top: 6px; min-height: 36px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; background: var(--card); color: var(--text); }
+.review .reason[hidden] { display: none; }
+.act:disabled { opacity: .45; }
+.smsprev { background: var(--info-bg); border-color: transparent; }
+.smsprev p { font-size: 15px; }
+.review li.done label { text-decoration: none; color: var(--ok); }

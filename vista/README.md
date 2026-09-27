@@ -9,7 +9,8 @@ Spanish and English at launch.
 2. **No new Salesforce objects or fields.** Job = `WorkOrder`, draw = `SA_Expense__c`, problem = `Case` (Service record type; `Work_Type__c`, `Service_Type__c`, `Warranty_Type__c` set at creation).
 3. **Photos go to object storage.** A JSON manifest is written to an existing long-text field on `SA_Expense__c` (see `docs/data-contract.md`).
 4. **No photos, no pay.** A PM can always approve from Salesforce with a reason.
-5. **Angie's ACH batch is unchanged** for the first pay cycle.
+5. **Field Service is the backbone.** Installers only see *Dispatched* ServiceAppointments (dispatch also fires the PulseM bio). Submitting a draw completes the visit and closes the WorkOrder.
+6. **Vista draws have their own approval flow:** installer submits → PM approves against a deliverables checklist → Angie's daily ACH run. Not approved by cutoff = not paid that day, and the sub gets a text listing what was missed. The existing Jotform batch is unchanged but must skip Vista draws. Details: `docs/approval-flow.md`.
 
 ## Layout
 
@@ -17,7 +18,7 @@ Spanish and English at launch.
 |---|---|
 | `web/` | Static PWA. No framework, no build step. Offline-first (IndexedDB + service worker + outbox). |
 | `api/` | Serverless API contract: SMS code verification, Salesforce (JWT bearer, integration user), photo upload. Plus the 2-hour heartbeat. **Not wired yet (Step 2).** |
-| `docs/` | `data-contract.md` (fields the five screens read/write), `describe.sh` (dumps `sf sobject describe` for the four objects), architecture notes. |
+| `docs/` | `approval-flow.md` (draw approval + daily ACH run), `data-contract.md` (fields the five screens read/write), `describe.sh` (dumps `sf sobject describe` for the four objects), architecture notes. |
 | `i18n/` | `en.json`, `es.json`. Every user-facing string lives here. |
 | `scripts/` | `dev.js` (local static server), `build.sh` (assemble `dist/` for the CDN). |
 
@@ -28,15 +29,17 @@ cd vista
 npm run dev          # http://localhost:4173
 ```
 
-Pick a crew on first load:
+Pick a login on first load:
 
-- **Crew 12 · Tucker** — Augusta, English, windows & doors
-- **Cuadrilla 7 · Hernández** — Augusta, Spanish, siding
+- **Crew 12 · Tucker** — Augusta installer, English, windows & doors
+- **Cuadrilla 7 · Hernández** — Augusta installer, Spanish, siding
+- **Mike · PM** — sees both crews and the Approve queue
 
 Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field names exactly, so swapping the fixture adapter for the Salesforce adapter (`web/src/data.js`) does not touch the screens.
 
 ## Status
 
 - [x] Step 1 — repo, data contract, PWA shell, **Today** and **Job** screens on fixtures (EN + ES)
-- [ ] Step 2 — Submit Draw (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`)
-- [ ] Step 3 — Approve (PM), Ask Vi (Claude API), SMS login, heartbeat
+- [x] Step 1b — Field Service gating, approval-flow design, **Approve** screen (PM deliverables checklist) on fixtures
+- [ ] Step 2 — Submit Draw (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`); Flow A + list view + report in the DevSandi sandbox
+- [ ] Step 3 — Ask Vi (Claude API), SMS login, cutoff notices, heartbeat

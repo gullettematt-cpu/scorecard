@@ -5,14 +5,15 @@ Vista never owns state: the phone holds a local copy and an outbox, Salesforce i
 
 ## Verification status
 
-Confirmed against `sf sobject describe` on org alias `myorg` (org `00D4P000001dcqBUAQ`) on 2026-09-27.
+Confirmed against `sf sobject describe` on org alias `myorg` (org `00D4P000001dcqBUAQ`) on 2026-09-27, including the Field Service objects.
+
+**Vista is anchored on Field Service.** The installer's unit of work is a *Dispatched* `ServiceAppointment`; the draw approval flow is in `docs/approval-flow.md`.
 Raw summary: `docs/describe/SUMMARY.md`. Re-run `bash docs/describe.sh myorg` after any schema change.
 
 | Tag | Meaning |
 |---|---|
 | ✅ | Confirmed by describe: exists, type and picklist values as listed. |
 | 🟠 decide | Field exists; the *policy* (which value, who reads it) needs a yes from Matt, Mike or Angie before Step 2 wires it. |
-| ⏳ | Object not yet described (FSL scheduling objects). Standard fields, low risk. Added to `describe.sh`; run it again. |
 
 Decisions still open are collected at the bottom under **Open decisions**.
 
@@ -24,28 +25,34 @@ Decisions still open are collected at the bottom under **Open decisions**.
 |---|---|---|---|
 | Job | `WorkOrder` | `WorkOrder.Job_Number__c` → `Job__c` | Record types: **Installation** `0124P000000OMPGQA4` (default), **Service** `0124P0000003LvBQAU`, Admin, RCE Visit, Sales visit. Vista shows Installation and Service. |
 | Sold job / contract | `Job__c` | | Contract amount, PM, office, trade. |
-| Visit / crew assignment | `ServiceAppointment` ⏳ | `ParentRecordId` → `WorkOrder` | FSL is installed (`FSL__*` fields on WorkOrder, `ServiceAppointmentCount`). Crew = `AssignedResource` → `ServiceResource`. `SA_Expense__c.Service_Appointment__c` already links draws to visits, so this is the org's existing pattern. |
+| Visit (the installer's unit of work) | `ServiceAppointment` ✅ | `Work_Order__c` → `WorkOrder`, `Job__c` → `Job__c` | Only `Status in (Dispatched, In Progress)` reaches the phone. Dispatch fires the PulseM bio (`PulseM_appt_trigger__c`, `PulseM_Bio_Sent__c`). |
+| Crew assignment | `AssignedResource` ✅ → `ServiceResource` ✅ | `ServiceResource.AccountId` → installer Account | `AssignedResource.Lead_Installer__c` marks who submits the draw. |
 | Draw | `SA_Expense__c` | `Work_Order__c`, `Job__c`, `Service_Appointment__c` | "SA" = Service Appointment. The Jotform flow (`Type__c = Jotform`, `Jotform_URL__c`, `Send_Jotform_SMS__c`) is what Vista replaces. |
 | Problem | `Case` | `Case.Job__c` → `Job__c` (no WorkOrder lookup on Case) | Service record type **`0124P000000OMP8QAO`** (default). |
 | Photos | Object storage | manifest in `SA_Expense__c.Additional_Work_Performed_Description__c` 🟠 | See *Photo manifest*. |
-| Installer | `Account` (sub/installer account) | `SA_Expense__c.Account__c`, `Case.Original_Installer__c`, `ServiceResource` ⏳ | `SA_Expense__c.Installer_Name__c` is a formula off the account. Vista maps phone → installer account + ServiceResource at SMS login. |
+| Installer | `Account` (sub/installer account) | `ServiceResource.AccountId`, `SA_Expense__c.Account__c`, `Case.Original_Installer__c` | `SA_Expense__c.Installer_Name__c` is a formula off the account. Vista maps phone → ServiceResource → Account at SMS login. |
 | PM | `User` | `Job__c.Production_Manager__c`, `SA_Expense__c.Production_Manager__c` | Approver. `Office_Administrator__c` on both objects is the OA. |
 
 ---
 
 ## Screen 1 · Today
 
-Installer's visits for today and the rest of the week. One card per `WorkOrder`, reached through the installer's `ServiceAppointment`s.
+Installer's **dispatched** visits for today and the rest of the week. One card per `ServiceAppointment`.
 
-### Reads — `ServiceAppointment` ⏳ (assignment + time window)
+### Reads — `ServiceAppointment`
 
 | Field | Tag | Used for |
 |---|---|---|
-| `Id`, `AppointmentNumber` | ⏳ | key |
-| `ParentRecordId` | ⏳ | the `WorkOrder` |
-| `SchedStartTime`, `SchedEndTime` | ⏳ | time window on the card; "today" filter |
-| `Status` | ⏳ | Scheduled / Dispatched / In Progress / Completed / Cannot Complete / Canceled |
-| `AssignedResources` → `ServiceResourceId` | ⏳ | which crew. Query: appointments where any `AssignedResource.ServiceResourceId` is in the installer's resource ids. |
+| `Id`, `AppointmentNumber` | ✅ | key |
+| `Status` | ✅ | `New` · `Ready to Schedule` · `Scheduled` · `Dispatched` · `In Progress` · `Completed` · `Canceled` · `On Hold`. **Filter: `Dispatched`, `In Progress`, and today's `Completed`.** |
+| `SchedStartTime`, `SchedEndTime`, `ArrivalWindowStartTime`, `ArrivalWindowEndTime` | ✅ | time window; today filter |
+| `Work_Order__c`, `Job__c` | ✅ | the WorkOrder and Job |
+| `SS_Service_Appointment_Type__c` | ✅ | `Installation` (Vista v1 shows installation and service visits only) |
+| `Notes_to_Installer__c`, `Description` | ✅ | dispatcher's notes on the Job screen |
+| `SMS_Opt_out__c` | ✅ | whether the daily "what was missed" text may be sent |
+| `PulseM_Bio_Sent__c` | ✅ | shown to the PM; not a gate (dispatch is the gate) |
+| `Test_SA__c` | ✅ | excluded |
+| `AssignedResource.ServiceResourceId`, `.Lead_Installer__c` | ✅ | which crew; who submits |
 
 ### Reads — `WorkOrder`
 
@@ -115,11 +122,13 @@ None.
 |---|---|---|
 | `Id`, `CaseNumber`, `Subject`, `Status`, `CreatedDate`, `Work_Type__c`, `Service_Type__c`, `Warranty_Type__c` | ✅ | problem list, `WHERE Job__c = :jobId AND IsClosed = false` |
 
-### Writes — `WorkOrder`
+### Writes — `ServiceAppointment`
 
 | Field | Tag | When |
 |---|---|---|
-| `Status` = `Installation Completed` | 🟠 decide | installer taps **Finish job** on the last visit. Automation stamps `Time_Stamp_Installation_Completed__c` and milestones off this transition; Mike confirms installers may trigger it (today the office does). **Start job writes nothing to Salesforce** (no status exists); the start time is kept on the phone and lands in the draw manifest. |
+| `Status` = `In Progress`, `ActualStartTime` | ✅ | installer taps **Start job** |
+
+The phone never writes `WorkOrder.Status`. Submitting the draw completes the visit and closes the WorkOrder through Flow A (`docs/approval-flow.md`).
 
 ### Writes — `Case` (*Report a problem* sheet)
 
@@ -153,13 +162,14 @@ None.
 | `Amount__c` | ✅ required | installer-entered; capped at `Sales_Price__c − Total_SA_Expense_Labor__c` when known |
 | `Date__c` | ✅ required | today (installer's local date) |
 | `Expense_Type__c` | ✅ | `Labour` |
-| `Type__c` | 🟠 decide | `Standard` (the `Jotform` value drives the SMS/Jotform automation Vista replaces). Angie confirms the ACH batch does not filter on it. |
+| `Type__c` | 🟠 new value | **`Vista`**, a new picklist value on the existing field. It routes the draw into the Vista approval flow and keeps it out of the Jotform batch. |
 | `Status__c` | ✅ | `Submitted` |
-| `Work_Order__c`, `Job__c`, `Service_Appointment__c` | ✅ | the visit's WorkOrder, its `Job_Number__c`, the ServiceAppointment |
+| `Service_Appointment__c` | ✅ required by Vista | the In Progress visit. Flow A completes it. |
+| `Work_Order__c`, `Job__c` | ✅ | from the ServiceAppointment |
 | `Account__c` | ✅ | installer's Account (drives `Installer_Name__c`, Paycom/AP fields) |
 | `Production_Manager__c` | ✅ | copied from `Job__c.Production_Manager__c` |
 | `Work_Performed_Date__c` | ✅ | today |
-| `Did_you_complete_the_job_or_service__c` | ✅ | `Yes` / `No` from the installer |
+| `Did_you_complete_the_job_or_service__c` | ✅ | `Yes` / `No` from the installer. `Yes` lets Flow A close the WorkOrder. |
 | `Description_of_Work_Performed__c` (32768) | ✅ | **human-readable** work summary typed by the installer (Vi can draft it). Stays readable for PMs and accounting. |
 | `Additional_Work_Performed__c` | ✅ | `Yes` / `No` |
 | `Additional_Work_Performed_Description__c` (32768) | 🟠 **manifest** | the JSON photo manifest (below). Any additional-work text the installer types is stored *inside* the manifest and prefixed as a plain sentence, so a human opening the field still sees the note first. |
@@ -203,17 +213,18 @@ Manifest v1 (~200 bytes per photo, so 32k holds 100+ photos):
 
 ## Screen 4 · Approve (PMs)
 
+The PM reviews a **deliverables checklist** built from the trade requirements (see `docs/approval-flow.md`).
+
 ### Reads
-`SA_Expense__c` where `Status__c = 'Submitted' AND TEST_SA__c = false AND Production_Manager__c = :me`, with the job fields above, the manifest, and signed photo URLs.
+`SA_Expense__c` where `Type__c = 'Vista' AND Status__c = 'Submitted' AND TEST_SA__c = false AND Production_Manager__c = :me`, with the job fields above, the manifest, and signed photo URLs.
 
 ### Writes — `SA_Expense__c` (update)
 
 | Field | Tag | Value |
 |---|---|---|
-| `Status__c` | ✅ | `Approved` or `Rejected` (the two values the existing flow already uses) |
+| `Status__c` | ✅ | `Approved` when every required line is ticked; `Rejected` = sent back with missed items |
 | `Approver__c` | ✅ | PM's name (string 255) |
-| `Do_Not_Pay__c` | 🟠 decide | set on reject only if Angie's batch uses it; otherwise `Rejected` alone |
-| `Additional_Work_Performed_Description__c` | ✅ | manifest rewritten with `approval: { by, at, decision, reason, without_photos }` |
+| `Additional_Work_Performed_Description__c` | ✅ | manifest rewritten with `approval: { by, at, decision, checked[], missed: [{ item, reason }] }` |
 
 ---
 
@@ -233,7 +244,7 @@ None. Vi drafts `Description_of_Work_Performed__c` text and problem reports; the
 |---|---|---|
 | Login | — | JWT bearer as the integration user |
 | Read | `WorkOrder` | `SELECT Id, WorkOrderNumber, Status FROM WorkOrder WHERE Test_WO__c = true ORDER BY LastModifiedDate DESC LIMIT 1` (falls back to any WO) |
-| Write | `SA_Expense__c` | create `{ Amount__c: 0.01, Date__c: today, Expense_Type__c: 'Labour', Type__c: 'Standard', Status__c: 'New', TEST_SA__c: true, Work_Order__c: <test WO>, Additional_Work_Performed_Description__c: '{"v":1,"app":"vista-heartbeat"}' }`; deleted on the next successful run |
+| Write | `SA_Expense__c` | create `{ Amount__c: 0.01, Date__c: today, Expense_Type__c: 'Labour', Type__c: 'Vista', Status__c: 'New', TEST_SA__c: true, Work_Order__c: <test WO>, Additional_Work_Performed_Description__c: '{"v":1,"app":"vista-heartbeat"}' }`; deleted on the next successful run |
 | Upload | object storage | 1 KB PNG to `vista/heartbeat/{ts}.png`, then HEAD |
 | Alert | SMS | Matt and Mike on any failed step, once per incident |
 
@@ -244,18 +255,16 @@ None. Vi drafts `Description_of_Work_Performed__c` text and problem reports; the
 ## Field-level security for the integration user
 
 Read on every field above. Edit only on:
-`WorkOrder.Status`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c`, `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `Approver__c`, `TEST_SA__c`.
+`ServiceAppointment.Status`, `ServiceAppointment.ActualStartTime`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c`, `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `Approver__c`, `TEST_SA__c`.
 API-only profile, IP-restricted to the serverless egress range, no UI login.
 
 ---
 
-## Open decisions (answer before Step 2 wires Salesforce)
+## Open decisions
+
+The approval-flow questions (double-pay filter, cutoff, how paid is marked, WO close status, the `Vista` picklist value) are in `docs/approval-flow.md`. Still open here:
 
 | # | Who | Question | Default if no answer |
 |---|---|---|---|
-| 1 | Angie | Does the ACH batch key on `Status__c = 'Approved'` only, or also on `Type__c`, `Do_Not_Pay__c`, `Approval_not_Required__c`? Does it already exclude `TEST_SA__c = true`? | Vista writes `Type__c = Standard`, never touches `Do_Not_Pay__c`; heartbeat rows stay `Status__c = New`. |
-| 2 | Angie | What marks a draw as *paid*: `Paycheck_Period__c`, `Payable_Invoice_New__c`, or `Closed_by_Accounting_New__c`? | Show "Paid" when `Paycheck_Period__c` or `Payable_Invoice_New__c` is set. |
-| 3 | Mike | May installers set `WorkOrder.Status = 'Installation Completed'` from the phone, given the milestone automation on that transition? | Yes, on Finish job, last visit only. |
-| 4 | Mike | Case `Origin`: `In-Person` or `Web`? Does dispatch read `Description` or `Service_Issue__c`? | `In-Person`; write both fields. |
-| 5 | Matt | Manifest in `Additional_Work_Performed_Description__c` (recommended) or `Description_of_Work_Performed__c`? | Recommended. |
-| 6 | Matt | Run `describe.sh` again (now includes `ServiceAppointment`, `AssignedResource`, `ServiceResource`, `WorkOrderLineItem`, `WorkType`) to close the ⏳ rows. | — |
+| 1 | Mike | Case `Origin`: `In-Person` or `Web`? Does dispatch read `Description` or `Service_Issue__c`? | `In-Person`; write both fields. |
+| 2 | Matt | Manifest in `Additional_Work_Performed_Description__c` (recommended) or `Description_of_Work_Performed__c`? | Recommended. |

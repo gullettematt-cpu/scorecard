@@ -12,6 +12,7 @@ export const icons = {
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>'
 };
 export const statusTone = s => ({ 'Installation Scheduled': '', 'Installation Completed': 'ok', 'Completed': 'muted', 'On Hold': 'warn', 'Canceled': 'bad' }[s] || 'muted');
+export const visitTone = s => ({ Dispatched: '', 'In Progress': 'ok', Completed: 'muted' }[s] || 'muted');
 export const drawTone = s => ({ Submitted: 'warn', 'Auto-Approved': 'ok', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
 export const mapsUrl = w => {
   const q = w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`);

@@ -8,12 +8,13 @@ Three jobs and one cron. Every handler is stateless; the phone is the only clien
 | `POST /auth/verify` `{phone, code}` → `{token, user:{name, crew, role, lang}}` | SMS code | Short-lived JWT for the phone. Role is `installer` or `pm`. |
 | `GET /sf/today` | Salesforce | WorkOrders for the caller's crew, today ± 7 days, with draw statuses. Shapes = Salesforce API names (see `docs/data-contract.md`). |
 | `GET /sf/job/:id` | Salesforce | WorkOrder + line items + Job__c + open Cases + draws. |
-| `PATCH /sf/job/:id/status` `{status}` | Salesforce | Only `In Progress` / `Completed`. |
+| `PATCH /sf/visit/:id/start` | Salesforce | `ServiceAppointment.Status = In Progress`, `ActualStartTime`. Only on the caller's Dispatched visits. |
 | `POST /sf/case` | Salesforce | Creates the Service-record-type Case with the three picklists. |
-| `POST /sf/draw` | Salesforce | Creates `SA_Expense__c`. **Refuses without the trade's minimum photos.** Writes the manifest. |
-| `PATCH /sf/draw/:id/approve` `{decision, reason?}` | Salesforce | PM only. Reason required if the manifest has no photos. |
+| `POST /sf/draw` | Salesforce | Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = Submitted`. **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow A then completes the visit and closes the WO. |
+| `PATCH /sf/draw/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `Approved` only when every required deliverable is ticked; otherwise `Rejected` with missed items in the manifest. |
 | `POST /photos/sign` `{workOrderId, drawId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
 | `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
+| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista draw not `Approved` at cutoff: one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
 | cron every 2 h | Heartbeat | login → read WorkOrder → create `SA_Expense__c` (`TEST_SA__c = true`) → upload photo → SMS Matt + Mike on failure. |
 
 ## Salesforce auth
