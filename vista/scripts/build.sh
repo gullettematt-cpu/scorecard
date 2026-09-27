@@ -5,4 +5,5 @@ cd "$(dirname "$0")/.."
 rm -rf dist && mkdir -p dist
 cp -R web/. dist/
 cp -R i18n dist/i18n
+rm -rf dist/dev   # the text simulator is local-only
 echo "dist/ ready ($(du -sh dist | cut -f1))"

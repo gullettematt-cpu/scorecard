@@ -1,6 +1,6 @@
 # Vista rollout: on/off by location, opt-out by account
 
-Everything that exists today keeps running: Jotform, the Jotform and Titan approval processes, and the ACH batch.
+Everything that exists today keeps running: the Titan and Jotform approval processes and the ACH batch.
 Vista switches on **location by location**. When a location is on, **every account there uses Vista except the accounts that opt out**.
 
 ## The switch
@@ -18,7 +18,7 @@ Vista switches on **location by location**. When a location is on, **every accou
 
 | Mode | Who uses Vista at that location |
 |---|---|
-| `off` (default) | Nobody. Jotform as today. |
+| `off` (default) | Nobody. Pay is submitted the way it is today. |
 | `pilot` | Only the accounts in `pilotAccounts`, for a first crew or two. |
 | `on` | Everyone, **except** the accounts in `optOutAccounts`. |
 
@@ -31,8 +31,8 @@ Vista switches on **location by location**. When a location is on, **every accou
 
 | | Vista on for the crew | Vista off (or opted out) |
 |---|---|---|
-| Installer / measure tech | Sees dispatched visits, submits for pay in Vista | Sees "Vista isn't on for your crew yet. Keep using Jotform." |
-| Pay | Vista pay request → PM checklist → Approved | Jotform → OA / Titan approval as today |
+| Installer / measure tech | Sees dispatched visits, submits for pay in Vista (app or text) | Sees "Vista isn't on for your crew yet. Keep submitting pay the way you do today." (app and text) |
+| Pay | Vista pay request → PM checklist → Approved | Today's process |
 | Draws | PM issues in Vista; Mike Duncan emailed | As today |
 | Salesforce | Vista records (`Type__c = Vista`) and the two Vista flows | Untouched |
 
@@ -50,23 +50,18 @@ Vista switches on **location by location**. When a location is on, **every accou
 
 Both flows can be activated in production right away. Nothing changes for anyone until a location in `config/rollout.json` is set to `pilot` or `on` **and** the Vista API is live.
 
-## One thing to settle before the first location goes on: Jotform
+## Jotform
 
-A crew on Vista must not also get the Jotform text, or one job could be paid twice (a Jotform SA Expense and a Vista pay request). We don't yet know what sends Jotform today (the `Send_Jotform_SMS__c` checkbox and `SMS_Sent_Date__c` on SA Expense suggest a flow or process on visit completion).
-
-`salesforce/automation-check.sh` lists it. Once we see it, the fix is one extra condition on that automation. For example: "skip if this visit already has a `Type__c = Vista` SA Expense, or the visit's crew is on Vista."
+Jotform was never used widely (Matt, 2026-09-27), so there is no double-pay risk to manage when a location goes on.
 
 ## Production run order (from `vista/`, on your Mac)
 
 ```bash
-# 1. Read-only: find what sends Jotform today (commit the output)
-ORG=myorg bash salesforce/automation-check.sh
-
-# 2. Picklist value: validate, then add
+# 1. Picklist value: validate, then add
 bash salesforce/add-vista-type.sh --prod
 bash salesforce/add-vista-type.sh --prod --go
 
-# 3. Flows (Draft) + list views: validate, then deploy
+# 2. Flows (Draft) + list views: validate, then deploy
 bash salesforce/deploy.sh --prod
 bash salesforce/deploy.sh --prod --go
 ```

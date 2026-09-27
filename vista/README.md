@@ -12,6 +12,7 @@ Spanish and English at launch.
 5. **Field Service is the backbone.** Installers only see *Dispatched* ServiceAppointments (dispatch also fires the PulseM bio). Installers and measure techs mark their line items complete. Submitting a draw completes the visit; when every line item is done the WorkOrder moves to *Installation Completed* for review.
 6. **PMs submit everything to accounting.** The installer's pay request (at completion) waits at *New*; the PM reviews it against a deliverables checklist and submits it once, after an "Are you sure?" question. It lands in Salesforce as Approved and moves through as today (payable invoice, Angie's daily ACH run). Not submitted by 10:00 AM = not paid that day, and the sub gets a text listing what was missed. A **draw** is a payment before completion: the installer asks the PM directly and the PM issues it, on jobs the PM chooses. Mike Duncan is emailed about every draw. Details: `docs/approval-flow.md`.
 7. **Roll out by location, opt out by account.** `config/rollout.json` turns Vista on per location (`off` / `pilot` / `on`); when on, every account there uses Vista except those that opt out. Jotform keeps running for everyone else. Details: `docs/rollout.md`.
+8. **App, text, or both.** Everything works by text message too (English or Spanish), with the same rules. Each person replies `APP`, `TEXT` or `BOTH`. Details: `docs/sms.md`; try it at `/dev/sms.html`.
 
 ## Layout
 
@@ -39,6 +40,8 @@ Pick a login on first load:
 - **Measure · Ortega** — Augusta measure tech, Spanish, measurement visits only
 - **Mike · PM** — sees all crews and the Approve queue
 
+**By text:** open http://localhost:4173/dev/sms.html for two simulated phones. `npm run test:sms` runs the text conversations.
+
 Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field names exactly, so swapping the fixture adapter for the Salesforce adapter (`web/src/data.js`) does not touch the screens.
 
 ## Status
@@ -48,5 +51,6 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Step 1c — PM-submits flow, line-item completion, WO review; Salesforce automation as source in `salesforce/` (not deployed)
 - [x] Step 1d — pay request vs draw: PM-issued draws with progress-photo rule
 - [x] Step 1e — rollout switch by location/account; production deploy path (`--prod`)
+- [x] Step 1f — Vista by text: shared engine, two-phone simulator, conversation tests
 - [ ] Step 2 — Submit for Pay (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`); deploy `salesforce/` to DevSandi
 - [ ] Step 3 — Ask Vi (Claude API), SMS login, cutoff notices, heartbeat

@@ -82,6 +82,7 @@ async function boot() {
   ctx.crew = crew;
   ctx.role = crew.role || 'installer';
   ctx.account = crew.account || null;
+  ctx.crewId = crew.id;
   ctx.rollout = await adapter.rollout();
   await seedIfNeeded(crew);
   await route();

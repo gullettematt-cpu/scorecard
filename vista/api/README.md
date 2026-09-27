@@ -17,6 +17,10 @@ Three jobs and one cron. Every handler is stateless; the phone is the only clien
 | `PATCH /sf/line-item/:id` `{status}` | Salesforce | `Installation Completed` (installer) or `Measurement Completed` (measure tech), only on the caller's in-progress visit. |
 | `POST /photos/sign` `{workOrderId, expenseId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
 | `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
+| `POST /sms/inbound` (text provider webhook) | Text | Verifies the provider signature, runs `web/src/sms/engine.js` for the sender, performs the returned actions (same Salesforce writes as the app), copies picture messages to object storage, sends the replies. |
+| cron 6:30 AM | Text | Morning list for people on `TEXT`. |
+| cron 7:30 AM and 9:30 AM | Text | Review list for PMs with requests waiting. |
+| on dispatch (poll every 5 min for newly Dispatched visits) | Text | "New job dispatched" to the crew. |
 | cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista pay request still `New` at cutoff (sent back or not yet reviewed): one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
 | cron every 2 h | Heartbeat | login → read WorkOrder → create `SA_Expense__c` (`TEST_SA__c = true`) → upload photo → SMS Matt + Mike on failure. |
 
@@ -30,7 +34,7 @@ Token is cached in memory per warm instance and refreshed on 401.
 SF_LOGIN_URL, SF_CLIENT_ID, SF_USERNAME, SF_JWT_PRIVATE_KEY
 SF_MANIFEST_FIELD                 # e.g. SA_Expense__c.Notes__c — from docs/data-contract.md
 SF_CASE_SERVICE_RECORD_TYPE_ID
-SMS_PROVIDER_SID, SMS_PROVIDER_TOKEN, SMS_FROM
+SMS_PROVIDER_SID, SMS_PROVIDER_TOKEN, SMS_FROM   # one number with MMS; A2P 10DLC or toll-free verified
 ALERT_PHONES                      # Matt, Mike
 STORAGE_BUCKET, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY, STORAGE_ENDPOINT
 ANTHROPIC_API_KEY, VI_MODEL=claude-sonnet-5

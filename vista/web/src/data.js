@@ -129,7 +129,10 @@ export const isMeasurementVisit = w => visit(w)?.SS_Service_Appointment_Type__c 
 // Rollout: a visit is on Vista only if Vista is on for its job's office (Location) and the crew's account.
 export const officeOf = w => w.Job_Number__r?.Office__r || null;
 export const onVista = (ctx, w) => vistaOn(ctx.rollout, officeOf(w), ctx.role === 'pm' ? w._account : ctx.account);
-export const visibleFor = ctx => w => isVisible(w) && onVista(ctx, w) &&
+// Assignment: installers and measure techs only see visits assigned to them (AssignedResource -> their
+// ServiceResource; `_crew` in fixtures). PMs see every visit at their locations.
+export const assignedTo = (ctx, w) => ctx.role === 'pm' || !ctx.crewId || w._crew === ctx.crewId;
+export const visibleFor = ctx => w => isVisible(w) && assignedTo(ctx, w) && onVista(ctx, w) &&
   (ctx.role === 'pm' || (ctx.role === 'measure') === isMeasurementVisit(w));
 const sameLocalDay = iso => new Date(iso).toDateString() === new Date().toDateString();
 

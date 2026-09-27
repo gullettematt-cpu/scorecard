@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista by Text</title>
+<style>
+  :root { --ink:#0F2A3D; --accent:#F28C28; --paper:#F4F6F8; --card:#fff; --line:#D9E0E6; --muted:#5B6B7A; --me:#0B84FF; --them:#E9ECEF; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; background: var(--paper); color: #16212B; min-height: 100dvh; }
+  header { background: var(--ink); color: #fff; padding: 14px 16px; }
+  header b { font-size: 18px; } header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; padding: 16px; max-width: 1100px; margin: 0 auto; }
+  .phone { background: var(--card); border: 1px solid var(--line); border-radius: 22px; display: flex; flex-direction: column; height: min(78dvh, 720px); overflow: hidden; }
+  .top { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .top select { flex: 1; font: inherit; padding: 8px; border-radius: 10px; border: 1px solid var(--line); min-height: 44px; background: #fff; }
+  .thread { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .b { max-width: 85%; padding: 8px 12px; border-radius: 16px; white-space: pre-wrap; word-break: break-word; font-size: 15px; }
+  .b.me { align-self: flex-end; background: var(--me); color: #fff; border-bottom-right-radius: 4px; }
+  .b.them { align-self: flex-start; background: var(--them); border-bottom-left-radius: 4px; }
+  .b .ph { display: inline-block; background: rgba(255,255,255,.25); border-radius: 6px; padding: 2px 6px; margin-right: 4px; }
+  .hint { color: var(--muted); font-size: 13px; text-align: center; }
+  form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--line); }
+  form input { flex: 1; font: inherit; padding: 10px 12px; border-radius: 20px; border: 1px solid var(--line); min-height: 44px; }
+  button { font: inherit; border: 0; border-radius: 20px; min-height: 44px; min-width: 44px; padding: 0 12px; cursor: pointer; background: var(--them); color: #16212B; }
+  button.send { background: var(--me); color: #fff; font-weight: 600; }
+  .tools { display: flex; gap: 8px; justify-content: center; padding: 0 16px 16px; flex-wrap: wrap; }
+  .tools button { background: var(--card); border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header><b>Vista by Text · simulator</b><p>Fixture data. Pick a person on each phone and text like you would from a real phone. Try TODAY, HOY, HELP or AYUDA.</p></header>
+<main id="phones"></main>
+<div class="tools"><button id="morning">Send morning texts</button><button id="reset">Reset data</button></div>
+<script type="module">
+  // Fixture paths in data.js are relative to the app root; this page lives in /dev/.
+  const realFetch = window.fetch.bind(window);
+  window.fetch = (u, o) => realFetch(typeof u === 'string' && u.startsWith('./') ? '/' + u.slice(2) : u, o);
+  const { adapter } = await import('../src/data.js');
+  const { createEngine } = await import('../src/sms/engine.js');
+  const J = async u => (await realFetch(u)).json();
+  const strings = { en: await J('/i18n/en.json'), es: await J('/i18n/es.json') };
+  let engine, store; const threads = new Map();
+  async function reset() {
+    const people = await adapter.crews(); const pm = people.find(p => p.role === 'pm');
+    const { jobs, draws } = await adapter.load(pm);
+    store = { people, jobs, draws, rollout: await J('/fixtures/rollout.json'), drawRules: await J('/content/draw-rules.json'),
+      checklists: { windows: await J('/content/checklists/windows.json'), siding: await J('/content/checklists/siding.json') } };
+    engine = createEngine({ store, strings, askVi: async ({ lang }) => lang === 'es' ? '(Aquí contestará Vi, con el trabajo, la lista y los documentos del oficio.)' : '(Vi will answer here, using the job, the checklist and the trade documents.)' });
+    threads.clear(); render();
+  }
+  const push = (phone, who, text, media = 0) => { if (!threads.has(phone)) threads.set(phone, []); threads.get(phone).push({ who, text, media }); };
+  const phones = [{ sel: 'crew-7' }, { sel: 'pm-mike' }];
+  function render() {
+    const root = document.getElementById('phones'); root.innerHTML = '';
+    phones.forEach((ph, i) => {
+      const person = store.people.find(p => p.id === ph.sel), phone = person.lead.phone;
+      const el = document.createElement('section'); el.className = 'phone';
+      el.innerHTML = `<div class="top"><select aria-label="Person">${store.people.map(p => `<option value="${p.id}" ${p.id === ph.sel ? 'selected' : ''}>${p.name} · ${p.lead.phone}</option>`).join('')}</select></div>
+        <div class="thread">${(threads.get(phone) || []).map(m => `<div class="b ${m.who}">${m.media ? `<span class="ph">📷 ×${m.media}</span>` : ''}${m.text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</div>`).join('') || `<p class="hint">${person.lang === 'es' ? 'Escribe HOY o AYUDA' : 'Text TODAY or HELP'}</p>`}</div>
+        <form><button type="button" class="photo" title="Attach photo" aria-label="Attach photo">📷</button><input placeholder="Text message" aria-label="Message" autocomplete="off"><button class="send">Send</button></form>`;
+      let pending = 0;
+      el.querySelector('select').onchange = e => { ph.sel = e.target.value; render(); };
+      el.querySelector('.photo').onclick = e => { pending++; e.target.textContent = `📷${pending}`; };
+      el.querySelector('form').onsubmit = async e => {
+        e.preventDefault(); const input = el.querySelector('input'), body = input.value.trim();
+        if (!body && !pending) return;
+        const media = Array.from({ length: pending }, (_, k) => `mms://sim/${Date.now()}-${k}.jpg`);
+        push(phone, 'me', body, media.length);
+        const r = await engine.handle(phone, body, media);
+        for (const x of r.replies) push(x.to, 'them', x.text);
+        render(); document.querySelectorAll('.phone input')[i].focus();
+      };
+      root.appendChild(el);
+      el.querySelector('.thread').scrollTop = 1e9;
+    });
+  }
+  document.getElementById('morning').onclick = () => {
+    for (const p of store.people) { const txt = p.role === 'pm' ? engine.pmDigest(p) : engine.morningDigest(p); if (txt) push(p.lead.phone, 'them', txt); }
+    render();
+  };
+  document.getElementById('reset').onclick = reset;
+  await reset();
+</script>
+</body>
+</html>

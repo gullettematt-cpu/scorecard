@@ -1,6 +1,6 @@
 import { t, fmtDate, fmtTime } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview, onVista } from '../data.js';
+import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview, onVista, assignedTo } from '../data.js';
 import { esc, icons, visitTone, drawTone, mapsUrl, sameDay } from '../ui.js';
 import { header } from '../app.js';
 
@@ -41,7 +41,7 @@ export async function renderToday(root, ctx) {
   const first = today[0];
 
   // Rollout: this crew isn't on Vista at any of its locations -> they keep using Jotform.
-  if (ctx.role !== 'pm' && !jobs.some(w => onVista(ctx, w))) {
+  if (ctx.role !== 'pm' && !jobs.some(w => assignedTo(ctx, w) && onVista(ctx, w))) {
     root.innerHTML = `${header(ctx, `<div class="greet">${esc(t(greetingKey(), { name: ctx.crew.lead.name.split(' ')[0] }))}</div>`)}
       <div class="soon"><div class="big">🕓</div><h1>${esc(t('rollout.offTitle'))}</h1><p>${esc(t('rollout.offBody'))}</p>
       <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t('app.switchCrew'))}</button></div></div>`;
