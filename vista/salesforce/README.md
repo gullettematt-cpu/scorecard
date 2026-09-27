@@ -6,8 +6,9 @@ The design is in `../docs/approval-flow.md`.
 | What | File |
 |---|---|
 | `Vista` picklist value on `SA_Expense__c.Type__c` | `add-vista-type.sh` (retrieves the field from the org, appends the value, deploys it back) |
-| Flow **Vista - Draw Submitted** (after create on `SA_Expense__c`, `Type__c = Vista`) | `force-app/main/default/flows/Vista_Draw_Submitted.flow-meta.xml` |
+| Flow **Vista - Pay Request Submitted** (after create on `SA_Expense__c`, `Type__c = Vista`, `Status__c = New`) | `force-app/main/default/flows/Vista_Pay_Request_Submitted.flow-meta.xml` |
 | List view **Vista - Waiting on PM** | `force-app/.../SA_Expense__c/listViews/Vista_Waiting_on_PM.listView-meta.xml` |
+| List view **Vista - Draws (paid before completion)** | `force-app/.../SA_Expense__c/listViews/Vista_Draws.listView-meta.xml` |
 | List view **Vista - Submitted, not on a payable invoice** | `force-app/.../SA_Expense__c/listViews/Vista_Submitted_Not_Invoiced.listView-meta.xml` |
 | Existing-automation report (read-only) | `automation-check.sh` → `../docs/describe/AUTOMATION.md` |
 

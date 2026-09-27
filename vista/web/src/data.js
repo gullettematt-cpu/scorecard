@@ -1,3 +1,9 @@
+// Terms (Matt, 2026-09-27):
+//   Pay request  = the installer's "Submit for pay" when their job is complete (SA_Expense__c, Status New -> PM submits).
+//   Draw         = a payment BEFORE the job is complete. The installer asks the PM directly (outside the app);
+//                  the PM issues it in Vista, and it is created already Submitted. Did_you_complete = No.
+// Both are SA_Expense__c records with Type__c = Vista. In code, `draws` is the store of all of them.
+//
 // The only module that knows where data comes from.
 // Step 1: fixtures. Step 2: swap `adapter` for one that calls /sf/* — same shapes, same API names.
 // Field names below are confirmed against docs/describe/SUMMARY.md (myorg, 2026-09-27).
@@ -76,6 +82,21 @@ export function manifestOf(d) {
   try { return JSON.parse(raw.slice(i + MANIFEST_MARK.length)); } catch { return null; }
 }
 export const photoCount = d => manifestOf(d)?.photos?.length || 0;
+export const isDraw = d => d.Did_you_complete_the_job_or_service__c === 'No' || manifestOf(d)?.kind === 'draw';
+
+// Draw eligibility: PM judgment, optionally narrowed by content/draw-rules.json.
+export async function drawRules() {
+  try { return await (await fetch('./content/draw-rules.json')).json(); } catch { return {}; }
+}
+export function drawEligible(w, rules = {}) {
+  const v = w.ServiceAppointment;
+  if (!v || !['Dispatched', 'In Progress'].includes(v.Status)) return { ok: false, why: 'notActive' };
+  if (rules.minContract && contractAmount(w) < rules.minContract) return { ok: false, why: 'contract' };
+  if (rules.trades?.length && !rules.trades.includes(tradeKey(w))) return { ok: false, why: 'trade' };
+  if (remaining(w) <= 0) return { ok: false, why: 'nothingLeft' };
+  return { ok: true };
+}
+export const remaining = w => contractAmount(w) - laborDrawn(w);
 
 export const contractAmount = w => w.Job_Number__r?.Sales_Price__c || 0;
 export const laborDrawn = w => w.Job_Number__r?.Total_SA_Expense_Labor__c || 0;
@@ -116,17 +137,18 @@ export function reviewLines(draw, w, checklist) {
   lines.push({ id: 'scope', kind: 'scope', ok: true, required: true, text: draw.Description_of_Work_Performed__c || '' });
   lines.push({ id: 'complete', kind: 'complete', ok: true, required: true, value: draw.Did_you_complete_the_job_or_service__c || 'No' });
   const items = (w.WorkOrderLineItems || []).filter(li => li.Status !== 'Canceled');
-  if (items.length && draw.Did_you_complete_the_job_or_service__c === 'Yes') {
+  if (items.length) {
     const doneItems = items.filter(li => li.Status === WOLI_DONE.Installation).length;
     lines.push({ id: 'lineItems', kind: 'lineItems', have: doneItems, need: items.length, ok: doneItems === items.length, required: true });
   }
-  const room = contractAmount(w) ? contractAmount(w) - laborDrawn(w) : null;
+  const room = contractAmount(w) ? remaining(w) : null;
   lines.push({ id: 'amount', kind: 'amount', amount: drawAmount(draw), room, ok: room == null || drawAmount(draw) <= room, required: true });
   if (draw.Additional_Work_Performed__c === 'Yes') lines.push({ id: 'additional', kind: 'additional', ok: !!m.additional_work?.note, required: true });
   return lines;
 }
-// PM queue: Vista draws at New that the PM hasn't sent back (or that the installer has resubmitted).
-export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && !d.TEST_SA__c && drawStatus(d) === 'WithPM');
+// PM queue: installer pay requests at New that the PM hasn't sent back (or that the installer has resubmitted).
+// Draws never enter the queue: the PM issues them already Submitted.
+export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && !d.TEST_SA__c && !isDraw(d) && drawStatus(d) === 'WithPM');
 
 // --- Work order line items -----------------------------------------------------------------
 // The installer (installation visits) and measure tech (measurement visits) own line-item completion.

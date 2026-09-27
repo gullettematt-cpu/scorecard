@@ -59,10 +59,10 @@
             <label>Claimed complete</label>
         </rules>
     </decisions>
-    <description>Vista: when an installer submits a draw from the app (Type = Vista, Status = New), complete the visit. If the installer says the job is complete, every line item is Installation Completed or Canceled, and no other visit on the work order is open, move the work order to Installation Completed for office/PM review. Does not touch SA Expense status: the PM submits the draw. See vista/docs/approval-flow.md.</description>
+    <description>Vista: when an installer submits for pay from the app (Type = Vista, created at Status = New), complete the visit. PM-issued draws (payment before completion) are created already Submitted and never enter this flow. If the installer says the job is complete, every line item is Installation Completed or Canceled, and no other visit on the work order is open, move the work order to Installation Completed for office/PM review. Does not touch SA Expense status: the PM submits it. See vista/docs/approval-flow.md.</description>
     <environments>Default</environments>
-    <interviewLabel>Vista Draw Submitted {!$Flow.CurrentDateTime}</interviewLabel>
-    <label>Vista - Draw Submitted</label>
+    <interviewLabel>Vista Pay Request Submitted {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Vista - Pay Request Submitted</label>
     <processMetadataValues>
         <name>BuilderType</name>
         <value>
@@ -252,6 +252,13 @@
             <operator>EqualTo</operator>
             <value>
                 <stringValue>Vista</stringValue>
+            </value>
+        </filters>
+        <filters>
+            <field>Status__c</field>
+            <operator>EqualTo</operator>
+            <value>
+                <stringValue>New</stringValue>
             </value>
         </filters>
         <filters>

@@ -1,6 +1,6 @@
 import { t, pick, fmtDate, fmtTime, fmtMoney, lang } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, isVisible, manifestOf, WOLI_DONE, visitKind } from '../data.js';
+import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, isVisible, manifestOf, WOLI_DONE, visitKind, isDraw, drawRules, drawEligible, remaining, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
 import { esc, icons, drawTone, mapsUrl, toast } from '../ui.js';
 import { header } from '../app.js';
@@ -23,6 +23,11 @@ export async function renderJob(root, ctx, id) {
   // Line items: the installer (installation visits) or measure tech (measurement visits) marks them complete.
   const doneStatus = WOLI_DONE[visitKind(w)];
   const canMarkItems = isInstaller && sa.Status === 'In Progress';
+  // Draws: payment before completion. PM-only, PM judgment (optionally narrowed by content/draw-rules.json).
+  const rules = ctx.role === 'pm' ? await drawRules() : {};
+  const elig = ctx.role === 'pm' ? drawEligible(w, rules) : { ok: false };
+  const progress = w._progressPhotos || 0;
+  const needPhotos = rules.requireProgressPhotos ?? 1;
 
   root.innerHTML = `
     ${header(ctx, `
@@ -79,15 +84,25 @@ export async function renderJob(root, ctx, id) {
     </section>` : ''}
 
     <section class="sec">
-      <h2>${esc(t('job.draws'))} ${contract ? `<span>${esc(t('job.contract'))} ${esc(fmtMoney(contract))} · ${esc(t('job.remaining', { amount: fmtMoney(contract - laborDrawn(w)) }))}</span>` : ''}</h2>
+      <h2>${esc(t('job.pay'))} ${contract ? `<span>${esc(t('job.contract'))} ${esc(fmtMoney(contract))} · ${esc(t('job.remaining', { amount: fmtMoney(remaining(w)) }))}</span>` : ''}</h2>
       <div class="card">
         ${ds.length ? `<ul class="draws">${ds.map(d => `<li>
             <div><div class="amt">${esc(fmtMoney(drawAmount(d)))}</div><div class="hint" style="margin-top:0">${esc(d.Name)} · ${esc(fmtDate(d.CreatedDate, { month: 'short', day: 'numeric' }))}${photoCount(d) ? ` · ${photoCount(d)} 📷` : ''}</div></div>
-            <span class="chips" style="margin:0;justify-content:flex-end"><span class="chip ${drawTone(drawStatus(d))}">${esc(t('draw.' + drawStatus(d)))}</span></span></li>
+            <span class="chips" style="margin:0;justify-content:flex-end">${isDraw(d) ? `<span class="chip muted">${esc(t('pay.draw'))}</span>` : ''}<span class="chip ${drawTone(drawStatus(d))}">${esc(t('draw.' + drawStatus(d)))}</span></span></li>
             ${drawStatus(d) === 'SentBack' && manifestOf(d)?.approval?.missed?.length ? `<li class="missed"><b>${esc(t('draw.missedTitle'))}</b><ul>${manifestOf(d).approval.missed.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></li>` : ''}`).join('')}</ul>` : `<div class="hint" style="margin:0">${esc(t('draw.none'))}</div>`}
         <div class="stack">
-          ${isInstaller ? (canSubmit ? `<a class="act primary" href="#/draw?job=${esc(w.Id)}">${icons.draw} ${esc(t('job.submitDraw'))}</a>` : `<button class="act" disabled style="opacity:.5">${icons.draw} ${esc(t('job.submitDraw'))}</button><div class="hint" style="margin-top:0">${esc(t('job.startFirst'))}</div>`) : ''}
+          ${isInstaller ? (canSubmit ? `<a class="act primary" href="#/draw?job=${esc(w.Id)}">${icons.draw} ${esc(t('job.submitPay'))}</a>` : `<button class="act" disabled style="opacity:.5">${icons.draw} ${esc(t('job.submitPay'))}</button><div class="hint" style="margin-top:0">${esc(t('job.startFirst'))}</div>`) : ''}
+          ${isInstaller ? `<div class="hint" style="margin-top:0">${esc(t('job.askForDraw'))}</div>` : ''}
         </div>
+        ${ctx.role === 'pm' ? (elig.ok ? `
+        <form class="drawform" id="drawForm">
+          <h2 style="margin-top:14px">${esc(t('draw.issueTitle'))}</h2>
+          <label>${esc(t('draw.amount'))}<input type="number" inputmode="decimal" min="1" max="${esc(remaining(w))}" step="1" name="amount" required placeholder="${esc(t('draw.upTo', { amount: fmtMoney(remaining(w)) }))}"></label>
+          <label>${esc(t('draw.covers'))}<textarea name="covers" rows="2" required placeholder="${esc(t('draw.coversHint'))}"></textarea></label>
+          <label>${esc(t('draw.requestedBy'))}<input name="requestedBy" value="${esc(sa.Lead_Installer || '')}" required></label>
+          <div class="hint ${progress >= needPhotos ? '' : 'bad'}">${esc(t(progress >= needPhotos ? 'draw.photosOk' : 'draw.photosNeeded', { n: progress, need: needPhotos }))}</div>
+          <button class="act primary" type="submit" ${progress >= needPhotos ? '' : 'disabled'}>${esc(t('draw.issue'))}</button>
+        </form>` : `<div class="hint">${esc(t('draw.notEligible.' + elig.why))}</div>`) : ''}
       </div>
     </section>
 
@@ -113,6 +128,26 @@ export async function renderJob(root, ctx, id) {
     await enqueue('checklist', { workOrderId: id, checklistId: cl.id, done: [...done], lang: lang() });
     root.querySelector('#clProgress').textContent = t('job.checklistProgress', { done: done.size, total: cl.steps.length });
     root.querySelector('#clBar').style.width = `${Math.round(100 * done.size / cl.steps.length)}%`;
+  });
+
+  // PM issues a draw: created already Submitted (the PM is the submitter), Did_you_complete = No.
+  root.querySelector('#drawForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const amount = Math.round(Number(f.get('amount')));
+    if (!(amount > 0 && amount <= remaining(w))) { toast(t('draw.upTo', { amount: fmtMoney(remaining(w)) })); return; }
+    const at = new Date().toISOString();
+    const manifest = { v: 1, app: 'vista', kind: 'draw', lang: w._lang || 'en', issued_by: ctx.crew.lead.name, requested_by: String(f.get('requestedBy')), issued_at: at,
+      photos: Array.from({ length: progress }, () => ({ kind: 'progress' })) };
+    const d = { Id: 'local-' + Date.now(), Name: t('draw.pendingName'), CreatedDate: at, Date__c: at.slice(0, 10), _crew: w._crew, _lang: w._lang,
+      Type__c: 'Vista', Status__c: 'Submitted', Expense_Type__c: 'Labour', Amount__c: amount, Work_Order__c: w.Id, Job__c: w.Job_Number__c,
+      Service_Appointment__c: sa.Id, Did_you_complete_the_job_or_service__c: 'No', Approver__c: ctx.crew.lead.name, TEST_SA__c: false,
+      Description_of_Work_Performed__c: String(f.get('covers')), [MANIFEST_FIELD]: MANIFEST_MARK + JSON.stringify(manifest) };
+    await db.put('draws', d);
+    if (w.Job_Number__r) { w.Job_Number__r.Total_SA_Expense_Labor__c = laborDrawn(w) + amount; await db.put('jobs', w); }
+    await enqueue('draw.issue', { workOrderId: w.Id, serviceAppointmentId: sa.Id, Amount__c: amount, covers: d.Description_of_Work_Performed__c, requested_by: manifest.requested_by });
+    toast(t('draw.issued'));
+    renderJob(root, ctx, id);
   });
 
   root.querySelectorAll('input[data-woli]').forEach(cb => cb.onchange = async () => {

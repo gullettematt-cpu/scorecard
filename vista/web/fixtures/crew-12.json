@@ -65,7 +65,8 @@
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Dwayne Tucker"
-      }
+      },
+      "_progressPhotos": 0
     },
     {
       "Id": "0WO5e00000A1kBcEAJ",
@@ -125,7 +126,8 @@
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Dwayne Tucker"
-      }
+      },
+      "_progressPhotos": 3
     },
     {
       "Id": "0WO5e00000A1kD4EAJ",
@@ -176,7 +178,8 @@
         "PulseM_Bio_Sent__c": false,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Dwayne Tucker"
-      }
+      },
+      "_progressPhotos": 0
     },
     {
       "Id": "0WO5e00000A1kF7EAJ",
@@ -220,7 +223,8 @@
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Dwayne Tucker"
-      }
+      },
+      "_progressPhotos": 0
     }
   ],
   "jobs": [
@@ -287,7 +291,7 @@
       "Did_you_complete_the_job_or_service__c": "Yes",
       "Additional_Work_Performed__c": "No",
       "Description_of_Work_Performed__c": "Storm door installed, hardware on entry door, final caulk and cleanup. Homeowner walked it and signed off.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"lang\":\"en\",\"checklist\":{\"id\":\"windows-v1\",\"done\":[\"walk\",\"protect\",\"before-photos\",\"remove\",\"flash\",\"set\",\"foam\",\"trim\",\"serials\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"completion\",\"lang\":\"en\",\"checklist\":{\"id\":\"windows-v1\",\"done\":[\"walk\",\"protect\",\"before-photos\",\"remove\",\"flash\",\"set\",\"foam\",\"trim\",\"serials\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
       "Payable_Invoice_New__c": null
     },
     {
@@ -304,8 +308,9 @@
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
       "Description_of_Work_Performed__c": "Entry door set, shimmed, foamed. Storm door tomorrow.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
-      "Payable_Invoice_New__c": null
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"en\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Dwayne Tucker\"}",
+      "Payable_Invoice_New__c": null,
+      "Did_you_complete_the_job_or_service__c": "No"
     },
     {
       "Id": "a0X2",
@@ -321,8 +326,9 @@
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
       "Description_of_Work_Performed__c": "Demo and prep, day 1.",
-      "Additional_Work_Performed_Description__c": null,
-      "Payable_Invoice_New__c": "a1P5e000000PIN1"
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"en\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Dwayne Tucker\"}",
+      "Payable_Invoice_New__c": "a1P5e000000PIN1",
+      "Did_you_complete_the_job_or_service__c": "No"
     }
   ],
   "cases": [

@@ -7,7 +7,7 @@ Vista never owns state: the phone holds a local copy and an outbox, Salesforce i
 
 Confirmed against `sf sobject describe` on org alias `myorg` (org `00D4P000001dcqBUAQ`) on 2026-09-27, including the Field Service objects.
 
-**Vista is anchored on Field Service.** The installer's unit of work is a *Dispatched* `ServiceAppointment`; the draw approval flow is in `docs/approval-flow.md`.
+**Vista is anchored on Field Service.** The installer's unit of work is a *Dispatched* `ServiceAppointment`; the pay approval flow (pay requests and draws) is in `docs/approval-flow.md`.
 Raw summary: `docs/describe/SUMMARY.md`. Re-run `bash docs/describe.sh myorg` after any schema change.
 
 | Tag | Meaning |
@@ -27,7 +27,7 @@ Decisions still open are collected at the bottom under **Open decisions**.
 | Sold job / contract | `Job__c` | | Contract amount, PM, office, trade. |
 | Visit (the installer's unit of work) | `ServiceAppointment` ✅ | `Work_Order__c` → `WorkOrder`, `Job__c` → `Job__c` | Only `Status in (Dispatched, In Progress)` reaches the phone. Dispatch fires the PulseM bio (`PulseM_appt_trigger__c`, `PulseM_Bio_Sent__c`). |
 | Crew assignment | `AssignedResource` ✅ → `ServiceResource` ✅ | `ServiceResource.AccountId` → installer Account | `AssignedResource.Lead_Installer__c` marks who submits the draw. |
-| Draw | `SA_Expense__c` | `Work_Order__c`, `Job__c`, `Service_Appointment__c` | "SA" = Service Appointment. The Jotform flow (`Type__c = Jotform`, `Jotform_URL__c`, `Send_Jotform_SMS__c`) is what Vista replaces. |
+| Pay request / draw | `SA_Expense__c` | `Work_Order__c`, `Job__c`, `Service_Appointment__c` | "SA" = Service Appointment. The Jotform flow (`Type__c = Jotform`, `Jotform_URL__c`, `Send_Jotform_SMS__c`) is what Vista replaces. |
 | Problem | `Case` | `Case.Job__c` → `Job__c` (no WorkOrder lookup on Case) | Service record type **`0124P000000OMP8QAO`** (default). |
 | Photos | Object storage | manifest in `SA_Expense__c.Additional_Work_Performed_Description__c` 🟠 | See *Photo manifest*. |
 | Installer | `Account` (sub/installer account) | `ServiceResource.AccountId`, `SA_Expense__c.Account__c`, `Case.Original_Installer__c` | `SA_Expense__c.Installer_Name__c` is a formula off the account. Vista maps phone → ServiceResource → Account at SMS login. |
@@ -72,12 +72,12 @@ Installer's **dispatched** visits for today and the rest of the week. One card p
 | `Test_WO__c` | ✅ | hidden from installers; heartbeat may read one |
 | `LastModifiedDate` | ✅ | delta sync |
 
-### Reads — `SA_Expense__c` (draw chip per job)
+### Reads — `SA_Expense__c` (pay chip per job)
 
 | Field | Tag | Used for |
 |---|---|---|
 | `Id`, `Name` | ✅ | key |
-| `Work_Order__c` | ✅ | filter draws for a job |
+| `Work_Order__c` | ✅ | filter pay requests and draws for a job |
 | `Status__c` | ✅ | `New` · `Submitted` · `Auto-Approved` · `Approved` · `Rejected`. **No "Paid" value.** |
 | `Paycheck_Period__c`, `Payable_Invoice_New__c`, `Closed_by_Accounting_New__c` | 🟠 decide | *Paid* is derived: `Paycheck_Period__c` set (employee via Paycom) or `Payable_Invoice_New__c` set (sub via AP) ⇒ show "Paid". Angie confirms which. |
 | `Amount__c`, `Date__c`, `CreatedDate` | ✅ | amount, ordering |
@@ -107,7 +107,7 @@ None.
 |---|---|---|
 | `Id`, `Name`, `Job_Number__c` (formula) | ✅ | job number |
 | `Sales_Price__c` | ✅ | contract amount; `Sale_Amount__c` is the formula twin |
-| `Total_SA_Expense_Labor__c` | ✅ | labor already drawn → "remaining" |
+| `Total_SA_Expense_Labor__c` | ✅ | labor already paid or submitted (incl. draws) → "remaining" |
 | `Production_Manager__c` → `User.Name`, `.MobilePhone` | ✅ | PM name + call link, Vi escalation |
 | `Office_Administrator__c` | ✅ | OA |
 | `Office__c` → `Location` | ✅ | branch |
@@ -135,7 +135,7 @@ None.
 | `Status` = `Installation Completed` | ✅ | installer ticks the line item during an installation visit |
 | `Status` = `Measurement Completed` | ✅ | measure tech ticks the line item during a measurement visit (`SS_Service_Appointment_Type__c = Measurement`) |
 
-The phone never writes `WorkOrder.Status`. Flow `Vista_Draw_Submitted` moves the WorkOrder to `Installation Completed` (the review step) when every line item is done (`docs/approval-flow.md`).
+The phone never writes `WorkOrder.Status`. Flow `Vista_Pay_Request_Submitted` moves the WorkOrder to `Installation Completed` (the review step) when every line item is done (`docs/approval-flow.md`).
 
 ### Writes — `Case` (*Report a problem* sheet)
 
@@ -160,7 +160,9 @@ The phone never writes `WorkOrder.Status`. Flow `Vista_Draw_Submitted` moves the
 
 ---
 
-## Screen 3 · Submit Draw
+## Screen 3 · Submit for Pay
+
+The installer's pay request at completion. **Draws** (payment before completion) are issued by the PM from the Job screen; see *Draws* below.
 
 ### Writes — `SA_Expense__c` (create)
 
@@ -169,9 +171,9 @@ The phone never writes `WorkOrder.Status`. Flow `Vista_Draw_Submitted` moves the
 | `Amount__c` | ✅ required | installer-entered; capped at `Sales_Price__c − Total_SA_Expense_Labor__c` when known |
 | `Date__c` | ✅ required | today (installer's local date) |
 | `Expense_Type__c` | ✅ | `Labour` |
-| `Type__c` | 🟠 new value | **`Vista`**, a new picklist value on the existing field. It routes the draw into the Vista approval flow and keeps it out of the Jotform batch. |
-| `Status__c` | ✅ | **`New`**. The draw waits for the PM; only the PM moves it to `Submitted`. |
-| `Service_Appointment__c` | ✅ required by Vista | the In Progress visit. Flow `Vista_Draw_Submitted` completes it. |
+| `Type__c` | 🟠 new value | **`Vista`**, a new picklist value on the existing field. It routes the record into the Vista pay approval flow and keeps it out of the Jotform batch. |
+| `Status__c` | ✅ | **`New`**. The pay request waits for the PM; only the PM moves it to `Submitted`. |
+| `Service_Appointment__c` | ✅ required by Vista | the In Progress visit. Flow `Vista_Pay_Request_Submitted` completes it. |
 | `Work_Order__c`, `Job__c` | ✅ | from the ServiceAppointment |
 | `Account__c` | ✅ | installer's Account (drives `Installer_Name__c`, Paycom/AP fields) |
 | `Production_Manager__c` | ✅ | copied from `Job__c.Production_Manager__c` |
@@ -218,12 +220,27 @@ Manifest v1 (~200 bytes per photo, so 32k holds 100+ photos):
 
 ---
 
+### Draws — `SA_Expense__c` (create, PM only, from the Job screen)
+
+Payment before completion. The installer asks the PM directly; the PM issues it in Vista.
+
+| Field | Tag | Value |
+|---|---|---|
+| `Type__c` | 🟠 new value | `Vista` |
+| `Status__c` | ✅ | **`Submitted`** at creation (the PM is the submitter). Skips the PM queue and the flow. |
+| `Did_you_complete_the_job_or_service__c` | ✅ | **`No`** — this is what marks a draw |
+| `Amount__c`, `Date__c`, `Expense_Type__c` | ✅ | PM-entered amount (≤ contract − labor paid), today, `Labour` |
+| `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c` | ✅ | from the visit and job |
+| `Description_of_Work_Performed__c` | ✅ | what the draw covers |
+| `Approver__c` | ✅ | the PM |
+| `Additional_Work_Performed_Description__c` | ✅ manifest | `{ kind: "draw", issued_by, requested_by, issued_at, photos: [progress…] }` |
+
 ## Screen 4 · Approve (PMs)
 
 The PM reviews a **deliverables checklist** built from the trade requirements (see `docs/approval-flow.md`).
 
 ### Reads
-`SA_Expense__c` where `Type__c = 'Vista' AND Status__c = 'New' AND TEST_SA__c = false AND Production_Manager__c = :me` (minus draws the PM sent back that the installer hasn't resubmitted), with the job fields above, the manifest, and signed photo URLs.
+`SA_Expense__c` where `Type__c = 'Vista' AND Status__c = 'New' AND TEST_SA__c = false AND Production_Manager__c = :me` (minus pay requests the PM sent back that the installer hasn't resubmitted), with the job fields above, the manifest, and signed photo URLs.
 
 ### Writes — `SA_Expense__c` (update)
 

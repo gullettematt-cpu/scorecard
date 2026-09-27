@@ -72,7 +72,8 @@
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Luis Hernández"
-      }
+      },
+      "_progressPhotos": 6
     },
     {
       "Id": "0WO5e00000B2m3sEAB",
@@ -111,19 +112,20 @@
           "LineItemNumber": "1",
           "Description": "D4 vinyl, Clay — 1 sq",
           "Quantity": 1,
-          "Status": "Installation Scheduled"
+          "Status": "Installation Completed"
         }
       ],
       "Job_Number__c": "a0J6",
       "ServiceAppointment": {
         "Id": "08p5e0000002bB2",
         "AppointmentNumber": "SA-120455",
-        "Status": "Dispatched",
+        "Status": "Completed",
         "SS_Service_Appointment_Type__c": "Installation",
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Luis Hernández"
-      }
+      },
+      "_progressPhotos": 0
     },
     {
       "Id": "0WO5e00000B2m5uEAB",
@@ -181,7 +183,8 @@
         "PulseM_Bio_Sent__c": true,
         "SMS_Opt_out__c": false,
         "Lead_Installer": "Luis Hernández"
-      }
+      },
+      "_progressPhotos": 0
     }
   ],
   "jobs": [
@@ -224,19 +227,19 @@
       "Id": "a0X3",
       "Name": "SA-009130",
       "CreatedDate_dayOffset": 0,
-      "Work_Order__c": "0WO5e00000B2m1qEAB",
-      "Job__c": "a0J5",
-      "Amount__c": 6500,
+      "Work_Order__c": "0WO5e00000B2m3sEAB",
+      "Job__c": "a0J6",
+      "Amount__c": 1200,
       "Expense_Type__c": "Labour",
       "Type__c": "Vista",
       "Status__c": "New",
       "Approver__c": null,
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
-      "Description_of_Work_Performed__c": "Días 1-2: demolición, membrana, fachada trasera y derecha.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"lang\":\"es\",\"checklist\":{\"id\":\"siding-v1\",\"done\":[\"walk\",\"before-photos\",\"protect\",\"tearoff\",\"wrap\",\"starter\",\"install\",\"penetrations\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
-      "Service_Appointment__c": "08p5e0000002bB1",
-      "Did_you_complete_the_job_or_service__c": "No",
+      "Description_of_Work_Performed__c": "Cambié 6 hiladas en la fachada trasera, color Clay. Usé la caja sobrante del garaje.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"completion\",\"lang\":\"es\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}],\"checklist\":{\"id\":\"siding-v1\",\"done\":[\"walk\",\"before-photos\",\"protect\",\"tearoff\",\"wrap\",\"starter\",\"install\",\"penetrations\",\"clean\",\"after-photos\"]}}",
+      "Service_Appointment__c": "08p5e0000002bB2",
+      "Did_you_complete_the_job_or_service__c": "Yes",
       "Additional_Work_Performed__c": "No",
       "Payable_Invoice_New__c": null
     },
@@ -254,10 +257,10 @@
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
       "Description_of_Work_Performed__c": "Día 1: demolición completa y membrana.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"wrap\"},{\"kind\":\"wrap\"},{\"kind\":\"rot\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"es\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Luis Hernández\"}",
       "Service_Appointment__c": "08p5e0000002bB1",
       "Did_you_complete_the_job_or_service__c": "No",
-      "Additional_Work_Performed__c": "Yes",
+      "Additional_Work_Performed__c": "No",
       "Payable_Invoice_New__c": null
     }
   ],

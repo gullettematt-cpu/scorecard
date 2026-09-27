@@ -6,16 +6,17 @@ Three jobs and one cron. Every handler is stateless; the phone is the only clien
 |---|---|---|
 | `POST /auth/start` `{phone}` | SMS code | Rate-limited per phone. Only phones on the installer/PM allow-list get a code. |
 | `POST /auth/verify` `{phone, code}` → `{token, user:{name, crew, role, lang}}` | SMS code | Short-lived JWT for the phone. Role is `installer` or `pm`. |
-| `GET /sf/today` | Salesforce | WorkOrders for the caller's crew, today ± 7 days, with draw statuses. Shapes = Salesforce API names (see `docs/data-contract.md`). |
-| `GET /sf/job/:id` | Salesforce | WorkOrder + line items + Job__c + open Cases + draws. |
+| `GET /sf/today` | Salesforce | WorkOrders for the caller's crew, today ± 7 days, with pay request and draw statuses. Shapes = Salesforce API names (see `docs/data-contract.md`). |
+| `GET /sf/job/:id` | Salesforce | WorkOrder + line items + Job__c + open Cases + pay requests and draws. |
 | `PATCH /sf/visit/:id/start` | Salesforce | `ServiceAppointment.Status = In Progress`, `ActualStartTime`. Only on the caller's Dispatched visits. |
 | `POST /sf/case` | Salesforce | Creates the Service-record-type Case with the three picklists. |
-| `POST /sf/draw` | Salesforce | Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = New` (waits for the PM). **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow *Vista - Draw Submitted* completes the visit and, when every line item is done, moves the WO to `Installation Completed` for review. |
-| `PATCH /sf/draw/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `submitted` (every required deliverable ticked) → `Status__c = Submitted`, `Approver__c`; if an approval process governs SA Expense, submits through it with the PM as submitter. `sent_back` → stays `New`, missed items in the manifest. |
+| `POST /sf/pay-request` | Salesforce | Installer's *Submit for pay* at completion. Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = New` (waits for the PM). **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow *Vista - Draw Submitted* completes the visit and, when every line item is done, moves the WO to `Installation Completed` for review. |
+| `POST /sf/draw` `{workOrderId, amount, covers, requestedBy}` | Salesforce | **PM only.** Payment before completion: creates `SA_Expense__c` already `Submitted`, `Did_you_complete_the_job_or_service__c = No`. Requires a progress photo on the job and passes `draw-rules.json`. |
+| `PATCH /sf/pay-request/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `submitted` (every required deliverable ticked) → `Status__c = Submitted`, `Approver__c`; if an approval process governs SA Expense, submits through it with the PM as submitter. `sent_back` → stays `New`, missed items in the manifest. |
 | `PATCH /sf/line-item/:id` `{status}` | Salesforce | `Installation Completed` (installer) or `Measurement Completed` (measure tech), only on the caller's in-progress visit. |
-| `POST /photos/sign` `{workOrderId, drawId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
+| `POST /photos/sign` `{workOrderId, expenseId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
 | `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
-| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista draw still `New` at cutoff (sent back or not yet reviewed): one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
+| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista pay request still `New` at cutoff (sent back or not yet reviewed): one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
 | cron every 2 h | Heartbeat | login → read WorkOrder → create `SA_Expense__c` (`TEST_SA__c = true`) → upload photo → SMS Matt + Mike on failure. |
 
 ## Salesforce auth

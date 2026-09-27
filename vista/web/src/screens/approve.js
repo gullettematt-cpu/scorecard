@@ -1,4 +1,4 @@
-// Approve (PMs): review each Vista draw as a deliverables checklist.
+// Approve (PMs): review each installer pay request as a deliverables checklist. (Draws are issued from the Job screen.)
 // Submit to accounting only when every required line is ticked; unticked lines become "what was missed",
 // sent to the installer in their language at the daily cutoff. See docs/approval-flow.md.
 import { t, tIn, pick, fmtDate, fmtMoney, moneyIn, lang } from '../i18n.js';
