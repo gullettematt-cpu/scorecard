@@ -168,5 +168,11 @@
   "draw.notEligible.contract": "Este trabajo está por debajo del mínimo para adelantos.",
   "draw.notEligible.trade": "No se dan adelantos en este oficio.",
   "draw.notEligible.nothingLeft": "No queda saldo en el contrato para un adelanto.",
-  "kind.progress": "Avance"
+  "kind.progress": "Avance",
+  "app.measureRole": "Técnico de medición",
+  "wo.measure": "Medición",
+  "job.startMeasure": "Empezar medición",
+  "job.finishMeasure": "Terminar medición",
+  "job.finishMeasureHint": "Faltan {n} partidas por medir.",
+  "approve.comment": "Enviado desde Vista tras revisar la lista ({n} entregables confirmados)."
 }

@@ -41,6 +41,26 @@
     "fixture": "crew-7.json"
   },
   {
+    "id": "measure-3",
+    "name": "Measure · Ortega",
+    "role": "measure",
+    "branch": "Augusta",
+    "lang": "es",
+    "trade": null,
+    "lead": {
+      "name": "Rafael Ortega",
+      "phone": "+17065550133"
+    },
+    "members": [
+      "Rafael Ortega"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "fixture": "measure-3.json"
+  },
+  {
     "id": "pm-mike",
     "name": "Mike · PM",
     "role": "pm",
@@ -53,12 +73,14 @@
     },
     "members": [
       "Crew 12",
-      "Cuadrilla 7"
+      "Cuadrilla 7",
+      "Measure · Ortega"
     ],
     "pm": null,
     "fixtures": [
       "crew-12.json",
-      "crew-7.json"
+      "crew-7.json",
+      "measure-3.json"
     ]
   }
 ]

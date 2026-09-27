@@ -121,12 +121,14 @@ export async function renderApprove(root, ctx, id) {
       ({ item: l.id, reason: state.get(l.id).reason, text: await lineText(instLang, l, w, state.get(l.id).reason) })));
     const approval = { by: ctx.crew.lead.name, at, decision, checked: lines.filter(l => state.get(l.id).checked).map(l => l.id), missed };
     const manifest = { ...m, approval };
-    // Submit = the PM submits the draw into the existing Salesforce process (Status__c New -> Submitted).
+    // Submit = submit the record through the existing SA Expense approval process with the PM as submitter.
+    // The approval process sets Status__c = Submitted (simulated locally here). Vista never writes Status__c.
     // Send back = stays New; the missed items live in the manifest and go to the installer.
-    if (decision === 'submitted') { d.Status__c = 'Submitted'; d.Approver__c = ctx.crew.lead.name; }
+    if (decision === 'submitted') d.Status__c = 'Submitted';
     d[MANIFEST_FIELD] = MANIFEST_MARK + JSON.stringify(manifest);
     await db.put('draws', d);
-    await enqueue('draw.decision', { drawId: d.Id, Status__c: d.Status__c, Approver__c: d.Approver__c, approval, lang: lang() });
+    await enqueue(decision === 'submitted' ? 'payrequest.submitForApproval' : 'payrequest.sendBack',
+      { expenseId: d.Id, submitter: ctx.crew.lead.name, comments: decision === 'submitted' ? t('approve.comment', { n: approval.checked.length }) : null, approval, lang: lang() });
     toast(t(decision === 'submitted' ? 'approve.doneApproved' : 'approve.doneSentBack'));
     location.hash = '#/approve';
   };

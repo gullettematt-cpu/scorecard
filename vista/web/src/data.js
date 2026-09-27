@@ -1,7 +1,10 @@
 // Terms (Matt, 2026-09-27):
-//   Pay request  = the installer's "Submit for pay" when their job is complete (SA_Expense__c, Status New -> PM submits).
+//   Pay request  = the installer's "Submit for pay" when their job is complete (SA_Expense__c at New, Did_you_complete = Yes).
+//                  The PM reviews it and submits it through the existing SA Expense approval process.
 //   Draw         = a payment BEFORE the job is complete. The installer asks the PM directly (outside the app);
-//                  the PM issues it in Vista, and it is created already Submitted. Did_you_complete = No.
+//                  the PM issues it in Vista: created at New with Did_you_complete = No, then submitted through
+//                  the same approval process with the PM as submitter.
+// Vista never writes Status__c = Submitted; the approval process does.
 // Both are SA_Expense__c records with Type__c = Vista. In code, `draws` is the store of all of them.
 //
 // The only module that knows where data comes from.
@@ -119,6 +122,9 @@ export function tradeKey(w) {
 export const SA_VISIBLE = new Set(['Dispatched', 'In Progress', 'Completed']);
 export const visit = w => w.ServiceAppointment || null;
 export const isVisible = w => { const v = visit(w); return !!v && SA_VISIBLE.has(v.Status) && (v.Status !== 'Completed' || sameLocalDay(w.StartDate)); };
+// Measure techs see measurement visits only; installers never see them. PMs see everything dispatched.
+export const isMeasurementVisit = w => visit(w)?.SS_Service_Appointment_Type__c === 'Measurement';
+export const visibleFor = role => w => isVisible(w) && (role === 'pm' || (role === 'measure') === isMeasurementVisit(w));
 const sameLocalDay = iso => new Date(iso).toDateString() === new Date().toDateString();
 
 // --- PM review: the deliverables checklist -------------------------------------------------
@@ -147,7 +153,7 @@ export function reviewLines(draw, w, checklist) {
   return lines;
 }
 // PM queue: installer pay requests at New that the PM hasn't sent back (or that the installer has resubmitted).
-// Draws never enter the queue: the PM issues them already Submitted.
+// Draws never enter the queue: the PM issues and submits them in one step.
 export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && !d.TEST_SA__c && !isDraw(d) && drawStatus(d) === 'WithPM');
 
 // --- Work order line items -----------------------------------------------------------------

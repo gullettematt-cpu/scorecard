@@ -37,7 +37,7 @@ function renderNav(route) {
     ['vi', 'nav.vi', icons.vi, '#/vi']
   ];
   nav.innerHTML = items.map(([k, key, ic, href]) =>
-    `<a href="${href}" class="${route === k ? 'on' : ''}" ${k === 'approve' && ctx.role !== 'pm' ? 'aria-disabled="true"' : ''}>${ic}<span>${esc(t(key))}</span></a>`).join('');
+    `<a href="${href}" class="${route === k ? 'on' : ''}" ${(k === 'approve' && ctx.role !== 'pm') || (k === 'draw' && ctx.role === 'measure') ? 'aria-disabled="true"' : ''}>${ic}<span>${esc(t(key))}</span></a>`).join('');
 }
 
 async function pickCrew() {
@@ -45,7 +45,7 @@ async function pickCrew() {
   root.innerHTML = `<div class="picker">
     <div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
     <h1>${esc(t('app.pickCrew'))}</h1><p>${esc(t('app.pickCrewHint'))}</p>
-    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${c.lang === 'es' ? 'Español' : 'English'}</div></button>`).join('')}
+    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${c.lang === 'es' ? 'Español' : 'English'}</div></button>`).join('')}
   </div>`;
   nav.innerHTML = '';
   return new Promise(resolve => root.querySelectorAll('[data-crew]').forEach(b => b.onclick = () => resolve(crews.find(c => c.id === b.dataset.crew))));

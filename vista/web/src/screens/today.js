@@ -1,6 +1,6 @@
 import { t, fmtDate, fmtTime } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, drawStatus, tradeKey, isVisible, visit, pendingReview } from '../data.js';
+import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview } from '../data.js';
 import { esc, icons, visitTone, drawTone, mapsUrl, sameDay } from '../ui.js';
 import { header } from '../app.js';
 
@@ -24,7 +24,7 @@ function card(w, draws, ctx) {
       <span class="chip ${visitTone(visit(w).Status)}">${esc(t('sa.' + visit(w).Status))}</span>
       <span class="chip muted">${esc(t('trade.' + tradeKey(w)))}</span>
       ${w.RecordType?.Name === 'Service' ? `<span class="chip warn">${esc(t('wo.service'))}</span>` : ''}
-      ${drawChip}
+      ${ctx.role === 'measure' ? `<span class="chip">${esc(t('wo.measure'))}</span>` : drawChip}
       ${sentBack ? `<span class="chip bad">${esc(t('draw.fixIt'))}</span>` : ''}
     </div>
   </a>`;
@@ -34,7 +34,7 @@ export async function renderToday(root, ctx) {
   const [jobs, draws] = await Promise.all([db.all('jobs'), db.all('draws')]);
   jobs.sort((a, b) => a.StartDate.localeCompare(b.StartDate));
   // Dispatch is the gate: only Dispatched / In Progress visits (and today's completed ones) show.
-  const visible = jobs.filter(isVisible);
+  const visible = jobs.filter(visibleFor(ctx.role));
   const today = visible.filter(j => sameDay(j.StartDate));
   const later = visible.filter(j => new Date(j.StartDate) > new Date() && !sameDay(j.StartDate));
   const toReview = ctx.role === 'pm' ? pendingReview(draws).length : 0;

@@ -168,5 +168,11 @@
   "draw.notEligible.contract": "This job is under the draw minimum.",
   "draw.notEligible.trade": "Draws aren't used for this trade.",
   "draw.notEligible.nothingLeft": "Nothing left on the contract to draw.",
-  "kind.progress": "Progress"
+  "kind.progress": "Progress",
+  "app.measureRole": "Measure tech",
+  "wo.measure": "Measure",
+  "job.startMeasure": "Start measuring",
+  "job.finishMeasure": "Finish measurement",
+  "job.finishMeasureHint": "{n} line items still to measure.",
+  "approve.comment": "Submitted from Vista after checklist review ({n} deliverables confirmed)."
 }

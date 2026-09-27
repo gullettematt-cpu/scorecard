@@ -10,7 +10,7 @@ Spanish and English at launch.
 3. **Photos go to object storage.** A JSON manifest is written to an existing long-text field on `SA_Expense__c` (see `docs/data-contract.md`).
 4. **No photos, no pay.** A PM can always approve from Salesforce with a reason.
 5. **Field Service is the backbone.** Installers only see *Dispatched* ServiceAppointments (dispatch also fires the PulseM bio). Installers and measure techs mark their line items complete. Submitting a draw completes the visit; when every line item is done the WorkOrder moves to *Installation Completed* for review.
-6. **PMs submit everything to accounting.** The installer's pay request (at completion) waits at *New*; the PM reviews it against a deliverables checklist and submits it. After that, Salesforce runs exactly as today (payable invoice, Angie's daily ACH run). Not submitted by 10:00 AM = not paid that day, and the sub gets a text listing what was missed. A **draw** is a payment before completion: the installer asks the PM directly and the PM issues it, on jobs the PM chooses. Details: `docs/approval-flow.md`.
+6. **PMs submit everything to accounting.** The installer's pay request (at completion) waits at *New*; the PM reviews it against a deliverables checklist and submits it through the existing SA Expense approval process (as the submitter). After that, Salesforce runs exactly as today (payable invoice, Angie's daily ACH run). Not submitted by 10:00 AM = not paid that day, and the sub gets a text listing what was missed. A **draw** is a payment before completion: the installer asks the PM directly and the PM issues it, on jobs the PM chooses. Details: `docs/approval-flow.md`.
 
 ## Layout
 
@@ -34,7 +34,8 @@ Pick a login on first load:
 
 - **Crew 12 · Tucker** — Augusta installer, English, windows & doors
 - **Cuadrilla 7 · Hernández** — Augusta installer, Spanish, siding
-- **Mike · PM** — sees both crews and the Approve queue
+- **Measure · Ortega** — Augusta measure tech, Spanish, measurement visits only
+- **Mike · PM** — sees all crews and the Approve queue
 
 Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field names exactly, so swapping the fixture adapter for the Salesforce adapter (`web/src/data.js`) does not touch the screens.
 
