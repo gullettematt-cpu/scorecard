@@ -13,7 +13,7 @@ NAMES=$(sf data query -o "$ORG" -q "SELECT DeveloperName, TableEnumOrId FROM Pro
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 cp sfdx-project.json "$TMP/"; mkdir -p "$TMP/force-app"
 ARGS=(); for n in $NAMES; do ARGS+=(-m "ApprovalProcess:SA_Expense__c.$n"); done
-( cd "$TMP" && sf project retrieve start -o "$ORG" "${ARGS[@]}" >/dev/null )
+( cd "$TMP" && sf project retrieve start -o "$ORG" "${ARGS[@]}" -m "Workflow:SA_Expense__c" >/dev/null )
 mkdir -p reference/approvalProcesses
 cp "$TMP"/force-app/main/default/approvalProcesses/*.xml reference/approvalProcesses/
 node - reference/approvalProcesses/*.xml > ../docs/describe/APPROVAL.md <<'NODE'
@@ -33,4 +33,17 @@ for (const f of process.argv.slice(2)) {
   console.log(`- **Final rejection actions:** ${pick(x, 'finalRejectionActions').map(strip).join('; ') || '(none)'}\n`);
 }
 NODE
-echo "Wrote docs/describe/APPROVAL.md and salesforce/reference/approvalProcesses/"
+WF="$TMP/force-app/main/default/workflows/SA_Expense__c.workflow-meta.xml"
+if [ -f "$WF" ]; then
+  mkdir -p reference/workflows && cp "$WF" reference/workflows/
+  node - "$WF" >> ../docs/describe/APPROVAL.md <<'NODE'
+const x = require('fs').readFileSync(process.argv[2], 'utf8');
+const pick = (s, tag) => [...s.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map(m => m[1]);
+console.log('## Field updates used by the approval processes\n\n| Name | Field | Sets to |\n|---|---|---|');
+for (const fu of pick(x, 'fieldUpdates')) {
+  const v = pick(fu, 'formula')[0] || pick(fu, 'literalValue')[0] || pick(fu, 'lookupValue')[0] || pick(fu, 'operation')[0] || '';
+  console.log(`| ${pick(fu, 'fullName')[0]} | ${pick(fu, 'field')[0]} | ${v.replace(/\|/g, '\\|').replace(/&quot;/g, '"').replace(/&amp;/g, '&')} |`);
+}
+NODE
+fi
+echo "Wrote docs/describe/APPROVAL.md and salesforce/reference/"

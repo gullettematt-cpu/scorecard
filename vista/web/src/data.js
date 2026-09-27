@@ -1,10 +1,10 @@
 // Terms (Matt, 2026-09-27):
 //   Pay request  = the installer's "Submit for pay" when their job is complete (SA_Expense__c at New, Did_you_complete = Yes).
-//                  The PM reviews it and submits it through the existing SA Expense approval process.
+//                  The PM reviews it and submits it once in Vista -> Approved.
 //   Draw         = a payment BEFORE the job is complete. The installer asks the PM directly (outside the app);
-//                  the PM issues it in Vista: created at New with Did_you_complete = No, then submitted through
-//                  the same approval process with the PM as submitter.
-// Vista never writes Status__c = Submitted; the approval process does.
+//                  the PM issues it in Vista, created already Approved with Did_you_complete = No.
+// The PM's confirmed submit IS the approval: Vista writes Status__c = Approved + Approver__c (what the Titan
+// approval process's final approval writes). Vista records never enter an approval process.
 // Both are SA_Expense__c records with Type__c = Vista. In code, `draws` is the store of all of them.
 //
 // The only module that knows where data comes from.

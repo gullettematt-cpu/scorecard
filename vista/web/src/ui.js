@@ -25,3 +25,23 @@ export function toast(msg) {
   const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el);
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2600);
 }
+
+// Confirmation sheet ("Are you sure…?"). Resolves true on confirm, false on cancel/backdrop.
+export function confirmSheet({ title, lines = [], note = '', yes, no }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-wrap';
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <h2 id="sheetTitle">${esc(title)}</h2>
+      ${lines.length ? `<dl>${lines.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+      ${note ? `<p class="hint">${esc(note)}</p>` : ''}
+      <div class="stack"><button class="act primary" data-yes>${esc(yes)}</button><button class="act" data-no>${esc(no)}</button></div>
+    </div>`;
+    const done = v => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', e => { if (e.target === wrap) done(false); });
+    wrap.querySelector('[data-yes]').onclick = () => done(true);
+    wrap.querySelector('[data-no]').onclick = () => done(false);
+    document.body.appendChild(wrap);
+    wrap.querySelector('[data-no]').focus();
+  });
+}

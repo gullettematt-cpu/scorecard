@@ -5,7 +5,7 @@ import { t, tIn, pick, fmtDate, fmtMoney, moneyIn, lang } from '../i18n.js';
 import { db } from '../db.js';
 import { pendingReview, reviewLines, checklistFor, tradeKey, manifestOf, photoCount, drawAmount, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
-import { esc, icons, toast } from '../ui.js';
+import { esc, icons, toast, confirmSheet } from '../ui.js';
 import { header } from '../app.js';
 
 const REASONS = ['missing', 'unclear', 'mismatch', 'incomplete'];
@@ -121,18 +121,25 @@ export async function renderApprove(root, ctx, id) {
       ({ item: l.id, reason: state.get(l.id).reason, text: await lineText(instLang, l, w, state.get(l.id).reason) })));
     const approval = { by: ctx.crew.lead.name, at, decision, checked: lines.filter(l => state.get(l.id).checked).map(l => l.id), missed };
     const manifest = { ...m, approval };
-    // Submit = submit the record through the existing SA Expense approval process with the PM as submitter.
-    // The approval process sets Status__c = Submitted (simulated locally here). Vista never writes Status__c.
+    // Submit = the PM's one and only approval. Vista writes what the approval process's final approval
+    // writes (Status__c = Approved, Approver__c = PM); the record then moves through Salesforce as approved.
     // Send back = stays New; the missed items live in the manifest and go to the installer.
-    if (decision === 'submitted') d.Status__c = 'Submitted';
+    if (decision === 'submitted') { d.Status__c = 'Approved'; d.Approver__c = ctx.crew.lead.name; }
     d[MANIFEST_FIELD] = MANIFEST_MARK + JSON.stringify(manifest);
     await db.put('draws', d);
-    await enqueue(decision === 'submitted' ? 'payrequest.submitForApproval' : 'payrequest.sendBack',
-      { expenseId: d.Id, submitter: ctx.crew.lead.name, comments: decision === 'submitted' ? t('approve.comment', { n: approval.checked.length }) : null, approval, lang: lang() });
+    await enqueue(decision === 'submitted' ? 'payrequest.approve' : 'payrequest.sendBack',
+      { expenseId: d.Id, Status__c: d.Status__c, Approver__c: d.Approver__c || null, approval, lang: lang() });
     toast(t(decision === 'submitted' ? 'approve.doneApproved' : 'approve.doneSentBack'));
     location.hash = '#/approve';
   };
-  root.querySelector('#approveBtn').onclick = () => decide('submitted');
+  root.querySelector('#approveBtn').onclick = async () => {
+    const ok = await confirmSheet({
+      title: t('confirm.payTitle'),
+      lines: [[t('confirm.amount'), fmtMoney(drawAmount(d))], [t('confirm.job'), `${w.Account?.Name || ''} · WO ${w.WorkOrderNumber}`], [t('confirm.crew'), w._crewName || '']],
+      note: t('confirm.note'), yes: t('confirm.yesPay'), no: t('confirm.no')
+    });
+    if (ok) decide('submitted');
+  };
   root.querySelector('#sendBack').onclick = () => decide('sent_back');
   refresh();
 }

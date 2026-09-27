@@ -229,12 +229,12 @@ Payment before completion. The installer asks the PM directly; the PM issues it 
 | Field | Tag | Value |
 |---|---|---|
 | `Type__c` | 🟠 new value | `Vista` |
-| `Status__c` | ✅ | `New` at creation, then **submitted through the existing approval process** with the PM as submitter (the process sets `Submitted`). Skips the PM queue and the flow. |
+| `Status__c` | ✅ | **`Approved`** at creation, after the PM confirms "Are you sure you want to submit this draw?". No approval process. Skips the PM queue and the pay-request flow. |
 | `Did_you_complete_the_job_or_service__c` | ✅ | **`No`** — this is what marks a draw |
 | `Amount__c`, `Date__c`, `Expense_Type__c` | ✅ | PM-entered amount (≤ contract − labor paid), today, `Labour` |
 | `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c` | ✅ | from the visit and job |
 | `Description_of_Work_Performed__c` | ✅ | what the draw covers |
-| `Approver__c` | ✅ | left to the approval process |
+| `Approver__c` | ✅ | the PM's name |
 | `Additional_Work_Performed_Description__c` | ✅ manifest | `{ kind: "draw", issued_by, requested_by, issued_at, photos: [progress…] }` |
 
 ## Screen 4 · Approve (PMs)
@@ -248,8 +248,8 @@ The PM reviews a **deliverables checklist** built from the trade requirements (s
 
 | Field | Tag | Value |
 |---|---|---|
-| `Status__c` | ✅ | **Never written by Vista.** When the PM submits (every required line ticked), Vista calls Submit for Approval on the existing process with the PM as submitter; the process sets `Submitted`. Send back leaves it at `New`. |
-| `Approver__c` | ✅ | left to the approval process |
+| `Status__c` | ✅ | **`Approved`** when the PM submits (every required line ticked) and confirms "Are you sure you want to submit this pay request?". This is the only approval; the record never enters an approval process. Send back leaves it at `New`. |
+| `Approver__c` | ✅ | the PM's name (same format as Titan's `Approver` field update) |
 | `Additional_Work_Performed_Description__c` | ✅ | manifest rewritten with `approval: { by, at, decision, checked[], missed: [{ item, reason }] }` |
 
 ---
@@ -281,7 +281,7 @@ None. Vi drafts `Description_of_Work_Performed__c` text and problem reports; the
 ## Field-level security for the integration user
 
 Read on every field above. Edit only on:
-`ServiceAppointment.Status`, `ServiceAppointment.ActualStartTime`; `WorkOrderLineItem.Status`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c` (create at `New` only), `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `TEST_SA__c`. Plus: permission to submit SA Expense records for approval on behalf of PMs (`process/approvals` with `contextActorId`).
+`ServiceAppointment.Status`, `ServiceAppointment.ActualStartTime`; `WorkOrderLineItem.Status`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c` (`New` on create; `Approved` on PM submit), `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `Approver__c`, `TEST_SA__c`.
 API-only profile, IP-restricted to the serverless egress range, no UI login.
 
 ---

@@ -2,7 +2,7 @@ import { t, pick, fmtDate, fmtTime, fmtMoney, lang } from '../i18n.js';
 import { db } from '../db.js';
 import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, visibleFor, manifestOf, WOLI_DONE, visitKind, isDraw, drawRules, drawEligible, remaining, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
-import { esc, icons, drawTone, mapsUrl, toast } from '../ui.js';
+import { esc, icons, drawTone, mapsUrl, toast, confirmSheet } from '../ui.js';
 import { header } from '../app.js';
 
 export async function renderJob(root, ctx, id) {
@@ -137,23 +137,29 @@ export async function renderJob(root, ctx, id) {
     root.querySelector('#clBar').style.width = `${Math.round(100 * done.size / cl.steps.length)}%`;
   });
 
-  // PM issues a draw: created at New with Did_you_complete = No, then submitted through the existing
-  // SA Expense approval process with the PM as submitter (which sets Submitted; simulated locally).
+  // PM issues a draw: after "Are you sure you want to submit this draw?", created already Approved
+  // (Did_you_complete = No, Approver__c = PM). Salesforce emails Mike Duncan about every draw.
   root.querySelector('#drawForm')?.addEventListener('submit', async e => {
     e.preventDefault();
     const f = new FormData(e.target);
     const amount = Math.round(Number(f.get('amount')));
     if (!(amount > 0 && amount <= remaining(w))) { toast(t('draw.upTo', { amount: fmtMoney(remaining(w)) })); return; }
+    const ok = await confirmSheet({
+      title: t('confirm.drawTitle'),
+      lines: [[t('confirm.amount'), fmtMoney(amount)], [t('confirm.job'), `${w.Account?.Name || ''} · WO ${w.WorkOrderNumber}`], [t('confirm.requestedBy'), String(f.get('requestedBy'))], [t('confirm.covers'), String(f.get('covers'))]],
+      note: t('confirm.drawNote'), yes: t('confirm.yesDraw'), no: t('confirm.no')
+    });
+    if (!ok) return;
     const at = new Date().toISOString();
     const manifest = { v: 1, app: 'vista', kind: 'draw', lang: w._lang || 'en', issued_by: ctx.crew.lead.name, requested_by: String(f.get('requestedBy')), issued_at: at,
       photos: Array.from({ length: progress }, () => ({ kind: 'progress' })) };
     const d = { Id: 'local-' + Date.now(), Name: t('draw.pendingName'), CreatedDate: at, Date__c: at.slice(0, 10), _crew: w._crew, _lang: w._lang,
-      Type__c: 'Vista', Status__c: 'Submitted', Expense_Type__c: 'Labour', Amount__c: amount, Work_Order__c: w.Id, Job__c: w.Job_Number__c,
+      Type__c: 'Vista', Status__c: 'Approved', Approver__c: ctx.crew.lead.name, Expense_Type__c: 'Labour', Amount__c: amount, Work_Order__c: w.Id, Job__c: w.Job_Number__c,
       Service_Appointment__c: sa.Id, Did_you_complete_the_job_or_service__c: 'No', TEST_SA__c: false,
       Description_of_Work_Performed__c: String(f.get('covers')), [MANIFEST_FIELD]: MANIFEST_MARK + JSON.stringify(manifest) };
     await db.put('draws', d);
     if (w.Job_Number__r) { w.Job_Number__r.Total_SA_Expense_Labor__c = laborDrawn(w) + amount; await db.put('jobs', w); }
-    await enqueue('draw.issueAndSubmitForApproval', { workOrderId: w.Id, serviceAppointmentId: sa.Id, Amount__c: amount, covers: d.Description_of_Work_Performed__c, requested_by: manifest.requested_by, submitter: ctx.crew.lead.name });
+    await enqueue('draw.issue', { workOrderId: w.Id, serviceAppointmentId: sa.Id, Amount__c: amount, covers: d.Description_of_Work_Performed__c, requested_by: manifest.requested_by, submitter: ctx.crew.lead.name });
     toast(t('draw.issued'));
     renderJob(root, ctx, id);
   });
