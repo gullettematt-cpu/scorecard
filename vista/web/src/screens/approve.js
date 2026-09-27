@@ -1,5 +1,5 @@
 // Approve (PMs): review each Vista draw as a deliverables checklist.
-// Approve only when every required line is ticked; unticked lines become "what was missed",
+// Submit to accounting only when every required line is ticked; unticked lines become "what was missed",
 // sent to the installer in their language at the daily cutoff. See docs/approval-flow.md.
 import { t, tIn, pick, fmtDate, fmtMoney, moneyIn, lang } from '../i18n.js';
 import { db } from '../db.js';
@@ -17,6 +17,7 @@ async function lineText(l, line, w, reason) {
     scope: () => tIn(l, 'review.scope'),
     complete: () => tIn(l, 'review.complete'),
     amount: () => tIn(l, 'review.amount', { amount: moneyIn(l, line.amount), room: moneyIn(l, line.room) }),
+    lineItems: () => tIn(l, 'review.lineItems', { have: line.have, need: line.need }),
     additional: () => tIn(l, 'review.additional')
   }[line.kind]();
   const txt = await base;
@@ -48,6 +49,7 @@ export async function renderApprove(root, ctx, id) {
     scope: () => t('review.scope'),
     complete: () => t('review.complete') + ` · ${l.value === 'Yes' ? t('yes') : t('no')}`,
     amount: () => t('review.amount', { amount: fmtMoney(l.amount), room: fmtMoney(l.room) }),
+    lineItems: () => t('review.lineItems', { have: l.have, need: l.need }),
     additional: () => t('review.additional')
   }[l.kind]());
 
@@ -119,15 +121,16 @@ export async function renderApprove(root, ctx, id) {
       ({ item: l.id, reason: state.get(l.id).reason, text: await lineText(instLang, l, w, state.get(l.id).reason) })));
     const approval = { by: ctx.crew.lead.name, at, decision, checked: lines.filter(l => state.get(l.id).checked).map(l => l.id), missed };
     const manifest = { ...m, approval };
-    d.Status__c = decision === 'approved' ? 'Approved' : 'Rejected';
-    d.Approver__c = ctx.crew.lead.name;
+    // Submit = the PM submits the draw into the existing Salesforce process (Status__c New -> Submitted).
+    // Send back = stays New; the missed items live in the manifest and go to the installer.
+    if (decision === 'submitted') { d.Status__c = 'Submitted'; d.Approver__c = ctx.crew.lead.name; }
     d[MANIFEST_FIELD] = MANIFEST_MARK + JSON.stringify(manifest);
     await db.put('draws', d);
     await enqueue('draw.decision', { drawId: d.Id, Status__c: d.Status__c, Approver__c: d.Approver__c, approval, lang: lang() });
-    toast(t(decision === 'approved' ? 'approve.doneApproved' : 'approve.doneSentBack'));
+    toast(t(decision === 'submitted' ? 'approve.doneApproved' : 'approve.doneSentBack'));
     location.hash = '#/approve';
   };
-  root.querySelector('#approveBtn').onclick = () => decide('approved');
+  root.querySelector('#approveBtn').onclick = () => decide('submitted');
   root.querySelector('#sendBack').onclick = () => decide('sent_back');
   refresh();
 }
@@ -143,7 +146,7 @@ function renderQueue(root, ctx, queue, jobOf) {
           <div class="card-top"><div><h3>${esc(w?.Account?.Name || d.Name)}</h3>
             <div class="sub">${esc(w?._crewName || '')} · WO ${esc(w?.WorkOrderNumber || '')}</div></div>
             <div class="when">${esc(fmtMoney(drawAmount(d)))}</div></div>
-          <div class="chips"><span class="chip warn">${esc(t('draw.Submitted'))}</span>
+          <div class="chips"><span class="chip warn">${esc(t('draw.WithPM'))}</span>
             <span class="chip muted">${esc(String(photoCount(d)))} 📷</span>
             ${d.Did_you_complete_the_job_or_service__c === 'Yes' ? `<span class="chip ok">${esc(t('review.jobDone'))}</span>` : `<span class="chip muted">${esc(t('review.partial'))}</span>`}</div>
         </a>`; }).join('') : `<div class="empty">${esc(t('approve.empty'))}</div>`}

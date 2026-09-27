@@ -10,7 +10,7 @@ function card(w, draws, ctx) {
   const ds = drawsFor(draws, w.Id);
   const latest = ds[0];
   const drawChip = latest ? `<span class="chip ${drawTone(drawStatus(latest))}">${esc(t('draw.' + drawStatus(latest)))}</span>` : `<span class="chip muted">${esc(t('draw.none'))}</span>`;
-  const sentBack = latest && drawStatus(latest) === 'Rejected';
+  const sentBack = latest && drawStatus(latest) === 'SentBack';
   return `
   <a class="card" href="#/job/${esc(w.Id)}">
     <div class="card-top">

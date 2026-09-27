@@ -13,7 +13,7 @@ export const icons = {
 };
 export const statusTone = s => ({ 'Installation Scheduled': '', 'Installation Completed': 'ok', 'Completed': 'muted', 'On Hold': 'warn', 'Canceled': 'bad' }[s] || 'muted');
 export const visitTone = s => ({ Dispatched: '', 'In Progress': 'ok', Completed: 'muted' }[s] || 'muted');
-export const drawTone = s => ({ Submitted: 'warn', 'Auto-Approved': 'ok', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
+export const drawTone = s => ({ WithPM: 'warn', SentBack: 'bad', Submitted: '', 'Auto-Approved': 'ok', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
 export const mapsUrl = w => {
   const q = w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`);
   return `https://maps.apple.com/?daddr=${q}`; // Android opens Google Maps for this URL as well

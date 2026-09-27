@@ -97,7 +97,7 @@ None.
 | `Description` (32000) | ✅ | scope of work, access notes |
 | `CaseId` | ✅ | service WOs: the originating Case |
 | `ParentWorkOrderId`, `Parent_WO__c` | ✅ | multi-visit jobs |
-| `WorkOrderLineItems` (`LineItemNumber`, `Description`, `Quantity`, `Status`) | ✅ standard | line items |
+| `WorkOrderLineItems` (`LineItemNumber`, `Description`, `Quantity`, `Status`) | ✅ | line items. `Status` values: `To Be Measured` · `On Hold (Measure)` · `Set to Measure` · `Measurement in Progress` · `Measurement Completed` · `Not Ready to Schedule` · `Ready to Order` · `Ordered` · `On Hold (Install)` · `Ready to Schedule` · `Installation Scheduled` · `Installation in Progress` · `Installation Completed` · `Canceled` |
 | `Additional_Work_Performed__c`, `Additional_Work_Performed_Reason__c` | ✅ | shown if the office already flagged extra work |
 | `ServiceTerritoryId` | ✅ | branch filter (Augusta) |
 
@@ -128,7 +128,14 @@ None.
 |---|---|---|
 | `Status` = `In Progress`, `ActualStartTime` | ✅ | installer taps **Start job** |
 
-The phone never writes `WorkOrder.Status`. Submitting the draw completes the visit and closes the WorkOrder through Flow A (`docs/approval-flow.md`).
+### Writes — `WorkOrderLineItem`
+
+| Field | Tag | When |
+|---|---|---|
+| `Status` = `Installation Completed` | ✅ | installer ticks the line item during an installation visit |
+| `Status` = `Measurement Completed` | ✅ | measure tech ticks the line item during a measurement visit (`SS_Service_Appointment_Type__c = Measurement`) |
+
+The phone never writes `WorkOrder.Status`. Flow `Vista_Draw_Submitted` moves the WorkOrder to `Installation Completed` (the review step) when every line item is done (`docs/approval-flow.md`).
 
 ### Writes — `Case` (*Report a problem* sheet)
 
@@ -163,13 +170,13 @@ The phone never writes `WorkOrder.Status`. Submitting the draw completes the vis
 | `Date__c` | ✅ required | today (installer's local date) |
 | `Expense_Type__c` | ✅ | `Labour` |
 | `Type__c` | 🟠 new value | **`Vista`**, a new picklist value on the existing field. It routes the draw into the Vista approval flow and keeps it out of the Jotform batch. |
-| `Status__c` | ✅ | `Submitted` |
-| `Service_Appointment__c` | ✅ required by Vista | the In Progress visit. Flow A completes it. |
+| `Status__c` | ✅ | **`New`**. The draw waits for the PM; only the PM moves it to `Submitted`. |
+| `Service_Appointment__c` | ✅ required by Vista | the In Progress visit. Flow `Vista_Draw_Submitted` completes it. |
 | `Work_Order__c`, `Job__c` | ✅ | from the ServiceAppointment |
 | `Account__c` | ✅ | installer's Account (drives `Installer_Name__c`, Paycom/AP fields) |
 | `Production_Manager__c` | ✅ | copied from `Job__c.Production_Manager__c` |
 | `Work_Performed_Date__c` | ✅ | today |
-| `Did_you_complete_the_job_or_service__c` | ✅ | `Yes` / `No` from the installer. `Yes` lets Flow A close the WorkOrder. |
+| `Did_you_complete_the_job_or_service__c` | ✅ | `Yes` / `No` from the installer. `Yes` + every line item done moves the WorkOrder to `Installation Completed` for review. |
 | `Description_of_Work_Performed__c` (32768) | ✅ | **human-readable** work summary typed by the installer (Vi can draft it). Stays readable for PMs and accounting. |
 | `Additional_Work_Performed__c` | ✅ | `Yes` / `No` |
 | `Additional_Work_Performed_Description__c` (32768) | 🟠 **manifest** | the JSON photo manifest (below). Any additional-work text the installer types is stored *inside* the manifest and prefixed as a plain sentence, so a human opening the field still sees the note first. |
@@ -216,13 +223,13 @@ Manifest v1 (~200 bytes per photo, so 32k holds 100+ photos):
 The PM reviews a **deliverables checklist** built from the trade requirements (see `docs/approval-flow.md`).
 
 ### Reads
-`SA_Expense__c` where `Type__c = 'Vista' AND Status__c = 'Submitted' AND TEST_SA__c = false AND Production_Manager__c = :me`, with the job fields above, the manifest, and signed photo URLs.
+`SA_Expense__c` where `Type__c = 'Vista' AND Status__c = 'New' AND TEST_SA__c = false AND Production_Manager__c = :me` (minus draws the PM sent back that the installer hasn't resubmitted), with the job fields above, the manifest, and signed photo URLs.
 
 ### Writes — `SA_Expense__c` (update)
 
 | Field | Tag | Value |
 |---|---|---|
-| `Status__c` | ✅ | `Approved` when every required line is ticked; `Rejected` = sent back with missed items |
+| `Status__c` | ✅ | `Submitted` when the PM submits to accounting (every required line ticked). Send back leaves it at `New`. After `Submitted`, the existing Salesforce process is unchanged. |
 | `Approver__c` | ✅ | PM's name (string 255) |
 | `Additional_Work_Performed_Description__c` | ✅ | manifest rewritten with `approval: { by, at, decision, checked[], missed: [{ item, reason }] }` |
 
@@ -255,7 +262,7 @@ None. Vi drafts `Description_of_Work_Performed__c` text and problem reports; the
 ## Field-level security for the integration user
 
 Read on every field above. Edit only on:
-`ServiceAppointment.Status`, `ServiceAppointment.ActualStartTime`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c`, `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `Approver__c`, `TEST_SA__c`.
+`ServiceAppointment.Status`, `ServiceAppointment.ActualStartTime`; `WorkOrderLineItem.Status`; `Case` create fields listed; `SA_Expense__c`: `Amount__c`, `Date__c`, `Expense_Type__c`, `Type__c`, `Status__c`, `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c`, `Work_Performed_Date__c`, `Did_you_complete_the_job_or_service__c`, `Description_of_Work_Performed__c`, `Additional_Work_Performed__c`, `Additional_Work_Performed_Description__c`, `Approver__c`, `TEST_SA__c`.
 API-only profile, IP-restricted to the serverless egress range, no UI login.
 
 ---

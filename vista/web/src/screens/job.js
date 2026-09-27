@@ -1,6 +1,6 @@
 import { t, pick, fmtDate, fmtTime, fmtMoney, lang } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, isVisible, manifestOf } from '../data.js';
+import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, isVisible, manifestOf, WOLI_DONE, visitKind } from '../data.js';
 import { enqueue } from '../sync.js';
 import { esc, icons, drawTone, mapsUrl, toast } from '../ui.js';
 import { header } from '../app.js';
@@ -20,6 +20,9 @@ export async function renderJob(root, ctx, id) {
   const isInstaller = ctx.role !== 'pm';
   const canStart = isInstaller && sa.Status === 'Dispatched';
   const canSubmit = isInstaller && sa.Status === 'In Progress';
+  // Line items: the installer (installation visits) or measure tech (measurement visits) marks them complete.
+  const doneStatus = WOLI_DONE[visitKind(w)];
+  const canMarkItems = isInstaller && sa.Status === 'In Progress';
 
   root.innerHTML = `
     ${header(ctx, `
@@ -47,7 +50,12 @@ export async function renderJob(root, ctx, id) {
       <div class="card">
         <p class="scope">${esc(w.Description || '')}</p>
         ${w.WorkOrderLineItems?.length ? `<h2 style="margin-top:14px">${esc(t('job.lineItems'))}</h2>
-        <ul class="lines" style="margin-top:6px">${w.WorkOrderLineItems.map(li => `<li><span>${esc(li.Description)}</span><span class="q">×${esc(li.Quantity)}</span></li>`).join('')}</ul>` : ''}
+        <ul class="lines woli" style="margin-top:6px">${w.WorkOrderLineItems.map(li => {
+          const doneLi = li.Status === doneStatus;
+          return `<li class="${doneLi ? 'done' : ''}">
+            ${canMarkItems && li.Status !== 'Canceled' ? `<input type="checkbox" data-woli="${esc(li.Id)}" ${doneLi ? 'checked' : ''} aria-label="${esc(t('job.markDone'))}">` : ''}
+            <span class="d">${esc(li.Description)}<small>${esc(t('woli.' + li.Status))}</small></span><span class="q">×${esc(li.Quantity)}</span></li>`; }).join('')}</ul>
+        ${canMarkItems ? `<div class="hint">${esc(t(visitKind(w) === 'Measurement' ? 'job.markHintMeasure' : 'job.markHint'))}</div>` : ''}` : ''}
       </div>
     </section>
 
@@ -76,7 +84,7 @@ export async function renderJob(root, ctx, id) {
         ${ds.length ? `<ul class="draws">${ds.map(d => `<li>
             <div><div class="amt">${esc(fmtMoney(drawAmount(d)))}</div><div class="hint" style="margin-top:0">${esc(d.Name)} · ${esc(fmtDate(d.CreatedDate, { month: 'short', day: 'numeric' }))}${photoCount(d) ? ` · ${photoCount(d)} 📷` : ''}</div></div>
             <span class="chips" style="margin:0;justify-content:flex-end"><span class="chip ${drawTone(drawStatus(d))}">${esc(t('draw.' + drawStatus(d)))}</span></span></li>
-            ${drawStatus(d) === 'Rejected' && manifestOf(d)?.approval?.missed?.length ? `<li class="missed"><b>${esc(t('draw.missedTitle'))}</b><ul>${manifestOf(d).approval.missed.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></li>` : ''}`).join('')}</ul>` : `<div class="hint" style="margin:0">${esc(t('draw.none'))}</div>`}
+            ${drawStatus(d) === 'SentBack' && manifestOf(d)?.approval?.missed?.length ? `<li class="missed"><b>${esc(t('draw.missedTitle'))}</b><ul>${manifestOf(d).approval.missed.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></li>` : ''}`).join('')}</ul>` : `<div class="hint" style="margin:0">${esc(t('draw.none'))}</div>`}
         <div class="stack">
           ${isInstaller ? (canSubmit ? `<a class="act primary" href="#/draw?job=${esc(w.Id)}">${icons.draw} ${esc(t('job.submitDraw'))}</a>` : `<button class="act" disabled style="opacity:.5">${icons.draw} ${esc(t('job.submitDraw'))}</button><div class="hint" style="margin-top:0">${esc(t('job.startFirst'))}</div>`) : ''}
         </div>
@@ -105,6 +113,16 @@ export async function renderJob(root, ctx, id) {
     await enqueue('checklist', { workOrderId: id, checklistId: cl.id, done: [...done], lang: lang() });
     root.querySelector('#clProgress').textContent = t('job.checklistProgress', { done: done.size, total: cl.steps.length });
     root.querySelector('#clBar').style.width = `${Math.round(100 * done.size / cl.steps.length)}%`;
+  });
+
+  root.querySelectorAll('input[data-woli]').forEach(cb => cb.onchange = async () => {
+    const li = w.WorkOrderLineItems.find(x => x.Id === cb.dataset.woli);
+    li._prev ??= li.Status;
+    li.Status = cb.checked ? doneStatus : li._prev;
+    await db.put('jobs', w);
+    await enqueue('woli.status', { workOrderLineItemId: li.Id, Status: li.Status });
+    cb.closest('li').classList.toggle('done', cb.checked);
+    cb.closest('li').querySelector('small').textContent = t('woli.' + li.Status);
   });
 
   // Start: ServiceAppointment.Status = In Progress + ActualStartTime.

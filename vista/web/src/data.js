@@ -57,8 +57,17 @@ export const drawsFor = (draws, workOrderId) =>
   draws.filter(d => d.Work_Order__c === workOrderId && !d.TEST_SA__c).sort((a, b) => b.CreatedDate.localeCompare(a.CreatedDate));
 export const casesFor = (cases, w) => cases.filter(c => c.Job__c && c.Job__c === w.Job_Number__c);
 
-// Status__c has no "Paid"; paid is derived (open decision #2 in the data contract).
-export const drawStatus = d => (d.Paycheck_Period__c || d.Payable_Invoice_New__c) ? 'Paid' : (d.Status__c || 'New');
+// What the phone shows. Salesforce statuses are unchanged from today:
+//   New (installer submitted, waiting on PM) -> Submitted (PM submitted) -> Approved -> payable invoice linked (Paid).
+// A PM send-back keeps the record at New; the decision lives in the manifest.
+export function drawStatus(d) {
+  if (d.Payable_Invoice_New__c || d.Paycheck_Period__c) return 'Paid';
+  if ((d.Status__c || 'New') === 'New') {
+    const m = manifestOf(d);
+    return m?.approval?.decision === 'sent_back' && !(m.resubmitted_at > m.approval.at) ? 'SentBack' : 'WithPM';
+  }
+  return d.Status__c;
+}
 export const drawAmount = d => d.Amount__c || 0;
 export function manifestOf(d) {
   const raw = d[MANIFEST_FIELD] || '';
@@ -106,9 +115,20 @@ export function reviewLines(draw, w, checklist) {
   lines.push({ id: 'checklist', kind: 'checklist', have: done, need: total, ok: done >= total, required: true });
   lines.push({ id: 'scope', kind: 'scope', ok: true, required: true, text: draw.Description_of_Work_Performed__c || '' });
   lines.push({ id: 'complete', kind: 'complete', ok: true, required: true, value: draw.Did_you_complete_the_job_or_service__c || 'No' });
+  const items = (w.WorkOrderLineItems || []).filter(li => li.Status !== 'Canceled');
+  if (items.length && draw.Did_you_complete_the_job_or_service__c === 'Yes') {
+    const doneItems = items.filter(li => li.Status === WOLI_DONE.Installation).length;
+    lines.push({ id: 'lineItems', kind: 'lineItems', have: doneItems, need: items.length, ok: doneItems === items.length, required: true });
+  }
   const room = contractAmount(w) ? contractAmount(w) - laborDrawn(w) : null;
   lines.push({ id: 'amount', kind: 'amount', amount: drawAmount(draw), room, ok: room == null || drawAmount(draw) <= room, required: true });
   if (draw.Additional_Work_Performed__c === 'Yes') lines.push({ id: 'additional', kind: 'additional', ok: !!m.additional_work?.note, required: true });
   return lines;
 }
-export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && d.Status__c === 'Submitted' && !d.TEST_SA__c);
+// PM queue: Vista draws at New that the PM hasn't sent back (or that the installer has resubmitted).
+export const pendingReview = draws => draws.filter(d => d.Type__c === 'Vista' && !d.TEST_SA__c && drawStatus(d) === 'WithPM');
+
+// --- Work order line items -----------------------------------------------------------------
+// The installer (installation visits) and measure tech (measurement visits) own line-item completion.
+export const WOLI_DONE = { Installation: 'Installation Completed', Measurement: 'Measurement Completed' };
+export const visitKind = w => (visit(w)?.SS_Service_Appointment_Type__c === 'Measurement' ? 'Measurement' : 'Installation');

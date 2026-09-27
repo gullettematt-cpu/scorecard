@@ -135,3 +135,8 @@ ul { list-style: none; }
 .smsprev { background: var(--info-bg); border-color: transparent; }
 .smsprev p { font-size: 15px; }
 .review li.done label { text-decoration: none; color: var(--ok); }
+.woli li { align-items: flex-start; }
+.woli input { width: 26px; height: 26px; flex: none; accent-color: var(--ok); margin-top: 1px; }
+.woli .d { flex: 1; }
+.woli small { display: block; font-size: 13px; color: var(--muted); }
+.woli li.done small { color: var(--ok); font-weight: 600; }

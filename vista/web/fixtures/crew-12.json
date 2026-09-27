@@ -39,21 +39,21 @@
           "LineItemNumber": "1",
           "Description": "Double-hung 36x60, white, colonial grids",
           "Quantity": 8,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         },
         {
           "Id": "1WL2",
           "LineItemNumber": "2",
           "Description": "Picture window 72x48, white, low-E",
           "Quantity": 1,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         },
         {
           "Id": "1WL3",
           "LineItemNumber": "3",
           "Description": "Exterior aluminum capping, white",
           "Quantity": 9,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         }
       ],
       "Job_Number__c": "a0J1",
@@ -106,14 +106,14 @@
           "LineItemNumber": "1",
           "Description": "Fiberglass entry door 36x80 LH inswing",
           "Quantity": 1,
-          "Status": "Completed"
+          "Status": "Installation Completed"
         },
         {
           "Id": "1WL5",
           "LineItemNumber": "2",
           "Description": "Full-view storm door, bronze",
           "Quantity": 1,
-          "Status": "New"
+          "Status": "Installation Completed"
         }
       ],
       "Job_Number__c": "a0J2",
@@ -164,7 +164,7 @@
           "LineItemNumber": "1",
           "Description": "Slider 72x48, bronze/white",
           "Quantity": 4,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         }
       ],
       "Job_Number__c": "a0J3",
@@ -280,14 +280,15 @@
       "Amount__c": 1400,
       "Expense_Type__c": "Labour",
       "Type__c": "Vista",
-      "Status__c": "Submitted",
+      "Status__c": "New",
       "Approver__c": null,
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
       "Did_you_complete_the_job_or_service__c": "Yes",
       "Additional_Work_Performed__c": "No",
       "Description_of_Work_Performed__c": "Storm door installed, hardware on entry door, final caulk and cleanup. Homeowner walked it and signed off.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"lang\":\"en\",\"checklist\":{\"id\":\"windows-v1\",\"done\":[\"walk\",\"protect\",\"before-photos\",\"remove\",\"flash\",\"set\",\"foam\",\"trim\",\"serials\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}"
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"lang\":\"en\",\"checklist\":{\"id\":\"windows-v1\",\"done\":[\"walk\",\"protect\",\"before-photos\",\"remove\",\"flash\",\"set\",\"foam\",\"trim\",\"serials\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
+      "Payable_Invoice_New__c": null
     },
     {
       "Id": "a0X1",
@@ -303,7 +304,8 @@
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
       "Description_of_Work_Performed__c": "Entry door set, shimmed, foamed. Storm door tomorrow.",
-      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}"
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
+      "Payable_Invoice_New__c": null
     },
     {
       "Id": "a0X2",
@@ -317,9 +319,10 @@
       "Status__c": "Approved",
       "Approver__c": "Mike",
       "TEST_SA__c": false,
-      "Paycheck_Period__c": "a0P1",
+      "Paycheck_Period__c": null,
       "Description_of_Work_Performed__c": "Demo and prep, day 1.",
-      "Additional_Work_Performed_Description__c": null
+      "Additional_Work_Performed_Description__c": null,
+      "Payable_Invoice_New__c": "a1P5e000000PIN1"
     }
   ],
   "cases": [

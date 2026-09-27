@@ -1,30 +1,34 @@
 # Vista draw approval flow
 
-Status: **design, not deployed.** Built entirely in Field Service on existing objects and fields.
-Nothing here is wired to Salesforce until Matt signs off (see *Build and rollout* at the bottom).
+Status: **design approved 2026-09-27; Salesforce automation drafted in `salesforce/`, not yet deployed.**
+Built entirely in Field Service on existing objects and fields, plus one new picklist value (`Vista` on `SA_Expense__c.Type__c`, approved by Matt).
 
-## The flow in one paragraph
+## Decisions (Matt, 2026-09-27)
 
-Dispatch sends the job. The installer sees a job only after the ServiceAppointment is **Dispatched**, which is also what fires the PulseM bio.
-The installer taps Start, does the work, and submits the draw from the phone with photos and the checklist.
-Submitting completes the visit and, when the installer says the job is done, closes the WorkOrder.
-The PM reviews the draw on the phone as a **deliverables checklist** and either approves it or sends it back with the missed items.
-Every morning Angie runs one ACH disbursement from the PM-approved list.
-Anything not approved at the cutoff is not paid that day, and the subcontractor gets a text in their language listing exactly what was missed.
+| Topic | Decision |
+|---|---|
+| Who submits draws | **A PM.** The installer's draw waits at `New` until the PM reviews it in Vista and submits it. |
+| Salesforce process after that | **Unchanged.** `Submitted` → existing approval → Angie links the payable invoice. Vista adds nothing after the PM submits. |
+| Cutoff | **10:00 AM**, daily run. |
+| Line items | The **installer** marks each line item `Installation Completed`; the **measure tech** marks `Measurement Completed`. |
+| WorkOrder | Does **not** close itself. When the installer has completed every line item, it moves to `Installation Completed`, which is the review step. |
+| `Vista` picklist value | Approved. |
+
+## The flow
 
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> Dispatched: Dispatcher dispatches SA<br/>(PulseM bio fires)
+    [*] --> Dispatched: Dispatcher dispatches visit<br/>(PulseM bio fires)
     Dispatched --> InProgress: Installer taps Start
-    InProgress --> Submitted: Installer submits draw<br/>SA → Completed<br/>WO → Completed if job done
-    Submitted --> Approved: PM ticks every deliverable
-    Submitted --> SentBack: PM marks items missing
-    SentBack --> Submitted: Installer adds missing items
-    Approved --> Paid: Angie's daily ACH run
-    Submitted --> Held: Cutoff, PM hasn't reviewed
-    SentBack --> Held: Cutoff
-    Held --> Submitted: rolls to next run
+    InProgress --> WithPM: Installer submits draw<br/>SA_Expense Status = New<br/>visit → Completed<br/>WO → Installation Completed if every line item is done
+    WithPM --> Submitted: PM ticks every deliverable<br/>and submits (Status = Submitted)
+    WithPM --> SentBack: PM marks items missing (stays New)
+    SentBack --> WithPM: Installer adds missing items
+    Submitted --> Paid: Existing process<br/>Angie links payable invoice
+    WithPM --> Held: 10 AM cutoff, not submitted
+    SentBack --> Held: 10 AM cutoff
+    Held --> WithPM: next day's run
     Paid --> [*]
 ```
 
@@ -32,113 +36,73 @@ stateDiagram-v2
 
 | Step | Who | Where | Salesforce effect |
 |---|---|---|---|
-| 1. Dispatch | Dispatcher | Field Service console / Gantt | `ServiceAppointment.Status = Dispatched`. Existing PulseM automation sends the bio (`PulseM_appt_trigger__c`, `PulseM_Bio_Sent__c`). **Vista shows nothing that is not Dispatched.** |
-| 2. Start | Installer | Vista · Job | `ServiceAppointment.Status = In Progress`, `ActualStartTime = now` |
-| 3. Submit draw | Installer | Vista · Submit Draw | Creates `SA_Expense__c` (`Type__c = Vista`, `Status__c = Submitted`). Flow A completes the SA and closes the WO. |
-| 4. Review | PM | Vista · Approve | Checklist review. Approve → `Status__c = Approved`. Send back → `Status__c = Rejected` + missed items. |
-| 5. Disburse | Angie | Salesforce list view *Vista · Ready for ACH* | Links each draw to the payable invoice in her run (`Payable_Invoice_New__c`), which is how Vista shows *Paid*. |
-| 6. Chase | Vista API | daily at cutoff | Texts each sub whose draws are not approved, listing what's missing. Nudges PMs with unreviewed draws. |
+| 1. Dispatch | Dispatcher | Field Service | `ServiceAppointment.Status = Dispatched`. Existing PulseM automation sends the bio. **Vista shows nothing that isn't Dispatched.** |
+| 2. Start | Installer | Vista · Job | `ServiceAppointment.Status = In Progress`, `ActualStartTime` |
+| 3. Line items | Installer / measure tech | Vista · Job | Each `WorkOrderLineItem.Status` → `Installation Completed` (installation visit) or `Measurement Completed` (measurement visit) |
+| 4. Submit draw | Installer | Vista · Submit Draw | Creates `SA_Expense__c` with `Type__c = Vista`, **`Status__c = New`**. Flow A completes the visit and, if every line item is done, moves the WO to review. |
+| 5. Review + submit | PM | Vista · Approve | Deliverables checklist. **Submit to accounting** → `Status__c = Submitted`, `Approver__c = PM`. **Send back** → stays `New`, missed items in the manifest. |
+| 6. Pay | Existing approvers, Angie | Salesforce, as today | Existing approval, then Angie links `Payable_Invoice_New__c` in her daily run. |
+| 7. Chase | Vista API | 10:00 AM daily | Texts every sub whose Vista draw is still `New` (sent back or not yet reviewed), in their language, listing what's missing. One reminder per PM with unreviewed draws. |
+
+Because Vista draws enter the **same** path as every other draw once the PM submits them, there is one pay path and no double-pay risk. `Type__c = Vista` only identifies them for the PM queue, the 10 AM notices, and reporting.
 
 ## PM review: the deliverables checklist
 
-The Approve screen turns the trade's requirements into a list the PM ticks one by one. Approve stays disabled until every required line is ticked.
-Unticked lines become the "what was missed" message.
+"Submit to accounting" stays disabled until every required line is ticked. Unticked lines, with the PM's reason, become the message to the installer.
 
 | Line | Source | Required |
 |---|---|---|
-| One line per required photo kind, e.g. *Before, each elevation — 4 of 4* | `web/content/checklists/<trade>.json → photos[]` vs the photos in the manifest | yes when `min > 0` |
-| Installer checklist completed, e.g. *10 of 10 steps* | manifest `checklist.done` | yes |
-| Work description matches scope | `Description_of_Work_Performed__c` vs WO `Description` and line items | yes |
+| One line per required photo kind, e.g. *Before, each elevation: 2 (need 4)* | trade checklist `photos[]` vs manifest photos | when `min > 0`; lines below the minimum can't be ticked |
+| Installer checklist, e.g. *10 of 10 steps* | manifest `checklist.done` | yes |
+| Work description matches the scope | `Description_of_Work_Performed__c` vs WO | yes |
 | Job complete as claimed | `Did_you_complete_the_job_or_service__c` | yes |
-| Amount within contract | `Amount__c` ≤ `Job__c.Sales_Price__c − Total_SA_Expense_Labor__c` | yes |
-| Additional work documented, if claimed | `Additional_Work_Performed__c = Yes` ⇒ note + photo | only if claimed |
+| Line items marked installed, e.g. *4 of 4* | `WorkOrderLineItem.Status` | when the installer claims the job is complete |
+| Amount within contract | `Amount__c` ≤ `Sales_Price__c − Total_SA_Expense_Labor__c` | yes |
+| Additional work documented | manifest note + photo | only if claimed |
 
-Each missed line carries a short reason the PM can pick or type ("blurry", "wrong elevation", "missing serial label"). That text is what the sub receives.
+A PM who submits a draw directly in Salesforce (without Vista) is simply using today's process; nothing blocks it.
 
-**Override.** A PM can still approve in Salesforce without the app. A validation rule requires `Approver__c` to read `Name — reason` when a Vista draw is approved outside the app, so there is always a reason on record.
+## WorkOrder review
 
-## Angie's daily run
+Flow A moves the WorkOrder to **`Installation Completed`** when, at draw submission:
 
-- **Cutoff: 10:00 AM Eastern, Monday–Friday** (default; Angie to confirm).
-- **List view *Vista · Ready for ACH*** on `SA_Expense__c`: `Type__c = Vista`, `Status__c = Approved`, `TEST_SA__c = false`, `Do_Not_Pay__c = false`, `Payable_Invoice_New__c` blank, `LastModifiedDate` before today's cutoff.
-- **Report *Vista · Not in today's run*:** `Type__c = Vista`, `Status__c in (Submitted, Rejected)`, grouped by PM. This is who did not get paid and why.
-- Angie builds the ACH from the list view. Linking each draw to its payable invoice marks it paid everywhere, including the installer's phone.
-- **The existing Jotform batch keeps running unchanged**, but it must skip `Type__c = Vista`, or a Vista draw could be paid twice. See open decision 1.
+- the installer answered *Is the job complete?* **Yes**, and
+- every line item on the WorkOrder is `Installation Completed` or `Canceled`, and
+- no other visit on the WorkOrder is still open.
 
-## Salesforce automation to build
+`Installation Completed` is an existing status, so the existing milestone and time-stamp automation fires as it does today. The office or PM reviews from the list view **Vista · Work orders in review** and moves the WorkOrder on to `Completed` as they do now. If anything is short, the WO stays where it is and the dispatcher schedules the next visit as usual.
 
-All on existing objects and fields. The only schema-adjacent change is **one new picklist value, `Vista`, on `SA_Expense__c.Type__c`**. That is a value, not a field, and it is what keeps the two pay paths apart.
+## Messages to subcontractors (10:00 AM)
 
-### Flow A · *Vista – Draw submitted* (record-triggered, after insert, `SA_Expense__c`)
+Sent by the Vista API, not Salesforce. One text per sub per day, in the installer's language, respecting `ServiceAppointment.SMS_Opt_out__c`. Opted-out subs see the same message in the app.
 
-Entry: `Type__c = Vista` and `Status__c = Submitted` and `TEST_SA__c = false`.
+> Vista: this draw was not submitted for today's pay run. Job 00041859 (Hall, 512 Lakeside Dr): Before, each elevation: 2 (need 4) — missing; House wrap and flashing: 0 (need 2) — missing. Add it in Vista and your PM will review it for the next run.
 
-1. Update the linked `ServiceAppointment` (`Service_Appointment__c`): `Status = Completed`, `ActualEndTime = now`.
-2. If `Did_you_complete_the_job_or_service__c = Yes` **and** the WorkOrder has no other ServiceAppointment still open (`StatusCategory not in (Completed, Canceled)`):
-   update the `WorkOrder`: `Status = Completed`, and stamp `Time_Stamp_Installation_Completed__c` and `Time_Stamp_Completed__c` so the milestone reporting that normally keys off *Installation Completed* still has its dates.
-3. If the job is not done, or another crew still has an open visit, leave the WO open. The dispatcher schedules the next visit as usual.
+> Vista: este cobro no fue enviado para el pago de hoy. Trabajo 00041859 (Hall, 512 Lakeside Dr): Antes, cada fachada: 2 (mínimo 4) — falta; Membrana y sellado: 0 (mínimo 2) — falta. Agrégalo en Vista y tu PM lo revisará para el próximo pago.
 
-### Flow B · *Vista – PM decision* (record-triggered, after update, `SA_Expense__c`)
+Draws the PM simply hasn't opened yet produce "still with your PM, will be in the next run" for the sub and one reminder to the PM.
 
-Entry: `Type__c = Vista` and `Status__c` changed.
+## Salesforce build (in `salesforce/`)
 
-- To `Approved`: nothing else. It appears in Angie's list view.
-- To `Rejected`: nothing in Salesforce. The API has already written the missed items into the manifest; the installer's phone shows them immediately.
-- Back to `Submitted` after a resubmit: nothing. It re-enters the PM queue.
+| Item | Type | Purpose |
+|---|---|---|
+| `Vista` value on `SA_Expense__c.Type__c` | picklist value | identifies app draws. Added by retrieve-then-append so nothing else on the field changes. |
+| `Vista_Draw_Submitted` | record-triggered flow, after create, `SA_Expense__c` | completes the visit; moves the WO to `Installation Completed` when every line item is done |
+| `Vista_Waiting_on_PM` | list view, `SA_Expense__c` | Vista draws at `New` |
+| `Vista_Submitted_Today` | list view, `SA_Expense__c` | Vista draws submitted by PMs, not yet on a payable invoice |
+| `Vista_WO_In_Review` | list view, `WorkOrder` | work orders at `Installation Completed` |
 
-Flow B exists mainly as the hook for future notifications. It can be skipped in v1.
-
-### Validation rule · *Vista_Approval_Needs_Reason*
-
-On `SA_Expense__c`: blocks `Status__c → Approved` on a `Type__c = Vista` record when the change is not made by the Vista integration user and `Approver__c` does not contain " — ".
-
-### List view and report
-As described under *Angie's daily run*.
-
-## Messages to subcontractors
-
-Sent by the Vista API's scheduled job at the cutoff, not by Salesforce, so Salesforce makes no outbound calls.
-One text per sub per day, in the installer's language, respecting `ServiceAppointment.SMS_Opt_out__c`. Opted-out subs see the same message in the app.
-
-**English**
-> Vista: 1 draw was not in today's pay run. Job 00041859 (Hall, 512 Lakeside Dr): missing before photos, 2 of 4 elevations; house wrap photos. Add them in Vista and your PM will re-review for tomorrow's run.
-
-**Español**
-> Vista: 1 cobro no entró en el pago de hoy. Trabajo 00041859 (Hall, 512 Lakeside Dr): faltan fotos de antes, 2 de 4 fachadas; fotos de la membrana. Agrégalas en Vista y tu PM lo revisará para el pago de mañana.
-
-**Not reviewed yet** (still `Submitted` at cutoff): the sub gets "still in review, will be in the next run", and the PM gets one reminder listing their unreviewed draws.
-
-## What changes in the Vista app
-
-| Screen | Change |
-|---|---|
-| Today | Built from the installer's **Dispatched / In Progress** ServiceAppointments only. Scheduled-but-not-dispatched visits are invisible. |
-| Job | *Start job* sets the ServiceAppointment to In Progress. There is no *Finish* button: submitting the draw finishes the visit. |
-| Submit Draw | Requires the visit to be In Progress. Asks "Is the job complete?" (drives the WO close). Blocks submission until the trade's photo minimums are met. |
-| Approve (PM) | The deliverables checklist above. Approve, or Send back with missed items. |
-| Ask Vi | Unchanged. |
+Deploy targets the **DevSandi** sandbox only; `salesforce/deploy.sh` refuses the production alias.
 
 ## Guardrails
 
-- **Double pay.** Only the Vista run pays `Type__c = Vista`. The Jotform batch must exclude it before the first Vista draw exists.
-- **Partial jobs.** The WO only closes when the installer says the job is done and no other visit on it is open.
-- **Test records.** Heartbeat draws use `Status__c = New` and `TEST_SA__c = true`, so they never reach the PM queue, the list view, or the report.
-- **Audit.** Every PM decision is in the manifest (`approval.by`, `at`, `decision`, `missed[]`) and in `Approver__c`. Field history on `Status__c` should be switched on if it isn't already.
+- **Test records.** Heartbeat draws use `TEST_SA__c = true`; the PM queue, list views and notices all exclude them, and Flow A skips them.
+- **Existing automation.** Before activating Flow A, run `salesforce/automation-check.sh` to list every active flow and approval process on the four objects, so nothing already reacting to `Status__c`, visit status, or WO status is double-triggered.
+- **Audit.** Every PM decision is in the manifest (`approval.by`, `at`, `decision`, `checked[]`, `missed[]`) and in `Approver__c`.
 
-## Open decisions
+## Still open
 
 | # | Who | Question | Default |
 |---|---|---|---|
-| 1 | Angie | Can the existing Jotform batch filter out `Type__c = Vista`? If it keys on something else, what? | Add the filter before the first Vista draw. |
-| 2 | Angie | Cutoff time and days for the daily run. | 10:00 AM ET, Mon–Fri. |
-| 3 | Angie | Does the ACH mark draws paid by `Payable_Invoice_New__c` (subs, AP) or `Paycheck_Period__c` (employees, Paycom), or both? | Subs via payable invoice. |
-| 4 | Mike | WO close on submit sets `Completed` directly (skipping *Installation Completed*) with both timestamps stamped. OK, or should it stop at *Installation Completed* for the office to finish? | `Completed` + timestamps. |
-| 5 | Mike | Who gets the "not reviewed" reminder: the job's `Production_Manager__c` only, or also the office administrator? | PM only. |
-| 6 | Matt | Add the `Vista` value to `Type__c`. It is the one metadata change the flow needs. | Yes. |
-
-## Build and rollout
-
-1. Build Flow A, the validation rule, the list view and the report in the **DevSandi** sandbox, plus the `Vista` picklist value.
-2. Run one Augusta crew end to end in the sandbox with `TEST_SA__c = true` draws.
-3. Angie dry-runs the list view for a week against real Jotform draws, to prove the two paths never overlap.
-4. Deploy to production. First real Vista draws from the two Augusta crews only.
+| 1 | Matt | Is `Status__c = Submitted` set today by a Salesforce **approval process** ("Submit for Approval")? If so, Vista submits through that same process with the PM as the submitter, instead of writing the field. `automation-check.sh` answers this. | Write the field if no approval process exists. |
+| 2 | Matt | Measure techs become Vista users (text-message sign-in, measurement visits only, no draws). OK? | Yes, measurement visits only. |

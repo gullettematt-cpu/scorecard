@@ -10,11 +10,12 @@ Three jobs and one cron. Every handler is stateless; the phone is the only clien
 | `GET /sf/job/:id` | Salesforce | WorkOrder + line items + Job__c + open Cases + draws. |
 | `PATCH /sf/visit/:id/start` | Salesforce | `ServiceAppointment.Status = In Progress`, `ActualStartTime`. Only on the caller's Dispatched visits. |
 | `POST /sf/case` | Salesforce | Creates the Service-record-type Case with the three picklists. |
-| `POST /sf/draw` | Salesforce | Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = Submitted`. **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow A then completes the visit and closes the WO. |
-| `PATCH /sf/draw/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `Approved` only when every required deliverable is ticked; otherwise `Rejected` with missed items in the manifest. |
+| `POST /sf/draw` | Salesforce | Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = New` (waits for the PM). **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow *Vista - Draw Submitted* completes the visit and, when every line item is done, moves the WO to `Installation Completed` for review. |
+| `PATCH /sf/draw/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `submitted` (every required deliverable ticked) → `Status__c = Submitted`, `Approver__c`; if an approval process governs SA Expense, submits through it with the PM as submitter. `sent_back` → stays `New`, missed items in the manifest. |
+| `PATCH /sf/line-item/:id` `{status}` | Salesforce | `Installation Completed` (installer) or `Measurement Completed` (measure tech), only on the caller's in-progress visit. |
 | `POST /photos/sign` `{workOrderId, drawId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
 | `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
-| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista draw not `Approved` at cutoff: one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
+| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista draw still `New` at cutoff (sent back or not yet reviewed): one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
 | cron every 2 h | Heartbeat | login → read WorkOrder → create `SA_Expense__c` (`TEST_SA__c = true`) → upload photo → SMS Matt + Mike on failure. |
 
 ## Salesforce auth

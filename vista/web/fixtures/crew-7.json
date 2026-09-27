@@ -39,28 +39,28 @@
           "LineItemNumber": "1",
           "Description": "D4 vinyl siding, Pewter — 22 sq",
           "Quantity": 22,
-          "Status": "In Progress"
+          "Status": "Installation in Progress"
         },
         {
           "Id": "1WL8",
           "LineItemNumber": "2",
           "Description": "House wrap + flashing tape",
           "Quantity": 1,
-          "Status": "Completed"
+          "Status": "Installation Completed"
         },
         {
           "Id": "1WL9",
           "LineItemNumber": "3",
           "Description": "Aluminum fascia + soffit, white",
           "Quantity": 180,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         },
         {
           "Id": "1WL10",
           "LineItemNumber": "4",
           "Description": "OSB sheathing replacement (PM approved)",
           "Quantity": 3,
-          "Status": "Completed"
+          "Status": "Installation Completed"
         }
       ],
       "Job_Number__c": "a0J5",
@@ -111,7 +111,7 @@
           "LineItemNumber": "1",
           "Description": "D4 vinyl, Clay — 1 sq",
           "Quantity": 1,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         }
       ],
       "Job_Number__c": "a0J6",
@@ -162,14 +162,14 @@
           "LineItemNumber": "1",
           "Description": "Board & batten, Harbor Blue — front",
           "Quantity": 6,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         },
         {
           "Id": "1WL13",
           "LineItemNumber": "2",
           "Description": "D4 vinyl, Harbor Blue — sides/rear",
           "Quantity": 18,
-          "Status": "New"
+          "Status": "Installation Scheduled"
         }
       ],
       "Job_Number__c": "a0J7",
@@ -229,7 +229,7 @@
       "Amount__c": 6500,
       "Expense_Type__c": "Labour",
       "Type__c": "Vista",
-      "Status__c": "Submitted",
+      "Status__c": "New",
       "Approver__c": null,
       "TEST_SA__c": false,
       "Paycheck_Period__c": null,
@@ -237,7 +237,8 @@
       "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"lang\":\"es\",\"checklist\":{\"id\":\"siding-v1\",\"done\":[\"walk\",\"before-photos\",\"protect\",\"tearoff\",\"wrap\",\"starter\",\"install\",\"penetrations\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
       "Service_Appointment__c": "08p5e0000002bB1",
       "Did_you_complete_the_job_or_service__c": "No",
-      "Additional_Work_Performed__c": "No"
+      "Additional_Work_Performed__c": "No",
+      "Payable_Invoice_New__c": null
     },
     {
       "Id": "a0X4",
@@ -256,7 +257,8 @@
       "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"wrap\"},{\"kind\":\"wrap\"},{\"kind\":\"rot\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
       "Service_Appointment__c": "08p5e0000002bB1",
       "Did_you_complete_the_job_or_service__c": "No",
-      "Additional_Work_Performed__c": "Yes"
+      "Additional_Work_Performed__c": "Yes",
+      "Payable_Invoice_New__c": null
     }
   ],
   "cases": []
