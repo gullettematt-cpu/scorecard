@@ -11,6 +11,7 @@
 // Step 1: fixtures. Step 2: swap `adapter` for one that calls /sf/* — same shapes, same API names.
 // Field names below are confirmed against docs/describe/SUMMARY.md (myorg, 2026-09-27).
 import { db } from './db.js';
+import { vistaOn } from './rollout.js';
 
 export const MANIFEST_FIELD = 'Additional_Work_Performed_Description__c';
 export const MANIFEST_MARK = '<!--vista-manifest-->';
@@ -21,6 +22,7 @@ const dayOff = offset => { const d = new Date(); d.setDate(d.getDate() + offset)
 const fixtureAdapter = {
   name: 'fixture',
   async crews() { return (await fetch('./fixtures/crews.json')).json(); },
+  async rollout() { return (await fetch('./fixtures/rollout.json')).json(); },
   async load(crew) {
     const crews = await this.crews();
     const files = crew.fixtures || [crew.fixture];
@@ -33,7 +35,7 @@ const fixtureAdapter = {
         StartDate: dayAt(w._schedule.dayOffset, w._schedule.startHour),
         EndDate: dayAt(w._schedule.dayOffset, w._schedule.endHour),
         LastModifiedDate: new Date().toISOString(),
-        _crew: owner.id, _crewName: owner.name, _trade: owner.trade, _lang: owner.lang,
+        _crew: owner.id, _crewName: owner.name, _trade: owner.trade, _lang: owner.lang, _account: owner.account || null,
         Job_Number__r: fx.jobs.find(j => j.Id === w.Job_Number__c) || null
       })));
       out.draws.push(...fx.draws.map(d => ({ ...d, CreatedDate: dayOff(d.CreatedDate_dayOffset || 0), Date__c: dayOff(d.CreatedDate_dayOffset || 0).slice(0, 10), _crew: owner.id, _lang: owner.lang })));
@@ -124,7 +126,11 @@ export const visit = w => w.ServiceAppointment || null;
 export const isVisible = w => { const v = visit(w); return !!v && SA_VISIBLE.has(v.Status) && (v.Status !== 'Completed' || sameLocalDay(w.StartDate)); };
 // Measure techs see measurement visits only; installers never see them. PMs see everything dispatched.
 export const isMeasurementVisit = w => visit(w)?.SS_Service_Appointment_Type__c === 'Measurement';
-export const visibleFor = role => w => isVisible(w) && (role === 'pm' || (role === 'measure') === isMeasurementVisit(w));
+// Rollout: a visit is on Vista only if Vista is on for its job's office (Location) and the crew's account.
+export const officeOf = w => w.Job_Number__r?.Office__r || null;
+export const onVista = (ctx, w) => vistaOn(ctx.rollout, officeOf(w), ctx.role === 'pm' ? w._account : ctx.account);
+export const visibleFor = ctx => w => isVisible(w) && onVista(ctx, w) &&
+  (ctx.role === 'pm' || (ctx.role === 'measure') === isMeasurementVisit(w));
 const sameLocalDay = iso => new Date(iso).toDateString() === new Date().toDateString();
 
 // --- PM review: the deliverables checklist -------------------------------------------------

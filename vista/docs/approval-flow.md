@@ -127,7 +127,7 @@ Sent by the Vista API. One text per sub per day, in the installer's language, re
 | `Vista_Waiting_on_PM`, `Vista_Draws`, `Vista_Submitted_Not_Invoiced` | list views | PM queue, draws, approved but not yet on a payable invoice |
 | Titan entry criteria | Setup change | add `Type ≠ Vista` (above) |
 
-Deploy targets **DevSandi** only; `salesforce/deploy.sh` refuses any non-sandbox org. Both flows deploy as **Draft**.
+Deploys default to **DevSandi**; production needs `--prod` and a typed confirmation. Both flows deploy as **Draft**. Who uses Vista is controlled by the rollout switch (`docs/rollout.md`).
 
 ## Guardrails
 

@@ -11,6 +11,7 @@ Spanish and English at launch.
 4. **No photos, no pay.** A PM can always approve from Salesforce with a reason.
 5. **Field Service is the backbone.** Installers only see *Dispatched* ServiceAppointments (dispatch also fires the PulseM bio). Installers and measure techs mark their line items complete. Submitting a draw completes the visit; when every line item is done the WorkOrder moves to *Installation Completed* for review.
 6. **PMs submit everything to accounting.** The installer's pay request (at completion) waits at *New*; the PM reviews it against a deliverables checklist and submits it once, after an "Are you sure?" question. It lands in Salesforce as Approved and moves through as today (payable invoice, Angie's daily ACH run). Not submitted by 10:00 AM = not paid that day, and the sub gets a text listing what was missed. A **draw** is a payment before completion: the installer asks the PM directly and the PM issues it, on jobs the PM chooses. Mike Duncan is emailed about every draw. Details: `docs/approval-flow.md`.
+7. **Roll out by location, opt out by account.** `config/rollout.json` turns Vista on per location (`off` / `pilot` / `on`); when on, every account there uses Vista except those that opt out. Jotform keeps running for everyone else. Details: `docs/rollout.md`.
 
 ## Layout
 
@@ -19,7 +20,8 @@ Spanish and English at launch.
 | `web/` | Static PWA. No framework, no build step. Offline-first (IndexedDB + service worker + outbox). |
 | `api/` | Serverless API contract: SMS code verification, Salesforce (JWT bearer, integration user), photo upload. Plus the 2-hour heartbeat. **Not wired yet (Step 2).** |
 | `salesforce/` | The Vista picklist value, the *Vista - Pay Request Submitted* flow, list views, and sandbox-only deploy scripts. See `salesforce/README.md`. |
-| `docs/` | `approval-flow.md` (pay requests, draws, daily ACH run), `data-contract.md` (fields the five screens read/write), `describe.sh` (dumps `sf sobject describe` for the four objects), architecture notes. |
+| `config/` | `rollout.json`: the on/off switch by location and account. |
+| `docs/` | `rollout.md` (switch and production run order), `approval-flow.md` (pay requests, draws, daily ACH run), `data-contract.md` (fields the five screens read/write), `describe.sh` (dumps `sf sobject describe` for the four objects), architecture notes. |
 | `i18n/` | `en.json`, `es.json`. Every user-facing string lives here. |
 | `scripts/` | `dev.js` (local static server), `build.sh` (assemble `dist/` for the CDN). |
 
@@ -45,5 +47,6 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Step 1b — Field Service gating, approval-flow design, **Approve** screen (PM deliverables checklist) on fixtures
 - [x] Step 1c — PM-submits flow, line-item completion, WO review; Salesforce automation as source in `salesforce/` (not deployed)
 - [x] Step 1d — pay request vs draw: PM-issued draws with progress-photo rule
+- [x] Step 1e — rollout switch by location/account; production deploy path (`--prod`)
 - [ ] Step 2 — Submit for Pay (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`); deploy `salesforce/` to DevSandi
 - [ ] Step 3 — Ask Vi (Claude API), SMS login, cutoff notices, heartbeat

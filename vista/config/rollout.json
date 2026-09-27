@@ -1,0 +1,7 @@
+{
+  "_comment": "Vista rollout switch. Read by the Vista API (and the app in fixture mode via web/fixtures/rollout.json). Location = the Job's Office (Location record). Modes: off (default), pilot (only accounts listed in pilotAccounts), on (everyone at the location except optOutAccounts). Accounts are installer / measure-tech Accounts (ServiceResource.AccountId). Ids or exact names both work.",
+  "defaultMode": "off",
+  "locations": {
+    "Augusta": { "mode": "off", "pilotAccounts": [], "optOutAccounts": [] }
+  }
+}

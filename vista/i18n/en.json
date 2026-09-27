@@ -185,5 +185,7 @@
   "confirm.drawNote": "It goes to accounting as approved, before the job is complete. Mike Duncan is notified of every draw.",
   "confirm.yesPay": "Yes, submit",
   "confirm.yesDraw": "Yes, submit draw",
-  "confirm.no": "Cancel"
+  "confirm.no": "Cancel",
+  "rollout.offTitle": "Vista isn't on for your crew yet",
+  "rollout.offBody": "Keep using Jotform for now. Your PM will let you know when Vista is switched on."
 }

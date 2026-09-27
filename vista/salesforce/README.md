@@ -34,5 +34,5 @@ bash salesforce/deploy.sh
 bash salesforce/deploy.sh --go
 ```
 
-Steps 2 and 3 default to the `DevSandi` alias and refuse any org that isn't a sandbox.
+Steps 2 and 3 default to `DevSandi`. Add `--prod` to target production (`myorg`); with `--go` it asks you to type the alias first. Production order and the rollout switch: `../docs/rollout.md`.
 Both flows deploy as **Draft**. Activate it in Setup after checking `AUTOMATION.md` for collisions.

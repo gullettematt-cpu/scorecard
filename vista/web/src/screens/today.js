@@ -1,6 +1,6 @@
 import { t, fmtDate, fmtTime } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview } from '../data.js';
+import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview, onVista } from '../data.js';
 import { esc, icons, visitTone, drawTone, mapsUrl, sameDay } from '../ui.js';
 import { header } from '../app.js';
 
@@ -34,12 +34,20 @@ export async function renderToday(root, ctx) {
   const [jobs, draws] = await Promise.all([db.all('jobs'), db.all('draws')]);
   jobs.sort((a, b) => a.StartDate.localeCompare(b.StartDate));
   // Dispatch is the gate: only Dispatched / In Progress visits (and today's completed ones) show.
-  const visible = jobs.filter(visibleFor(ctx.role));
+  const visible = jobs.filter(visibleFor(ctx));
   const today = visible.filter(j => sameDay(j.StartDate));
   const later = visible.filter(j => new Date(j.StartDate) > new Date() && !sameDay(j.StartDate));
   const toReview = ctx.role === 'pm' ? pendingReview(draws).length : 0;
   const first = today[0];
 
+  // Rollout: this crew isn't on Vista at any of its locations -> they keep using Jotform.
+  if (ctx.role !== 'pm' && !jobs.some(w => onVista(ctx, w))) {
+    root.innerHTML = `${header(ctx, `<div class="greet">${esc(t(greetingKey(), { name: ctx.crew.lead.name.split(' ')[0] }))}</div>`)}
+      <div class="soon"><div class="big">🕓</div><h1>${esc(t('rollout.offTitle'))}</h1><p>${esc(t('rollout.offBody'))}</p>
+      <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t('app.switchCrew'))}</button></div></div>`;
+    root.querySelector('#switchCrew').onclick = ctx.switchCrew;
+    return;
+  }
   root.innerHTML = `
     ${header(ctx, `
       <div class="greet">${esc(t(greetingKey(), { name: ctx.crew.lead.name.split(' ')[0] }))}</div>

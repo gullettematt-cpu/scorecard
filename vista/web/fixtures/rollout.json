@@ -1,0 +1,7 @@
+{
+  "_comment": "Fixture-mode copy of config/rollout.json. Augusta is on; nobody has opted out.",
+  "defaultMode": "off",
+  "locations": {
+    "Augusta": { "mode": "on", "pilotAccounts": [], "optOutAccounts": [] }
+  }
+}

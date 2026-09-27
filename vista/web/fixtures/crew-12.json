@@ -237,7 +237,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Windows"
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     },
     {
       "Id": "a0J2",
@@ -248,7 +252,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Doors"
+      "Product_type__c": "Doors",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     },
     {
       "Id": "a0J3",
@@ -259,7 +267,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Windows"
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     },
     {
       "Id": "a0J4",
@@ -270,7 +282,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Windows"
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     }
   ],
   "draws": [

@@ -7,7 +7,7 @@ import { header } from '../app.js';
 
 export async function renderJob(root, ctx, id) {
   const [w, draws, cases] = await Promise.all([db.get('jobs', id), db.all('draws'), db.all('cases')]);
-  if (!w || !visibleFor(ctx.role)(w)) { root.innerHTML = `${header(ctx, '')}<div class="empty">${esc(t(w ? 'job.notDispatched' : 'job.notFound'))}</div>`; return; }
+  if (!w || !visibleFor(ctx)(w)) { root.innerHTML = `${header(ctx, '')}<div class="empty">${esc(t(w ? 'job.notDispatched' : 'job.notFound'))}</div>`; return; }
   const sa = visit(w);
   const trade = tradeKey(w);
   const [cl, saved] = await Promise.all([checklistFor(trade), db.get('checklist', id)]);

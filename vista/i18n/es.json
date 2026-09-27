@@ -185,5 +185,7 @@
   "confirm.drawNote": "Pasa a contabilidad como aprobado, antes de terminar el trabajo. Se avisa a Mike Duncan de cada adelanto.",
   "confirm.yesPay": "Sí, enviar",
   "confirm.yesDraw": "Sí, enviar adelanto",
-  "confirm.no": "Cancelar"
+  "confirm.no": "Cancelar",
+  "rollout.offTitle": "Vista todavía no está activo para tu cuadrilla",
+  "rollout.offBody": "Sigue usando Jotform por ahora. Tu PM te avisará cuando se active Vista."
 }

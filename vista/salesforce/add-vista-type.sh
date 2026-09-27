@@ -3,10 +3,11 @@
 # retrieves the field as it is in the target org, appends the value, deploys it back.
 #   bash salesforce/add-vista-type.sh            # DevSandi, dry run
 #   bash salesforce/add-vista-type.sh --go       # DevSandi, for real
+#   bash salesforce/add-vista-type.sh --prod     # production (myorg), dry run
+#   bash salesforce/add-vista-type.sh --prod --go
 set -euo pipefail
 cd "$(dirname "$0")"
-source ./_guard.sh
-GO="${1:-}"
+source ./_guard.sh "$@"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 cp sfdx-project.json "$TMP/"; mkdir -p "$TMP/force-app"
@@ -26,7 +27,7 @@ fs.writeFileSync(f, x); console.log('Appended "Vista" to Type__c.');
 NODE
 [ $rc -eq 3 ] && exit 0
 [ $rc -ne 0 ] && exit $rc
-if [ "$GO" = "--go" ]; then
+if $GO; then
   ( cd "$TMP" && sf project deploy start -o "$ORG" -d force-app )
 else
   ( cd "$TMP" && sf project deploy start -o "$ORG" -d force-app --dry-run ) && echo "Dry run OK. Re-run with --go to add it."

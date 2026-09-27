@@ -122,7 +122,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Windows"
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     },
     {
       "Id": "a0J9",
@@ -133,7 +137,11 @@
         "Name": "Mike",
         "MobilePhone": "+17065550100"
       },
-      "Product_type__c": "Siding"
+      "Product_type__c": "Siding",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
     }
   ],
   "draws": [],
