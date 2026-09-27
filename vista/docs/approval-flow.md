@@ -17,7 +17,7 @@ The PM's confirmed submit in Vista **is** the approval. Vista writes exactly wha
 | Field | Value | Same as Titan's |
 |---|---|---|
 | `Status__c` | `Approved` | `Status_Approved` field update |
-| `Approver__c` | the PM's name | `Approver` field update (`$User.FirstName & " " & $User.LastName`, per `docs/describe/APPROVAL.md`) |
+| `Approver__c` | the PM's User `FirstName & " " & LastName` | `Approver` field update: `$User.FirstName & " " & $User.LastName` (confirmed in `docs/describe/APPROVAL.md`) |
 
 From there the record moves through Salesforce like any other approved SA Expense: payable invoice, Angie's daily ACH run. Vista records never enter an approval process and never sit in the *SA_expense_approval* queue.
 
@@ -135,10 +135,15 @@ Deploy targets **DevSandi** only; `salesforce/deploy.sh` refuses any non-sandbox
 - **Test records.** `TEST_SA__c = true` records are excluded everywhere and skipped by both flows.
 - **Audit.** Manifest + `Approver__c` + `Status__c` field history; Mike Duncan's email for every draw.
 
-## Still open
+## Start simple, harden later (Matt, 2026-09-27)
 
-| # | Who | Question | Default |
-|---|---|---|---|
-| 1 | Matt | Re-run `ORG=myorg bash salesforce/retrieve-approval.sh` (it now also pulls the field-update formulas) so `Approver__c` matches Titan's formula exactly. | PM's first and last name. |
-| 2 | Matt | Lock `Amount__c` on approved Vista records with a validation rule? | No. |
-| 3 | Matt | Should Mike Duncan also get a text for each draw, not just an email? | Email only. |
+Launch with the defaults and tighten once real usage shows how many edits happen.
+
+| Topic | At launch | Harden if needed |
+|---|---|---|
+| Approved Vista records | Not locked; office users can edit them like any unlocked record | Validation rule locking `Amount__c` (and more) once `Status__c = Approved` and `Type__c = Vista` |
+| Mike Duncan draw notices | Email only | Add a text from the Vista API |
+| Draw eligibility | PM judgment on any active job | Fill in `web/content/draw-rules.json` (minimum contract, trades) |
+| `Approver__c` format | PM's `FirstName LastName`, same as Titan | — |
+
+**Worth watching in the first weeks:** `Status__c` field history on Vista records edited after approval, and the *Vista - Draws* list view.

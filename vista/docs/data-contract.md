@@ -234,7 +234,7 @@ Payment before completion. The installer asks the PM directly; the PM issues it 
 | `Amount__c`, `Date__c`, `Expense_Type__c` | ✅ | PM-entered amount (≤ contract − labor paid), today, `Labour` |
 | `Work_Order__c`, `Job__c`, `Service_Appointment__c`, `Account__c`, `Production_Manager__c` | ✅ | from the visit and job |
 | `Description_of_Work_Performed__c` | ✅ | what the draw covers |
-| `Approver__c` | ✅ | the PM's name |
+| `Approver__c` | ✅ | the PM's User `FirstName & " " & LastName` |
 | `Additional_Work_Performed_Description__c` | ✅ manifest | `{ kind: "draw", issued_by, requested_by, issued_at, photos: [progress…] }` |
 
 ## Screen 4 · Approve (PMs)
@@ -249,7 +249,7 @@ The PM reviews a **deliverables checklist** built from the trade requirements (s
 | Field | Tag | Value |
 |---|---|---|
 | `Status__c` | ✅ | **`Approved`** when the PM submits (every required line ticked) and confirms "Are you sure you want to submit this pay request?". This is the only approval; the record never enters an approval process. Send back leaves it at `New`. |
-| `Approver__c` | ✅ | the PM's name (same format as Titan's `Approver` field update) |
+| `Approver__c` | ✅ | the PM's User `FirstName & " " & LastName` (Titan's `Approver` field update formula) |
 | `Additional_Work_Performed_Description__c` | ✅ | manifest rewritten with `approval: { by, at, decision, checked[], missed: [{ item, reason }] }` |
 
 ---

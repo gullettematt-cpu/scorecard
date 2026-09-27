@@ -42,7 +42,7 @@ const pick = (s, tag) => [...s.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}
 console.log('## Field updates used by the approval processes\n\n| Name | Field | Sets to |\n|---|---|---|');
 for (const fu of pick(x, 'fieldUpdates')) {
   const v = pick(fu, 'formula')[0] || pick(fu, 'literalValue')[0] || pick(fu, 'lookupValue')[0] || pick(fu, 'operation')[0] || '';
-  console.log(`| ${pick(fu, 'fullName')[0]} | ${pick(fu, 'field')[0]} | ${v.replace(/\|/g, '\\|').replace(/&quot;/g, '"').replace(/&amp;/g, '&')} |`);
+  console.log(`| ${pick(fu, 'fullName')[0]} | ${pick(fu, 'field')[0]} | ${v.replace(/\s+/g, ' ').replace(/\|/g, '\\|').replace(/&quot;/g, '"').replace(/&amp;/g, '&')} |`);
 }
 NODE
 fi
