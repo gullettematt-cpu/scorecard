@@ -11,13 +11,12 @@ export const icons = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>'
 };
-export const statusTone = s => ({ 'In Progress': 'ok', 'Completed': 'muted', 'Closed': 'muted', 'On Hold': 'warn', 'Cannot Complete': 'bad', 'Canceled': 'bad' }[s] || '');
-export const drawTone = s => ({ Submitted: 'warn', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
+export const statusTone = s => ({ 'Installation Scheduled': '', 'Installation Completed': 'ok', 'Completed': 'muted', 'On Hold': 'warn', 'Canceled': 'bad' }[s] || 'muted');
+export const drawTone = s => ({ Submitted: 'warn', 'Auto-Approved': 'ok', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
 export const mapsUrl = w => {
   const q = w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`);
   return `https://maps.apple.com/?daddr=${q}`; // Android opens Google Maps for this URL as well
 };
-export const tradeKey = w => w._trade || (w.WorkType?.Name || '').toLowerCase().split(/\W/)[0] || 'windows';
 export const sameDay = (a, b = new Date()) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate(); };
 let toastTimer;
 export function toast(msg) {

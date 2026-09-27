@@ -1,7 +1,7 @@
 import { t, fmtDate, fmtTime } from '../i18n.js';
 import { db } from '../db.js';
-import { drawsFor, drawStatus } from '../data.js';
-import { esc, icons, statusTone, drawTone, mapsUrl, tradeKey, sameDay } from '../ui.js';
+import { drawsFor, drawStatus, photoCount, tradeKey, WO_HIDDEN } from '../data.js';
+import { esc, icons, statusTone, drawTone, mapsUrl, sameDay } from '../ui.js';
 import { header } from '../app.js';
 
 function greetingKey() { const h = new Date().getHours(); return h < 12 ? 'today.greeting.morning' : h < 17 ? 'today.greeting.afternoon' : 'today.greeting.evening'; }
@@ -10,7 +10,7 @@ function card(w, draws) {
   const ds = drawsFor(draws, w.Id);
   const latest = ds[0];
   const drawChip = latest ? `<span class="chip ${drawTone(drawStatus(latest))}">${esc(t('draw.' + drawStatus(latest)))}</span>` : `<span class="chip muted">${esc(t('draw.none'))}</span>`;
-  const needsPhotos = latest && drawStatus(latest) === 'Submitted' && !(latest._assumed?.photos > 0);
+  const needsPhotos = latest && drawStatus(latest) === 'Submitted' && photoCount(latest) === 0;
   return `
   <a class="card" href="#/job/${esc(w.Id)}">
     <div class="card-top">
@@ -23,6 +23,7 @@ function card(w, draws) {
     <div class="chips">
       <span class="chip ${statusTone(w.Status)}">${esc(t('status.' + w.Status))}</span>
       <span class="chip muted">${esc(t('trade.' + tradeKey(w)))}</span>
+      ${w.RecordType?.Name === 'Service' ? `<span class="chip warn">${esc(t('wo.service'))}</span>` : ''}
       ${drawChip}
       ${needsPhotos ? `<span class="chip bad">${esc(t('draw.needsPhotos'))}</span>` : ''}
     </div>
@@ -32,7 +33,7 @@ function card(w, draws) {
 export async function renderToday(root, ctx) {
   const [jobs, draws] = await Promise.all([db.all('jobs'), db.all('draws')]);
   jobs.sort((a, b) => a.StartDate.localeCompare(b.StartDate));
-  const today = jobs.filter(j => sameDay(j.StartDate) && !['Closed', 'Canceled'].includes(j.Status));
+  const today = jobs.filter(j => sameDay(j.StartDate) && !WO_HIDDEN.has(j.Status));
   const later = jobs.filter(j => new Date(j.StartDate) > new Date() && !sameDay(j.StartDate));
   const first = today[0];
 
