@@ -35,22 +35,22 @@
 <script type="module">
   // Fixture paths in data.js are relative to the app root; this page lives in /dev/.
   const realFetch = window.fetch.bind(window);
-  window.fetch = (u, o) => realFetch(typeof u === 'string' && u.startsWith('./') ? '/' + u.slice(2) : u, o);
+  window.fetch = (u, o) => realFetch(typeof u === 'string' && u.startsWith('./') ? '../' + u.slice(2) : u, o);
   const { adapter } = await import('../src/data.js');
   const { createEngine } = await import('../src/sms/engine.js');
   const { makeTranslator } = await import('../src/translate.js');
   const { allPrefs, setPrefs } = await import('../src/prefs.js');
   const J = async u => (await realFetch(u)).json();
-  const strings = { en: await J('/i18n/en.json'), es: await J('/i18n/es.json') };
+  const strings = { en: await J('../i18n/en.json'), es: await J('../i18n/es.json') };
   let engine, store; const threads = new Map();
   async function reset() {
     const people = await adapter.crews(); const pm = people.find(p => p.role === 'pm');
     const { jobs, draws } = await adapter.load(pm);
-    store = { people, jobs, draws, rollout: await J('/fixtures/rollout.json'), drawRules: await J('/content/draw-rules.json'),
-      checklists: { windows: await J('/content/checklists/windows.json'), siding: await J('/content/checklists/siding.json') } };
+    store = { people, jobs, draws, rollout: await J('../fixtures/rollout.json'), drawRules: await J('../content/draw-rules.json'),
+      checklists: { windows: await J('../content/checklists/windows.json'), siding: await J('../content/checklists/siding.json') } };
     // Language / channel choices are shared with the app (same browser storage in fixture mode).
     for (const [id, p] of Object.entries(allPrefs())) { const person = people.find(x => x.id === id); if (person) Object.assign(person, p.lang ? { lang: p.lang } : {}, p.channel ? { channel: p.channel } : {}, p.requested ? { requested: p.requested } : {}); }
-    engine = createEngine({ store, strings, tr: makeTranslator(await J('/fixtures/translations.json')), askVi: async ({ lang }) => lang === 'es' ? '(Aquí contestará Vi, con el trabajo, la lista y los documentos del oficio.)' : '(Vi will answer here, using the job, the checklist and the trade documents.)' });
+    engine = createEngine({ store, strings, tr: makeTranslator(await J('../fixtures/translations.json')), askVi: async ({ lang }) => lang === 'es' ? '(Aquí contestará Vi, con el trabajo, la lista y los documentos del oficio.)' : '(Vi will answer here, using the job, the checklist and the trade documents.)' });
     threads.clear(); render();
   }
   const push = (phone, who, text, media = 0) => { if (!threads.has(phone)) threads.set(phone, []); threads.get(phone).push({ who, text, media }); };
