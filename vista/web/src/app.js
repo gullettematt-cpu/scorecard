@@ -11,6 +11,7 @@ import { renderJob } from './screens/job.js';
 import { renderSoon } from './screens/soon.js';
 import { renderApprove } from './screens/approve.js';
 import { renderPay } from './screens/pay.js';
+import { renderProblem } from './screens/problem.js';
 import { apiMode, api, session, SignInNeeded } from './api.js';
 
 const root = document.getElementById('app');
@@ -122,7 +123,7 @@ async function switchCrew() {
   if (apiMode) session.clear();
   localStorage.removeItem('vista.crew'); localStorage.removeItem('vista.lang');
   ctx.pickedLang = null; ctx.pendingRequest = null;
-  const carry = apiMode ? null : { jobs: await db.all('jobs'), draws: await db.all('draws'), checklist: await db.all('checklist') };
+  const carry = apiMode ? null : { jobs: await db.all('jobs'), draws: await db.all('draws'), cases: await db.all('cases'), checklist: await db.all('checklist') };
   const photos = apiMode ? [] : await db.all('photos');
   await db.wipe();
   if (carry) { await db.meta('demoCarry', carry); await db.putAll('photos', photos); }
@@ -138,7 +139,8 @@ async function route() {
   if (screen === 'job' && id) { ctx.lastJob = id; await renderJob(root, ctx, id); }
   else if (screen === 'approve') await renderApprove(root, ctx, id);
   else if (screen === 'draw') await renderPay(root, ctx, q.get('job'));
-  else if (['vi', 'problem'].includes(screen)) renderSoon(root, ctx, screen);
+  else if (screen === 'problem') await renderProblem(root, ctx, q.get('job'));
+  else if (screen === 'vi') renderSoon(root, ctx, screen);
   else await renderToday(root, ctx);
   renderNav(screen === 'problem' ? 'job' : screen || 'today');
   window.scrollTo(0, 0);

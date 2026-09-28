@@ -90,8 +90,9 @@ export async function seedIfNeeded(crew) {
     // Pay requests made on this phone that haven't reached Salesforce yet stay on screen until they do.
     const waiting = new Set((await db.all('outbox')).map(e => e.payload?.localId).filter(Boolean));
     const local = (await db.all('draws')).filter(d => d._local && waiting.has(d.Id));
+    const localCases = (await db.all('cases')).filter(c => c._local && waiting.has(c.Id));
     await Promise.all([db.clear('jobs'), db.clear('draws'), db.clear('cases')]);
-    await db.putAll('jobs', jobs); await db.putAll('draws', [...local, ...draws]); await db.putAll('cases', cases);
+    await db.putAll('jobs', jobs); await db.putAll('draws', [...local, ...draws]); await db.putAll('cases', [...localCases, ...cases]);
     await db.meta('rollout', adapter.snap.rollout); await db.meta('translations', adapter.snap.translations);
     await db.meta('photoUrls', adapter.snap.photoUrls || {});
     return;
@@ -108,6 +109,8 @@ export async function seedIfNeeded(crew) {
     const ids = new Set(jobs.map(j => j.Id));
     await db.putAll('jobs', carry.jobs.filter(j => ids.has(j.Id)));
     await db.putAll('draws', carry.draws.filter(d => ids.has(d.Work_Order__c)));
+    const jobNos = new Set(jobs.map(j => j.Job_Number__c));
+    await db.putAll('cases', (carry.cases || []).filter(c => jobNos.has(c.Job__c)));
     await db.putAll('checklist', carry.checklist);
     await db.meta('demoCarry', null);
   }

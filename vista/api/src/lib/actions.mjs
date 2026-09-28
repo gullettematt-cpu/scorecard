@@ -4,7 +4,19 @@
 //   - approval is refused while any deliverable is short (photo minimums, checklist, line items)
 //   - amounts can't exceed the contract minus labor already paid; draws follow draw-rules.json
 //   - Vista only ever writes the statuses the design allows (see docs/approval-flow.md)
-import { domain, checklists, drawRules, readManifest, writeManifest, MANIFEST_FIELD } from './shared.mjs';
+import { domain, checklists, drawRules, readManifest, writeManifest, MANIFEST_FIELD, strings } from './shared.mjs';
+
+// Case (problem report) picklists, exactly as in Salesforce (docs/data-contract.md).
+export const CASE_PICKLISTS = {
+  Work_Type__c: ['Baths', 'Cover', 'Door', 'Gutters', 'Insulation', 'Rainsoft', 'Roofing', 'Siding', 'Window', 'Cabinet'],
+  Service_Type__c: ['Paid Service', 'Warranty'],
+  Warranty_Type__c: ['Installer Warranty', 'Company Warranty', 'Sales/Service', 'Customer Accommodation']
+};
+export const SERVICE_RECORD_TYPE = '0124P000000OMP8QAO';
+const say = (lang, key, vars) => {
+  const one = l => Object.entries(vars).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), strings[l]?.[key] ?? strings.en[key]);
+  return lang === 'bi' ? `${one('en')}\n${one('es')}` : one(lang === 'es' ? 'es' : 'en');
+};
 import { photoKey } from './photos.mjs';
 
 export class ActionError extends Error { constructor(msg, status = 400) { super(msg); this.status = status; } }
@@ -146,6 +158,36 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         need(field && job(p.workOrderId), 'not your job');
         await store.put({ pk: `CHECKLIST#${p.workOrderId}`, sk: 'DONE', checklistId: p.checklistId, done: p.done || [], by: person.id, at: now().toISOString() });
         return { ok: true };
+      // Report a problem: a Service Case on the job, in the reporter's words. The PM hears about it by text.
+      case 'case.create': {
+        const w = job(p.workOrderId); need(w, 'not your job');
+        const subject = String(p.subject || '').trim(), details = String(p.description || '').trim();
+        need(subject.length >= 3, 'say what the problem is', 422);
+        for (const [f, values] of Object.entries(CASE_PICKLISTS)) need(values.includes(p[f]), `pick a ${f.replace(/__c$/, '').replace(/_/g, ' ').toLowerCase()}`, 422);
+        const keys = (p.photos || []).map(x => x.key).filter(Boolean).slice(0, 12);
+        for (const k of keys) {
+          need(k.startsWith(`vista/${w.Id}/`), 'photo belongs to another job');
+          try { await photos.head(k); } catch { throw new ActionError('photo still uploading', 503); }
+        }
+        const sa = w.ServiceAppointment, loc = Number.isFinite(p.lat) && Number.isFinite(p.lng) ? ` · ${p.lat.toFixed(5)},${p.lng.toFixed(5)}` : '';
+        const text = [subject, details].filter(Boolean).join('\n\n');
+        const footer = `WO ${w.WorkOrderNumber} · ${person.name}${loc}` + (keys.length ? `\nVista photos: ${keys.join(' ')}` : '');
+        const installerAccount = person.role === 'installer' ? person.account?.Id : w._account?.Id;
+        const id = await sf.create('Case', {
+          RecordTypeId: SERVICE_RECORD_TYPE, Status: 'New', Origin: 'In-Person', Priority: p.blocking ? 'High' : 'Medium',
+          Job__c: w.Job_Number__c, Service_Appointment__c: sa?.Id || null, AccountId: w.AccountId || w.Account?.Id || null, ContactId: w.ContactId || w.Contact?.Id || null,
+          Subject: `[Vista] ${subject}`.slice(0, 255), Description: `${text}\n\n— ${footer}`.slice(0, 32000), Service_Issue__c: text.slice(0, 32000),
+          Work_Type__c: p.Work_Type__c, Service_Type__c: p.Service_Type__c, Warranty_Type__c: p.Warranty_Type__c,
+          Language: p.lang === 'es' ? 'es_MX' : 'en_US', ...(installerAccount ? { Original_Installer__c: installerAccount } : {}), Test_record__c: false
+        });
+        snap.cases.unshift({ Id: id, Subject: `[Vista] ${subject}`, Status: 'New', Job__c: w.Job_Number__c, Work_Type__c: p.Work_Type__c });
+        // Tell the job's PM (unless they reported it, or chose app only).
+        const pmUser = w.Job_Number__r?.Production_Manager__c, pmP = pmUser && await people.byUser(pmUser).catch(() => null);
+        if (pmP && pmP.id !== person.id && (pmP.channel || 'both') !== 'app' && !pmP.disabled) {
+          await twilio?.send(pmP.phone, say(pmP.lang, 'txt.notice.problem', { who: w.Account?.Name || '', wo: w.WorkOrderNumber, by: person.name, subject, urgent: p.blocking ? say(pmP.lang, 'txt.notice.problemUrgent', {}) : '' })).catch(() => {});
+        }
+        return { ok: true, id };
+      }
       case 'progress.photo': {
         const w = job(p.workOrderId); need(field && w, 'not your job'); need(String(p.key || '').startsWith(`vista/${w.Id}/`), 'bad photo key');
         await store.put({ pk: `PROGRESS#${w.Id}`, sk: `PHOTO#${p.key}`, key: p.key, by: person.id, at: now().toISOString() });

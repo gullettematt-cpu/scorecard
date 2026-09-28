@@ -23,12 +23,12 @@ export async function shrink(file) {
   } catch { return file; } // a format the browser can't decode: keep the original
 }
 
-// draft = taken on the Pay screen but not submitted yet (it survives closing the app).
-export async function savePhoto({ key, blob, kind, workOrderId, draft = true }) {
-  await db.put('photos', { Id: key, blob, kind, workOrderId, draft, takenAt: new Date().toISOString(), uploaded: false });
+// draft = taken but not submitted yet (it survives closing the app). purpose = 'pay' or 'problem'.
+export async function savePhoto({ key, blob, kind, workOrderId, draft = true, purpose = 'pay' }) {
+  await db.put('photos', { Id: key, blob, kind, workOrderId, draft, purpose, takenAt: new Date().toISOString(), uploaded: false });
 }
 export const dropPhoto = key => db.del('photos', key);
-export const photosFor = async workOrderId => (await db.all('photos')).filter(p => p.workOrderId === workOrderId);
+export const photosFor = async (workOrderId, purpose = 'pay') => (await db.all('photos')).filter(p => p.workOrderId === workOrderId && (p.purpose || 'pay') === purpose);
 
 // Where to show a photo: the copy on this phone if there is one, else a short-lived link from the API.
 const urls = new Map();

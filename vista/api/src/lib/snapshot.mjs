@@ -10,7 +10,7 @@ import { asCrew } from './people.mjs';
 const SA_FIELDS = `Id, AppointmentNumber, Status, SchedStartTime, SchedEndTime, ActualStartTime, SS_Service_Appointment_Type__c,
   PulseM_Bio_Sent__c, SMS_Opt_out__c, Work_Order__c, Job__c,
   (SELECT ServiceResourceId, ServiceResource.Name, ServiceResource.AccountId, ServiceResource.Account.Name, Lead_Installer__c FROM ServiceResources)`;
-const WO_FIELDS = `Id, WorkOrderNumber, Subject, Status, Priority, Street, City, State, PostalCode, Latitude, Longitude, Description, CaseId,
+const WO_FIELDS = `Id, WorkOrderNumber, Subject, Status, Priority, Street, City, State, PostalCode, Latitude, Longitude, Description, CaseId, AccountId, ContactId,
   RecordType.Name, Account.Name, Contact.Phone, Contact.MobilePhone, WorkType.Name, Work_Type_Name__c, Job_Number__c,
   Job_Number__r.Name, Job_Number__r.Sales_Price__c, Job_Number__r.Total_SA_Expense_Labor__c, Job_Number__r.Product_type__c,
   Job_Number__r.Office__c, Job_Number__r.Office__r.Name, Job_Number__r.Production_Manager__c,
@@ -46,7 +46,7 @@ export async function loadSnapshot({ sf, people, store, person }) {
     sf.query(`SELECT ${EXPENSE_FIELDS} FROM SA_Expense__c WHERE Work_Order__c IN ${inList(woIds)} AND TEST_SA__c = false ORDER BY CreatedDate DESC`)
   ]);
   const jobIds = [...new Set(wos.map(w => w.Job_Number__c).filter(Boolean))];
-  const cases = jobIds.length ? await sf.query(`SELECT Id, CaseNumber, Subject, Status, CreatedDate, Job__c, Work_Type__c, Service_Type__c, Warranty_Type__c FROM Case WHERE Job__c IN ${inList(jobIds)} AND IsClosed = false`) : [];
+  const cases = jobIds.length ? await sf.query(`SELECT Id, CaseNumber, Subject, Status, CreatedDate, Job__c, Work_Type__c, Service_Type__c, Warranty_Type__c, Priority, Description FROM Case WHERE Job__c IN ${inList(jobIds)} AND IsClosed = false`) : [];
 
   // 3. Crews and PMs on these jobs (people Vista knows, for notices and their language)
   const peopleOut = new Map([[person.id, asCrew(person)]]);
@@ -82,7 +82,9 @@ export async function loadSnapshot({ sf, people, store, person }) {
   }
   const crewOf = woId => jobs.find(j => j.Id === woId);
   const draws = expenses.map(strip).map(d => ({ ...d, _crew: crewOf(d.Work_Order__c)?._crew, _lang: crewOf(d.Work_Order__c)?._lang }));
-  return { jobs, draws, cases: cases.map(strip), people: [...peopleOut.values()] };
+  // Cases: keep the photo keys from Vista's footer, not the whole description.
+  const caseOut = cases.map(strip).map(({ Description, ...c }) => ({ ...c, _photos: (String(Description || '').match(/Vista photos: (.+)/)?.[1] || '').split(' ').filter(Boolean) }));
+  return { jobs, draws, cases: caseOut, people: [...peopleOut.values()] };
 }
 
 // Every free-text string a person may read in their snapshot (for the translation cache).

@@ -214,6 +214,37 @@ test('app sync: installer starts, marks items, submits for pay; server enforces 
   for (const k of keys) assert.match(snap.photoUrls[k], /^https:\/\/s3\.test\//);
 });
 
+test('problem report: validated picklists, Service Case with the contract fields, photos checked, PM texted', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps), tok = tokenFor(deps, PEOPLE.tucker);
+  const sync = entries => call(h, 'POST', '/sync', { token: tok, body: { entries } }).then(r => r.json.results);
+  const wo = '0WO5e00000A1k9pEAB', sa = '08p5e0000001aA1', key = `vista/${wo}/${sa}/20260928T140000-problem-1.jpg`;
+  const base = { workOrderId: wo, subject: 'Rot in the sill at the picture window', description: 'Soft wood 18 inches along the sill.', Work_Type__c: 'Window', Service_Type__c: 'Warranty', Warranty_Type__c: 'Company Warranty', lang: 'en', lat: 33.4712, lng: -82.0019 };
+  let r = await sync([{ id: 1, kind: 'case.create', payload: { ...base, Warranty_Type__c: 'Whatever' } }]);
+  assert.equal(r[0].status, 422, 'picklist values must be the real ones');
+  r = await sync([{ id: 2, kind: 'case.create', payload: { ...base, workOrderId: '0WO5e00000B2m1qEAB' } }]);
+  assert.equal(r[0].status, 403, 'only jobs he can see');
+  r = await sync([{ id: 3, kind: 'case.create', payload: { ...base, photos: [{ kind: 'problem', key }] } }]);
+  assert.equal(r[0].status, 503, 'photo not uploaded yet: try again');
+  deps.photos.objects.set(key, 'jpeg');
+  deps.twilio.sent.length = 0;
+  r = await sync([{ id: 4, kind: 'case.create', payload: { ...base, blocking: true, photos: [{ kind: 'problem', key }] } }]);
+  assert.equal(r[0].ok, true);
+  const c = deps.sf.log.creates.find(x => x.sobject === 'Case').fields;
+  assert.equal(c.RecordTypeId, '0124P000000OMP8QAO'); assert.equal(c.Status, 'New'); assert.equal(c.Origin, 'In-Person');
+  assert.equal(c.Priority, 'High', "can't continue = High");
+  assert.equal(c.Subject, '[Vista] Rot in the sill at the picture window');
+  assert.equal(c.Job__c, 'a0J1'); assert.equal(c.Service_Appointment__c, sa); assert.equal(c.AccountId, '001A'); assert.equal(c.ContactId, '003A');
+  assert.equal(c.Original_Installer__c, PEOPLE.tucker.account.Id); assert.equal(c.Language, 'en_US'); assert.equal(c.Test_record__c, false);
+  assert.match(c.Description, /WO 00041872 · Dwayne Tucker · 33\.47120,-82\.00190/); assert.match(c.Description, new RegExp('Vista photos: ' + key));
+  assert.equal(c.Service_Issue__c, 'Rot in the sill at the picture window\n\nSoft wood 18 inches along the sill.');
+  assert.ok(deps.twilio.sent.some(m => m.to === PEOPLE.mike.phone && /reported a problem on Patricia Simmons \(WO 00041872\).*Work is stopped/.test(m.body)), 'PM texted');
+  // Back in the snapshot with its photo, and a link to view it.
+  const snap = (await call(h, 'GET', '/snapshot', { token: tok })).json;
+  const back = snap.cases.find(x => x.Subject === c.Subject);
+  assert.deepEqual(back._photos, [key]); assert.equal(back.Description, undefined, 'no raw description to the phone');
+  assert.match(snap.photoUrls[key], /^https:\/\/s3\.test\//);
+});
+
 test('PM: approve is refused while short, approves a complete one, issues a draw', async () => {
   const deps = await testDeps(), h = createHandler(async () => deps), tok = tokenFor(deps, PEOPLE.mike);
   const sync = entries => call(h, 'POST', '/sync', { token: tok, body: { entries } }).then(r => r.json.results);

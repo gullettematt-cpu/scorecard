@@ -50,6 +50,7 @@ VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against
 | `payrequest.approve` | PM only. Status must be New and every required deliverable ticked. Sets **Approved** and `Approver__c` = PM name. No approval process. |
 | `payrequest.sendBack` | PM only. Needs the missed items. The record stays New. |
 | `draw.issue` | PM only. Job must be eligible under `draw-rules.json`, have a progress photo, and the amount must be within what remains. Creates the record **Approved** with "job complete" **No**. The Salesforce flow emails Mike Duncan. |
+| `case.create` | Anyone on the job. Work type, who pays and which warranty must be real picklist values; photos must have landed (503 = retry). Creates a Service `Case` (record type `0124P000000OMP8QAO`): `[Vista]` subject, the crew's words in `Service_Issue__c` and in `Description`, which adds a footer (`WO · name · lat,lng` and the photo keys), `Origin` In-Person, `Priority` High when work is stopped, `Language`, `Original_Installer__c`. Texts the job's PM. |
 | `checklist`, `progress.photo`, `person.prefs`, `person.channel`, `language.request`, `vi.ask` | As the names say. |
 
 ## Scheduled jobs (worker)

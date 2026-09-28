@@ -11,6 +11,7 @@
     "test:sms": "node scripts/sms-test.mjs",
     "test:api": "node --test api/test/api.test.mjs",
     "test:pay": "node scripts/pay-test.mjs",
+    "test:problem": "node scripts/problem-test.mjs",
     "api:local": "node scripts/api-local.mjs",
     "sms:examples": "node scripts/sms-test.mjs --write"
   },

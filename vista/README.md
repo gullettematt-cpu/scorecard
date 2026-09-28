@@ -54,7 +54,7 @@ VISTA_API_URL=http://localhost:4174 npm run dev     # terminal 2: the app signs 
 
 Test numbers: 706-555-0112 (Tucker), 706-555-0107 (Luis), 706-555-0133 (Rafael), 706-555-0100 (Mike, PM). Photos taken in live mode upload to the local API's in-memory storage.
 
-Tests: `npm run test:api` (API), `npm run test:sms` (texts), `npm run test:pay` (Submit for Pay end to end in a browser; needs `npm run dev` running and Playwright installed).
+Tests: `npm run test:api` (API), `npm run test:sms` (texts), `npm run test:pay` and `npm run test:problem` (Submit for Pay and Report a problem end to end in a browser; need `npm run dev` running and Playwright installed).
 
 Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field names exactly, so swapping the fixture adapter for the Salesforce adapter (`web/src/data.js`) does not touch the screens.
 
@@ -69,5 +69,6 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Step 1g — language picker, bilingual mode, free-text translation, language requests
 - [x] Step 1h — Vista API on AWS: SMS login, Salesforce reads/writes with server-side rules, texts, cutoff notices, heartbeat, Vi; app live mode; SAM template and GitHub deploy (`docs/deploy-aws.md`)
 - [x] Step 2a — **Submit for Pay** in the app: camera per required shot (no photos, no pay), checklist and line items, amount within the contract, "Are you sure?"; works offline (photos wait on the phone, upload before the request syncs); send-back asks only for what the PM named; PM review shows the real photos
-- [ ] Step 2b — problem sheet (`Case`), Ask Vi screen
+- [x] Step 2b — **Report a problem**: a Service `Case` on the job in the crew's own words, optional photos, work type defaulted from the trade, who pays and which warranty in plain language (exact Salesforce picklist values behind them), "work is stopped" = High priority; the job's PM gets a text; works offline
+- [ ] Step 2c — Ask Vi screen
 - [ ] Step 3 — First AWS deploy (Donald), Twilio A2P registration, Augusta pilot

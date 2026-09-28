@@ -34,7 +34,7 @@ export function salesforceWorld() {
       const lines = wo.WorkOrderLineItems.map(li => ({ ...li, WorkOrderId: wo.Id }));
       w.WorkOrderLineItem.push(...lines);
       w.WorkOrder.push({ Id: wo.Id, WorkOrderNumber: wo.WorkOrderNumber, Subject: wo.Subject, Status: wo.Status, Priority: wo.Priority, Street: wo.Street, City: wo.City, State: wo.State, PostalCode: wo.PostalCode,
-        Latitude: wo.Latitude, Longitude: wo.Longitude, Description: wo.Description, CaseId: wo.CaseId, RecordType: wo.RecordType, Account: wo.Account, Contact: wo.Contact, WorkType: wo.WorkType,
+        Latitude: wo.Latitude, Longitude: wo.Longitude, Description: wo.Description, CaseId: wo.CaseId, RecordType: wo.RecordType, Account: wo.Account, Contact: wo.Contact, AccountId: wo.Account?.Id, ContactId: wo.Contact?.Id, WorkType: wo.WorkType,
         Work_Type_Name__c: wo.Work_Type_Name__c, Job_Number__c: job.Id,
         Job_Number__r: { Name: job.Name, Sales_Price__c: job.Sales_Price__c, Total_SA_Expense_Labor__c: job.Total_SA_Expense_Labor__c, Product_type__c: job.Product_type__c,
           Office__c: job.Office__r.Id, Office__r: job.Office__r, Production_Manager__c: PEOPLE.mike.userId, Production_Manager__r: { Name: PEOPLE.mike.name, MobilePhone: PEOPLE.mike.phone } } });

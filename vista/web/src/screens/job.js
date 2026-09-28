@@ -1,5 +1,6 @@
 import { t, pick, fmtDate, fmtTime, fmtMoney, lang } from '../i18n.js';
 import { db } from '../db.js';
+import { photoSrc } from '../photos.js';
 import { drawsFor, casesFor, drawStatus, drawAmount, checklistFor, contractAmount, laborDrawn, pmOf, photoCount, tradeKey, visit, visibleFor, manifestOf, WOLI_DONE, visitKind, isDraw, drawRules, drawEligible, remaining, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
 import { esc, icons, drawTone, mapsUrl, toast, confirmSheet, freeText, wireOriginalToggle } from '../ui.js';
@@ -122,7 +123,8 @@ export async function renderJob(root, ctx, id) {
 
     ${cs.length ? `<section class="sec">
       <h2>${esc(t('job.problems'))}</h2>
-      ${cs.map(c => `<div class="card"><div class="card-top"><div><h3 style="font-size:16px">${ft(c.Subject)}</h3><div class="sub">Case ${esc(c.CaseNumber)} · ${esc(fmtDate(c.CreatedDate, { month: 'short', day: 'numeric' }))}</div></div><span class="chip warn">${esc((k => t(k) === k ? c.Status : t(k))('case.' + c.Status))}</span></div></div>`).join('')}
+      ${cs.map(c => `<div class="card"><div class="card-top"><div><h3 style="font-size:16px">${ft(c.Subject)}</h3><div class="sub">${c._local ? esc(t('problem.justSent')) : `Case ${esc(c.CaseNumber)}`} · ${esc(fmtDate(c.CreatedDate, { month: 'short', day: 'numeric' }))}${c.Priority === 'High' ? ` · ${esc(t('problem.high'))}` : ''}</div></div><span class="chip ${c.Priority === 'High' ? 'bad' : 'warn'}">${esc((k => t(k) === k ? c.Status : t(k))('case.' + c.Status))}</span></div>
+        ${(c._photos || []).length ? `<div class="thumbs casethumbs">${c._photos.map(k => `<img data-photo="${esc(k)}" alt="${esc(t('problem.photoAlt'))}">`).join('')}</div>` : ''}</div>`).join('')}
     </section>` : ''}
 
     <section class="sec" style="padding-bottom:28px">
@@ -185,6 +187,8 @@ export async function renderJob(root, ctx, id) {
   });
 
   wireOriginalToggle(root, { showOriginal: t('tr.showOriginal'), showTranslation: t('tr.showTranslation') });
+  const remote = (await db.meta('photoUrls')) || {};
+  for (const img of root.querySelectorAll('img[data-photo]')) { const src = await photoSrc(img.dataset.photo, remote); if (src) img.src = src; else img.remove(); }
 
   // Measure tech finishes the visit: ServiceAppointment.Status = Completed + ActualEndTime.
   root.querySelector('#finishMeasure')?.addEventListener('click', async () => {
