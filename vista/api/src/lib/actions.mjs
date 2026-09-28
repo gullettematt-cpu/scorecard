@@ -16,7 +16,12 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
   async function importPhotos(list, job, sa, imported) {
     const out = [];
     for (const [i, p] of (list || []).entries()) {
-      if (p.key) { need(p.key.startsWith(`vista/${job.Id}/`), 'photo belongs to another job'); out.push({ kind: p.kind, key: p.key, taken_at: p.taken_at }); continue; }
+      if (p.key) {
+        need(p.key.startsWith(`vista/${job.Id}/`), 'photo belongs to another job');
+        // No photos, no pay: the upload must have landed. 503 = try again (the phone retries, it isn't refused).
+        try { await photos.head(p.key); } catch { throw new ActionError('photo still uploading', 503); }
+        out.push({ kind: p.kind, key: p.key, taken_at: p.taken_at }); continue;
+      }
       if (p.source && twilio) {
         const media = await twilio.fetchMedia(p.source);
         const key = photoKey({ workOrderId: job.Id, serviceAppointmentId: sa?.Id, kind: p.kind, n: i + 1, at: now() });

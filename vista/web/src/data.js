@@ -58,6 +58,7 @@ const apiAdapter = {
   async translations() { return apiAdapter.snap?.translations || (await db.meta('translations')) || { pairs: [] }; },
   // One outbox entry -> POST /sync. Rule refusals (4xx) are dropped and reported; network/5xx retry later.
   async push(entry) {
+    if (entry.kind === 'photo.upload') return uploadPhoto(entry.payload);
     try {
       const [r] = (await api.sync([{ id: `${deviceId()}:${entry.seq}`, kind: entry.kind, payload: entry.payload }])).results;
       if (r.ok) return { ok: true };
@@ -67,6 +68,18 @@ const apiAdapter = {
   }
 };
 
+// Outbox 'photo.upload': sign, PUT to storage, mark done. Runs before the pay request that lists the photo.
+async function uploadPhoto({ key, workOrderId }) {
+  const p = await db.get('photos', key);
+  if (!p || p.uploaded) return { ok: true };
+  try {
+    const { uploads } = await api.signPhotos(workOrderId, [key]);
+    await api.putPhoto(uploads[0].url, p.blob);
+    await db.put('photos', { ...p, uploaded: true });
+    return { ok: true };
+  } catch (e) { return e.status && e.status < 500 && e.status !== 401 ? { ok: true, rejected: e.message } : { ok: false, error: e }; }
+}
+
 export const adapter = apiMode ? apiAdapter : fixtureAdapter;
 
 export async function seedIfNeeded(crew) {
@@ -74,9 +87,13 @@ export async function seedIfNeeded(crew) {
     // Live: refresh from Salesforce whenever online; keep the outbox and local checklist progress.
     if (!navigator.onLine) return;
     const { jobs, draws, cases } = await adapter.load(crew);
+    // Pay requests made on this phone that haven't reached Salesforce yet stay on screen until they do.
+    const waiting = new Set((await db.all('outbox')).map(e => e.payload?.localId).filter(Boolean));
+    const local = (await db.all('draws')).filter(d => d._local && waiting.has(d.Id));
     await Promise.all([db.clear('jobs'), db.clear('draws'), db.clear('cases')]);
-    await db.putAll('jobs', jobs); await db.putAll('draws', draws); await db.putAll('cases', cases);
+    await db.putAll('jobs', jobs); await db.putAll('draws', [...local, ...draws]); await db.putAll('cases', cases);
     await db.meta('rollout', adapter.snap.rollout); await db.meta('translations', adapter.snap.translations);
+    await db.meta('photoUrls', adapter.snap.photoUrls || {});
     return;
   }
   const seeded = await db.meta('seeded');
@@ -84,6 +101,16 @@ export async function seedIfNeeded(crew) {
   const { jobs, draws, cases } = await adapter.load(crew);
   await Promise.all([db.clear('jobs'), db.clear('draws'), db.clear('cases'), db.clear('checklist'), db.clear('outbox')]);
   await db.putAll('jobs', jobs); await db.putAll('draws', draws); await db.putAll('cases', cases);
+  // Demo: what the last person did (started jobs, ticked items, submitted pay) carries over to the next one,
+  // so switching from an installer to Mike shows the request waiting for review.
+  const carry = await db.meta('demoCarry');
+  if (carry) {
+    const ids = new Set(jobs.map(j => j.Id));
+    await db.putAll('jobs', carry.jobs.filter(j => ids.has(j.Id)));
+    await db.putAll('draws', carry.draws.filter(d => ids.has(d.Work_Order__c)));
+    await db.putAll('checklist', carry.checklist);
+    await db.meta('demoCarry', null);
+  }
   await db.meta('seeded', crew.id + ':v3');
 }
 

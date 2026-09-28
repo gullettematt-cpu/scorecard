@@ -13,6 +13,9 @@ const deps = await testDeps();
 deps.config.appUrl = APP;
 const send = deps.twilio.send;
 deps.twilio.send = async (to, body) => { console.log(`  text to ${to}: ${body}`); return send(to, body); };
+// Photo storage stand-in: signed links point back here, and uploads land in memory.
+deps.photos.signPut = async key => `http://localhost:${PORT}/_s3/${key}`;
+deps.photos.signGet = async key => `http://localhost:${PORT}/_s3/${key}`;
 const handler = createHandler(async () => deps);
 
 http.createServer(async (req, res) => {
@@ -20,6 +23,12 @@ http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); } // API Gateway answers preflight in AWS
   const chunks = []; for await (const c of req) chunks.push(c);
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  if (url.pathname.startsWith('/_s3/')) {
+    const key = decodeURIComponent(url.pathname.slice(5));
+    if (req.method === 'PUT') { deps.photos.objects.set(key, Buffer.concat(chunks)); console.log(`PUT photo ${key} ${Buffer.concat(chunks).length} bytes`); res.writeHead(200, cors); return res.end(); }
+    const body = deps.photos.objects.get(key);
+    res.writeHead(body ? 200 : 404, { ...cors, 'content-type': 'image/jpeg' }); return res.end(body || '');
+  }
   const r = await handler({ rawPath: url.pathname, rawQueryString: url.search.slice(1), headers: req.headers, body: Buffer.concat(chunks).toString(),
     requestContext: { http: { method: req.method }, domainName: `localhost:${PORT}` } });
   console.log(`${req.method} ${url.pathname} ${r.statusCode}`);

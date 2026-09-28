@@ -21,7 +21,12 @@ export function createServices(deps) {
   async function snapshotFor(person, { translate = true } = {}) {
     const snap = await loadSnapshot({ sf, people, store, person });
     const pairs = translate && translations ? await translations.pairsFor(freeTexts(snap)) : [];
-    return { ...snap, rollout: await getRollout(), drawRules, translations: { pairs } };
+    return { ...snap, rollout: await getRollout(), drawRules, translations: { pairs }, photoUrls: translate ? await photoUrls(snap) : {} };
+  }
+  // One-hour view links for every photo on the pay requests and draws this person can see (PM review, job screen).
+  async function photoUrls(snap) {
+    const keys = [...new Set(snap.draws.flatMap(d => (readManifest(d[domain.MANIFEST_FIELD])?.photos || []).map(p => p.key).filter(Boolean)))];
+    return Object.fromEntries(await Promise.all(keys.map(async k => [k, await photos.signGet(k)])));
   }
 
   // App outbox -> Salesforce. Idempotent per entry id.

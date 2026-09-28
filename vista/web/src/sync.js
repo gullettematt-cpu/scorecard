@@ -7,6 +7,8 @@ export const onSync = fn => (listeners.add(fn), () => listeners.delete(fn));
 const emit = () => listeners.forEach(fn => fn());
 
 export async function enqueue(kind, payload) {
+  // A checklist save replaces the one still waiting for the same job (only the latest ticks matter).
+  if (kind === 'checklist') for (const e of await db.all('outbox')) if (e.kind === 'checklist' && e.payload?.workOrderId === payload.workOrderId) await db.del('outbox', e.seq);
   await db.put('outbox', { kind, payload, at: new Date().toISOString() });
   emit();
   if (navigator.onLine) flush();

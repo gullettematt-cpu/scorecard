@@ -3,6 +3,7 @@
 // sent to the installer in their language at the daily cutoff. See docs/approval-flow.md.
 import { t, tIn, pick, fmtDate, fmtMoney, moneyIn, lang } from '../i18n.js';
 import { db } from '../db.js';
+import { photoSrc } from '../photos.js';
 import { pendingReview, reviewLines, checklistFor, tradeKey, manifestOf, photoCount, drawAmount, MANIFEST_FIELD, MANIFEST_MARK } from '../data.js';
 import { enqueue } from '../sync.js';
 import { esc, icons, toast, confirmSheet, freeText, wireOriginalToggle } from '../ui.js';
@@ -42,7 +43,11 @@ export async function renderApprove(root, ctx, id) {
   const instLang = d._lang || m.lang || 'en';
   const state = new Map(lines.map(l => [l.id, { checked: false, reason: l.ok ? '' : 'missing' }]));
 
-  const photoTiles = (m.photos || []).map((p, i) => `<div class="ph"><span>${esc(t('kind.' + p.kind))}</span><small>#${i + 1}</small></div>`).join('');
+  const remote = (await db.meta('photoUrls')) || {};
+  const srcs = await Promise.all((m.photos || []).map(p => (p.key ? photoSrc(p.key, remote) : null)));
+  const photoTiles = (m.photos || []).map((p, i) => srcs[i]
+    ? `<a class="ph img" href="${esc(srcs[i])}" target="_blank" rel="noopener"><img src="${esc(srcs[i])}" alt="${esc(t('kind.' + p.kind))}" loading="lazy"><span>${esc(t('kind.' + p.kind))}</span></a>`
+    : `<div class="ph"><span>${esc(t('kind.' + p.kind))}</span><small>#${i + 1}</small></div>`).join('');
   const labelFor = l => ({
     photo: () => t('review.photo', { label: pick(l.label), have: l.have, need: l.need }),
     checklist: () => t('review.checklist', { have: l.have, need: l.need }),

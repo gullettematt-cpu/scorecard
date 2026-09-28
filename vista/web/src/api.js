@@ -31,6 +31,11 @@ export const api = {
   snapshot: () => req('GET', '/snapshot'),
   sync: entries => req('POST', '/sync', { entries }),
   prefs: p => req('PATCH', '/me/prefs', p),
-  signPhotos: (workOrderId, kind, count) => req('POST', '/photos/sign', { workOrderId, kind, count }),
+  signPhotos: (workOrderId, keys) => req('POST', '/photos/sign', { workOrderId, keys }),
+  // Straight to storage with the signed link; the API never handles the bytes.
+  async putPhoto(url, blob) {
+    const res = await fetch(url, { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: blob });
+    if (!res.ok) throw Object.assign(new Error(`upload ${res.status}`), { status: res.status });
+  },
   ask: (workOrderId, question) => req('POST', '/vi/ask', { workOrderId, question })
 };

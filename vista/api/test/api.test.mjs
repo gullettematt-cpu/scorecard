@@ -37,7 +37,7 @@ test('phone numbers normalize to E.164', () => {
 
 test('sign-in codes: one use, five tries, rate-limited, never sent to unknown numbers', async () => {
   const store = memoryStore(), texts = [];
-  let clock = Date.parse('2026-09-28T12:00:00Z');
+  let clock = Date.now(); // the memory store expires items against the real clock
   const auth = createAuth({ store, secret: 's', sendText: async (to, t) => texts.push({ to, t }), now: () => clock });
   await auth.start('+17065550199', null);
   assert.equal(texts.length, 0);
@@ -183,7 +183,17 @@ test('app sync: installer starts, marks items, submits for pay; server enforces 
   r = await sync([{ id: 20, kind: 'serviceappointment.start', payload: { serviceAppointmentId: '08p5e0000002bB3' } }]);
   assert.equal(r[0].status, 403);
   // pay request: photos below minimum refused; over-contract refused; then accepted
-  const photos = kinds => kinds.map((kind, i) => ({ kind, key: `vista/${wo}/${sa}/x-${kind}-${i}.jpg` }));
+  const photos = kinds => kinds.map(kind => ({ kind, key: `vista/${wo}/${sa}/20260928T120000-${kind}-1.jpg` }));
+  // The phone names its keys and asks for upload links; keys outside this job are refused.
+  const keys = photos(['before', 'flashing', 'serial', 'after']).map(p => p.key);
+  const signed = await call(h, 'POST', '/photos/sign', { token: tok, body: { workOrderId: wo, keys } });
+  assert.deepEqual(signed.json.uploads.map(u => u.key), keys);
+  assert.equal((await call(h, 'POST', '/photos/sign', { token: tok, body: { workOrderId: wo, keys: ['vista/OTHER/x/20260928T120000-before-1.jpg'] } })).statusCode, 422);
+  assert.equal((await call(h, 'POST', '/photos/sign', { token: tok, body: { workOrderId: '0WO5e00000B2m1qEAB', keys } })).statusCode, 403, 'not his job');
+  // Listed but not uploaded yet: "try again", not refused.
+  r = await sync([{ id: 29, kind: 'payrequest.create', payload: { workOrderId: wo, Amount__c: 1500, description: 'done', manifest: { photos: photos(['before', 'flashing', 'serial', 'after']) } } }]);
+  assert.equal(r[0].status, 503); assert.match(r[0].error, /still uploading/);
+  for (const k of keys) deps.photos.objects.set(k, 'jpeg'); // the phone's PUTs land
   r = await sync([{ id: 30, kind: 'payrequest.create', payload: { workOrderId: wo, Amount__c: 1500, description: 'done', manifest: { photos: photos(['before', 'after']) } } }]);
   assert.equal(r[0].status, 422); assert.match(r[0].error, /no photos, no pay/);
   r = await sync([{ id: 31, kind: 'payrequest.create', payload: { workOrderId: wo, Amount__c: 99999, description: 'done', manifest: { photos: photos(['before', 'flashing', 'serial', 'after']) } } }]);
@@ -199,6 +209,9 @@ test('app sync: installer starts, marks items, submits for pay; server enforces 
   // installers can't approve
   r = await sync([{ id: 40, kind: 'payrequest.approve', payload: { expenseId: r[0].id } }]);
   assert.equal(r[0].status, 403);
+  // The PM's snapshot carries view links for the photos.
+  const snap = (await call(h, 'GET', '/snapshot', { token: tokenFor(deps, PEOPLE.mike) })).json;
+  for (const k of keys) assert.match(snap.photoUrls[k], /^https:\/\/s3\.test\//);
 });
 
 test('PM: approve is refused while short, approves a complete one, issues a draw', async () => {

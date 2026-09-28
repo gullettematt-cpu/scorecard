@@ -1,6 +1,7 @@
 // IndexedDB wrapper. Offline-first: the phone always reads from here.
-const NAME = 'vista', VER = 1;
-const STORES = ['jobs', 'draws', 'cases', 'checklist', 'outbox', 'meta'];
+const NAME = 'vista', VER = 2;
+// photos: job photos taken in the app, kept on the phone until uploaded (Id = storage key).
+const STORES = ['jobs', 'draws', 'cases', 'checklist', 'outbox', 'meta', 'photos'];
 let dbp;
 
 function open() {

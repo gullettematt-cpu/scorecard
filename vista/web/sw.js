@@ -1,9 +1,9 @@
 // Vista service worker — app shell offline. Bump VERSION on every deploy.
-const VERSION = 'vista-0.10.0';
+const VERSION = 'vista-0.11.0';
 const SHELL = [
   './', './index.html', './styles.css', './manifest.webmanifest', './icons/vista.svg',
   './config.js', './src/app.js', './src/api.js', './src/rollout.js', './src/prefs.js', './src/translate.js', './src/i18n.js', './src/db.js', './src/data.js', './src/sync.js', './src/ui.js',
-  './src/screens/today.js', './src/screens/job.js', './src/screens/soon.js', './src/screens/approve.js',
+  './src/screens/today.js', './src/screens/job.js', './src/screens/soon.js', './src/screens/approve.js', './src/screens/pay.js', './src/photos.js',
   './i18n/en.json', './i18n/es.json',
   './content/checklists/windows.json', './content/checklists/siding.json', './content/draw-rules.json',
   './fixtures/crews.json', './fixtures/crew-12.json', './fixtures/crew-7.json', './fixtures/measure-3.json', './fixtures/rollout.json', './fixtures/translations.json'

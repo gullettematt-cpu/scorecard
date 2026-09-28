@@ -28,7 +28,8 @@ export async function renderJob(root, ctx, id) {
   const isInstaller = ctx.role === 'installer';
   const isField = isMeasure || isInstaller;
   const canStart = isField && sa.Status === 'Dispatched';
-  const canSubmit = isInstaller && sa.Status === 'In Progress';
+  const payReq = ds.find(d => d.Type__c === 'Vista' && !isDraw(d)), payState = payReq ? drawStatus(payReq) : null;
+  const canSubmit = isInstaller && ((sa.Status === 'In Progress' && !payReq) || payState === 'SentBack');
   // Line items: the installer (installation visits) or measure tech (measurement visits) marks them complete.
   const doneStatus = WOLI_DONE[visitKind(w)];
   const canMarkItems = isField && sa.Status === 'In Progress';
@@ -104,7 +105,7 @@ export async function renderJob(root, ctx, id) {
             <span class="chips" style="margin:0;justify-content:flex-end">${isDraw(d) ? `<span class="chip muted">${esc(t('pay.draw'))}</span>` : ''}<span class="chip ${drawTone(drawStatus(d))}">${esc(t('draw.' + drawStatus(d)))}</span></span></li>
             ${drawStatus(d) === 'SentBack' && manifestOf(d)?.approval?.missed?.length ? `<li class="missed"><b>${esc(t('draw.missedTitle'))}</b><ul>${manifestOf(d).approval.missed.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></li>` : ''}`).join('')}</ul>` : `<div class="hint" style="margin:0">${esc(t('draw.none'))}</div>`}
         <div class="stack">
-          ${isInstaller ? (canSubmit ? `<a class="act primary" href="#/draw?job=${esc(w.Id)}">${icons.draw} ${esc(t('job.submitPay'))}</a>` : `<button class="act" disabled style="opacity:.5">${icons.draw} ${esc(t('job.submitPay'))}</button><div class="hint" style="margin-top:0">${esc(t('job.startFirst'))}</div>`) : ''}
+          ${isInstaller ? (canSubmit ? `<a class="act primary" href="#/draw?job=${esc(w.Id)}">${icons.draw} ${esc(t(payState === 'SentBack' ? 'pay.fixIt' : 'job.submitPay'))}</a>` : payReq ? '' : `<button class="act" disabled style="opacity:.5">${icons.draw} ${esc(t('job.submitPay'))}</button><div class="hint" style="margin-top:0">${esc(t('job.startFirst'))}</div>`) : ''}
           ${isInstaller ? `<div class="hint" style="margin-top:0">${esc(t('job.askForDraw'))}</div>` : ''}
         </div>
         ${ctx.role === 'pm' ? (elig.ok ? `
@@ -191,7 +192,7 @@ export async function renderJob(root, ctx, id) {
     sa.Status = 'Completed'; sa.ActualEndTime = at; w.LastModifiedDate = at;
     await db.put('jobs', w);
     await enqueue('serviceappointment.complete', { serviceAppointmentId: sa.Id, Status: 'Completed', ActualEndTime: at });
-    toast(t('app.savedLocal'));
+    toast(t(navigator.onLine ? 'app.saved' : 'app.savedLocal'));
     renderJob(root, ctx, id);
   });
 
@@ -201,7 +202,7 @@ export async function renderJob(root, ctx, id) {
     sa.Status = 'In Progress'; sa.ActualStartTime = at; w.LastModifiedDate = at;
     await db.put('jobs', w);
     await enqueue('serviceappointment.start', { serviceAppointmentId: sa.Id, Status: 'In Progress', ActualStartTime: at });
-    toast(t('app.savedLocal'));
+    toast(t(navigator.onLine ? 'app.saved' : 'app.savedLocal'));
     renderJob(root, ctx, id);
   });
 }

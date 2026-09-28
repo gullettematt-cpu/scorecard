@@ -94,11 +94,17 @@ export function createHandler(getDeps) {
         const b = body(), snap = await svc.snapshotFor(person, { translate: false });
         const w = snap.jobs.find(j => j.Id === b.workOrderId);
         if (!w || person.role === 'pm') return json(403, { error: 'not your job' }, origin);
-        const count = Math.min(Math.max(1, Number(b.count) || 1), 20), at = new Date();
-        const uploads = await Promise.all(Array.from({ length: count }, async (_, i) => {
-          const key = photoKey({ workOrderId: w.Id, serviceAppointmentId: w.ServiceAppointment?.Id, kind: String(b.kind || 'photo').replace(/\W/g, ''), n: i + 1, at });
-          return { key, url: await deps.photos.signPut(key, b.contentType || 'image/jpeg') };
-        }));
+        // Keys named by the phone (it saves photos offline under their final key), or generated here.
+        let keys;
+        if (Array.isArray(b.keys)) {
+          const ok = new RegExp(`^vista/${w.Id}/[A-Za-z0-9]+/\\d{8}T\\d{6}-[A-Za-z0-9]+-\\d{1,3}\\.jpg$`);
+          if (!b.keys.length || b.keys.length > 20 || !b.keys.every(k => typeof k === 'string' && ok.test(k))) return json(422, { error: 'bad photo keys' }, origin);
+          keys = b.keys;
+        } else {
+          const count = Math.min(Math.max(1, Number(b.count) || 1), 20), at = new Date();
+          keys = Array.from({ length: count }, (_, i) => photoKey({ workOrderId: w.Id, serviceAppointmentId: w.ServiceAppointment?.Id, kind: String(b.kind || 'photo').replace(/\W/g, ''), n: i + 1, at }));
+        }
+        const uploads = await Promise.all(keys.map(async key => ({ key, url: await deps.photos.signPut(key, 'image/jpeg') })));
         return json(200, { uploads }, origin);
       }
       if (method === 'POST' && path === '/translate') {

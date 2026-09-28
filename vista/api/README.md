@@ -32,7 +32,7 @@ VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against
 | `GET /me`, `PATCH /me/prefs` `{lang, channel}` | signed in | Language `en` / `es` / `bi` and channel `app` / `text` / `both`, shared with texts. |
 | `GET /snapshot` | signed in | The caller's jobs, pay requests, draws, cases and people, in the same shapes as `web/fixtures/*` (Salesforce API names). Also returns the rollout switch, draw rules and translation pairs for free text. |
 | `POST /sync` `{entries:[{id, kind, payload}]}` | signed in | Replays the phone's outbox. Each `id` is applied once. Each entry gets `{ok}` or `{ok:false, status, error}` (a rule refusal). Kinds are listed below. |
-| `POST /photos/sign` `{workOrderId, kind, count}` | installers, measure techs | Signed S3 PUT URLs (15 minutes), only for the caller's own job. |
+| `POST /photos/sign` `{workOrderId, keys[]}` | installers, measure techs | Signed S3 PUT links (15 minutes), only for the caller's own job. The phone names each key (`vista/<WO>/<SA>/<time>-<kind>-<n>.jpg`) because it saves photos offline under their final key; the server checks every key belongs to that job. The older `{kind, count}` form still works. |
 | `POST /translate` `{texts[]}` | signed in | English/Spanish pairs, cached per text. |
 | `POST /vi/ask` `{workOrderId, question}` | signed in | Vi (Claude, `claude-sonnet-5`) answers with the job, its trade checklist and the person's language. |
 | `POST /sms/inbound` | Twilio | Checks the signature, then hands off to the worker and returns an empty TwiML reply. |
@@ -45,7 +45,7 @@ VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against
 | `serviceappointment.start` | Caller's own visit, only while Dispatched. |
 | `serviceappointment.complete` | Measure techs, once every line item is measured (installers complete through pay). |
 | `woli.status` | Installers can only set *Installation Completed*; measure techs only *Measurement Completed*. |
-| `payrequest.create` | Installer only. Amount must be within the contract and the trade's minimum photos present. Creates `SA_Expense__c` with Type **Vista**, Status **New**, "job complete" **Yes**, and the manifest in `Additional_Work_Performed_Description__c`. |
+| `payrequest.create` | Installer only. Amount must be within the contract and the trade's minimum photos present. Every listed photo must already be in storage (otherwise 503, and the phone retries). Creates `SA_Expense__c` with Type **Vista**, Status **New**, "job complete" **Yes**, and the manifest in `Additional_Work_Performed_Description__c`. |
 | `payrequest.resubmit` | Only after a send-back; asks only for the missing photos. |
 | `payrequest.approve` | PM only. Status must be New and every required deliverable ticked. Sets **Approved** and `Approver__c` = PM name. No approval process. |
 | `payrequest.sendBack` | PM only. Needs the missed items. The record stays New. |
