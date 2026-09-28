@@ -1,0 +1,518 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Weekly Sync — Call Center Operations</title><style>
+@page { size: Letter; margin: 0.6in 0.6in 0.7in; }
+body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 10.2pt; color: #16181d; line-height: 1.38; }
+h1 { font-size: 19pt; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 20px 0 6px; padding-bottom: 3px; border-bottom: 1.5px solid #16181d; page-break-after: avoid; }
+h3 { font-size: 11pt; margin: 14px 0 4px; page-break-after: avoid; }
+p { margin: 5px 0; }
+blockquote { margin: 8px 0; padding: 6px 10px; border-left: 3px solid #b98a2f; background: #f7f4ec; color: #3d434c; }
+table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 8.6pt; page-break-inside: auto; }
+th, td { border: 0.6pt solid #c9ced4; padding: 3px 5px; vertical-align: top; text-align: left; }
+th { background: #eef0f2; font-size: 7.8pt; text-transform: uppercase; letter-spacing: 0.05em; }
+tr { page-break-inside: avoid; }
+code { font-family: Menlo, Consolas, monospace; font-size: 8.8pt; background: #f2f3f5; padding: 0 3px; }
+pre { font-family: Menlo, Consolas, monospace; font-size: 8.4pt; background: #f2f3f5; padding: 8px 10px; white-space: pre-wrap; page-break-inside: avoid; }
+hr { border: 0; border-top: 0.8pt solid #d8dbe0; margin: 12px 0; }
+ul, ol { margin: 4px 0 6px 20px; padding: 0; }
+li { margin: 3px 0; }
+strong { font-weight: 700; }
+</style></head><body><h1>Weekly Sync — Call Center Operations</h1>
+<p><strong>Monday, September 28, 2026 · 10:00–11:00 ET · Matt's Office</strong><br />
+<strong>Covers the week of Monday Sep 21 – Sunday Sep 27</strong><br />
+Chair: Deb · Scoreboard: Heather · Data and air cover: Matt</p>
+<blockquote>
+<p>Operating rule: the scoreboard tells the story. Honest numbers over good-looking ones, always. A bad week reported straight is a good week for this room.</p>
+</blockquote>
+<p><strong>Where the numbers come from.</strong> Run-side numbers (appointments, demos, sold by market, month-to-date) are pulled live from Salesforce through the southern-vault snapshots this morning. Set-side numbers (sets, dials, day-0 set rate, lead hygiene, confirmer fail) come from the Monday Read, which is built on Matt's Mac from the Sep 21 pulls. The Sep 28 edition of the Monday Read has not been built yet, so this brief carries the Sep 21 edition's findings forward as the open items, and marks the set-side lines <strong>[Monday Read 9/28]</strong> to be dropped in once it runs. Nothing below is a guess.</p>
+<hr />
+<h2>Read this first — the five things that matter this week</h2>
+<ol>
+<li><strong>September is landing short.</strong> Sold month-to-date through Saturday is 338 deals, $5.82M. August finished at $7.4M. The daily ops alert tracked sold pace at 69% of last month on Sep 20 and 83% by Sep 26, so the month recovered but will not catch up. At last week's pace of roughly $197K a day, September lands near $6.4M with three selling days left.</li>
+<li><strong>Effort is at a record and conversion has halved.</strong> The Sep 21 Monday Read: 37,136 outbound dials in the week of Sep 14–20 (a quarter record) produced 400 sets. The week of June 22 produced 554 sets on 25,743 dials. Sets per 100 dials printed 1.03 and 1.08, the two lowest readings of the quarter, against 2.15 in June.</li>
+<li><strong>176 paid-for leads were never dialed, in the same week as the record dial count.</strong> Leads worked fell below the 95% floor for the first time. That is a routing problem, not a capacity problem. It is the first thing to fix, and it sits with Heather on the systems side.</li>
+<li><strong>Quality held while volume fell.</strong> Matured demo rate rose for a fifth straight edition to 77.5% blended, and the drop rate came in under the 21.9% baseline for the first time. The room did not book bad appointments to chase a count. Say this before the volume miss.</li>
+<li><strong>The run side had its best week in five.</strong> 684 sales visits scheduled, 433 demos, 148 sold, a 34% close on demos. Augusta sold 45 on 85 demos (53%). The daily alerts flagged Charleston, Chattanooga and Huntsville under 20% during the week; Charleston and Chattanooga recovered by Sunday, and only Huntsville is still there (3 sold on 16 demos, 19%). Sets going into Huntsville are converting poorly, so check confirm quality and source mix there before adding volume.</li>
+</ol>
+<hr />
+<h2>1. Scoreboard — Heather presents</h2>
+<h3>Run side: appointments → demos → sold, by market (Salesforce, sales visits scheduled in the last 7 days)</h3>
+<table>
+<thead>
+<tr>
+<th>Market</th>
+<th>Appts scheduled</th>
+<th>Demos</th>
+<th>Sold</th>
+<th>Close (sold ÷ demos)</th>
+<th>Demo ÷ appts</th>
+<th>Prior week (appts · demos · sold)</th>
+<th>Sold change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Augusta</td>
+<td>135</td>
+<td>85</td>
+<td>45</td>
+<td>53%</td>
+<td>63%</td>
+<td>108 · 72 · 31</td>
+<td>+14</td>
+</tr>
+<tr>
+<td>Atlanta</td>
+<td>132</td>
+<td>77</td>
+<td>23</td>
+<td>30%</td>
+<td>58%</td>
+<td>145 · 88 · 25</td>
+<td>-2</td>
+</tr>
+<tr>
+<td>Columbia</td>
+<td>66</td>
+<td>41</td>
+<td>11</td>
+<td>27%</td>
+<td>62%</td>
+<td>65 · 39 · 10</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>Knoxville</td>
+<td>54</td>
+<td>38</td>
+<td>8</td>
+<td>21%</td>
+<td>70%</td>
+<td>37 · 24 · 6</td>
+<td>+2</td>
+</tr>
+<tr>
+<td>Savannah</td>
+<td>54</td>
+<td>34</td>
+<td>11</td>
+<td>32%</td>
+<td>63%</td>
+<td>41 · 27 · 8</td>
+<td>+3</td>
+</tr>
+<tr>
+<td>Birmingham</td>
+<td>49</td>
+<td>33</td>
+<td>8</td>
+<td>24%</td>
+<td>67%</td>
+<td>69 · 42 · 13</td>
+<td>-5</td>
+</tr>
+<tr>
+<td>Charlotte</td>
+<td>43</td>
+<td>27</td>
+<td>7</td>
+<td>26%</td>
+<td>63%</td>
+<td>37 · 20 · 10</td>
+<td>-3</td>
+</tr>
+<tr>
+<td>Greenville</td>
+<td>41</td>
+<td>26</td>
+<td>12</td>
+<td>46%</td>
+<td>63%</td>
+<td>46 · 31 · 10</td>
+<td>+2</td>
+</tr>
+<tr>
+<td>Myrtle Beach</td>
+<td>39</td>
+<td>25</td>
+<td>7</td>
+<td>28%</td>
+<td>64%</td>
+<td>47 · 36 · 13</td>
+<td>-6</td>
+</tr>
+<tr>
+<td>Charleston</td>
+<td>25</td>
+<td>21</td>
+<td>10</td>
+<td>48%</td>
+<td>84%</td>
+<td>23 · 13 · 1</td>
+<td>+9</td>
+</tr>
+<tr>
+<td>Huntsville ⚠</td>
+<td>25</td>
+<td>16</td>
+<td>3</td>
+<td>19%</td>
+<td>64%</td>
+<td>28 · 20 · 6</td>
+<td>-3</td>
+</tr>
+<tr>
+<td>Chattanooga</td>
+<td>17</td>
+<td>8</td>
+<td>3</td>
+<td>38%</td>
+<td>47%</td>
+<td>20 · 10 · 2</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>Tri-Cities</td>
+<td>4</td>
+<td>2</td>
+<td>0</td>
+<td>0%</td>
+<td>50%</td>
+<td>5 · 4 · 1</td>
+<td>-1</td>
+</tr>
+<tr>
+<td><strong>Company</strong></td>
+<td><strong>684</strong></td>
+<td><strong>433</strong></td>
+<td><strong>148</strong></td>
+<td><strong>34%</strong></td>
+<td><strong>63%</strong></td>
+<td>671 · 426 · 136</td>
+<td>+12</td>
+</tr>
+</tbody>
+</table>
+<p>Pulled 2026-09-28 from the weekly funnel snapshot (sales-visit appointments with a scheduled start in the last 7 days, grouped by service territory; sold is the appointment's sold flag, so it differs from the by-close-date deal count below). ⚠ marks a market closing under 20% on 10+ demos, the same rule the daily ops alert uses. Five-week company trend: 08-31: 752 appts / 470 demos / 161 sold (34%) · 09-07: 594 appts / 427 demos / 130 sold (30%) · 09-14: 551 appts / 346 demos / 107 sold (31%) · 09-21: 671 appts / 426 demos / 136 sold (32%) · 09-28: 684 appts / 433 demos / 148 sold (34%).</p>
+<h3>Month to date, through Saturday Sep 27</h3>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th>September MTD</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Demos run</td>
+<td>1,524</td>
+<td></td>
+</tr>
+<tr>
+<td>Sold</td>
+<td>338 deals · $5,815,305</td>
+<td>Opportunity won, by close date</td>
+</tr>
+<tr>
+<td>Collected (paid in full)</td>
+<td>314 jobs · $5,125,292</td>
+<td></td>
+</tr>
+<tr>
+<td>Last month sold</td>
+<td>$7.4M</td>
+<td>pace alert: 83% of last month's pro-rated pace on Sep 26</td>
+</tr>
+<tr>
+<td>Selling days left</td>
+<td>3</td>
+<td>Mon–Wed</td>
+</tr>
+</tbody>
+</table>
+<p>Last week by day (demos run · deals sold · sold $): Mon 79 · 5 · $108K, Tue 89 · 20 · $296K, Wed 73 · 13 · $172K, Thu 69 · 13 · $183K, Fri 66 · 10 · $140K, Sat 50 · 14 · $281K. Week total 426 demos, 75 deals, $1.18M.</p>
+<h3>Set side: the Monday Read lines (Metrics Dictionary v1.1, rostered setters, Mon–Sun weeks)</h3>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th>Sep 7–13</th>
+<th>Sep 14–20</th>
+<th>Sep 21–27</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sets, all teams</td>
+<td>322</td>
+<td>400</td>
+<td>[Monday Read 9/28]</td>
+<td>band is 450–530; Labor Day explains half of the first week, nothing explains the second</td>
+</tr>
+<tr>
+<td>New leads (excl. Porch)</td>
+<td>near quarter high</td>
+<td>near quarter high</td>
+<td>[Monday Read 9/28]</td>
+<td>supply is not the constraint</td>
+</tr>
+<tr>
+<td>Day-0 set rate</td>
+<td>below quarter avg</td>
+<td>below quarter avg</td>
+<td>[Monday Read 9/28]</td>
+<td>18% target</td>
+</tr>
+<tr>
+<td>Outbound dials</td>
+<td>~31,300</td>
+<td>37,136</td>
+<td>[Monday Read 9/28]</td>
+<td>quarter record</td>
+</tr>
+<tr>
+<td>Sets / 100 dials</td>
+<td>1.03</td>
+<td>1.08</td>
+<td>[Monday Read 9/28]</td>
+<td>2.15 in the week of June 22</td>
+</tr>
+<tr>
+<td>Leads worked</td>
+<td>≥95%</td>
+<td>below 95%</td>
+<td>[Monday Read 9/28]</td>
+<td>first miss of the floor; 176 never touched</td>
+</tr>
+<tr>
+<td>Matured demo rate (blended, 3 teams)</td>
+<td>—</td>
+<td>77.5%</td>
+<td>[Monday Read 9/28]</td>
+<td>fifth straight rise; ≥78% target</td>
+</tr>
+<tr>
+<td>Drop rate (issued, no demo)</td>
+<td>—</td>
+<td>under 21.9%</td>
+<td>[Monday Read 9/28]</td>
+<td>first reading under baseline</td>
+</tr>
+<tr>
+<td>Confirmer fail (matured)</td>
+<td>—</td>
+<td>~15%</td>
+<td>[Monday Read 9/28]</td>
+<td>flat all quarter; 15% tripwire</td>
+</tr>
+</tbody>
+</table>
+<p>Contact rate and speed to lead on fresh flows are not in the Monday Read yet. Heather to bring them from Five9 this week or say what is missing.</p>
+<hr />
+<h2>2. Cadence and list health — systems: Heather · people: Deb</h2>
+<p>Is every pool owned, loaded, and moving?</p>
+<table>
+<thead>
+<tr>
+<th>Pool</th>
+<th>Owner</th>
+<th>Where it stood going into this week</th>
+<th>Question for the room</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fresh-lead flows</td>
+<td>Heather (systems)</td>
+<td>176 fresh leads never dialed in a record dial week. Either the dialer is reworking old records instead of feeding new ones to the top of the queue, or new leads are landing where the dialer is not looking. Same signature as the event-lead defect.</td>
+<td>What is the worked % as of this morning, and where did the 176 land?</td>
+</tr>
+<tr>
+<td>Fresh-lead routing (AviTrak → Five9)</td>
+<td>Heather</td>
+<td>Routing failures and dead air two weeks ago. Five9 ticket open, root cause still owed. Daily reconciliation of AviTrak tracking numbers to active Five9 DNISs agreed 9/21.</td>
+<td>Is the daily reconciliation running? Who ran it today, and where is the log?</td>
+</tr>
+<tr>
+<td>Dial allocation</td>
+<td>Deb · Heather</td>
+<td>Specialists went 1,018 → 3,187 dials and LightFire took on 2,738 more in the record week. US in-house: fewer dials, fewer sets, the only efficiency decline (1.51 → 1.09). Nobody told the report why.</td>
+<td>Was this a deliberate decision or an automated queue change? Answer due today.</td>
+</tr>
+<tr>
+<td>Event-lead campaigns</td>
+<td>Heather</td>
+<td>Greek Festival 56 leads at 10.7% day-0, Arts in the Heart 53 at 9.4%. Canvass runs 48–56%. Fourth edition in a row that freshly captured event leads underperform by 4–5x. Longest-running unfixed item in the report.</td>
+<td>Where do event leads enter, and which lane picks them up?</td>
+</tr>
+<tr>
+<td>Confirmations</td>
+<td>Heather / Deb</td>
+<td>Confirmation-call problem raised 9/11. One example with screenshots or a short video still owed to George.</td>
+<td>Was the example sent?</td>
+</tr>
+<tr>
+<td>Recovery program (dials → re-sets → runs)</td>
+<td>Heather leads</td>
+<td>Missed leads and callback lists not yet routed into Five9 (open 9/25). Return-voicemail and callback tracking gap since 8/17.</td>
+<td>What lists are loaded today, how many records, who is dialing them?</td>
+</tr>
+<tr>
+<td>Cancel-saves</td>
+<td>Deb · Donald (Salesforce list)</td>
+<td>Erica works a same-day cancel list. No brand-new reps on saves, never the original rep. Cancellations logged the day they happen.</td>
+<td>Is the list generating on its own each morning? Cancels last week, saves attempted, saves won?</td>
+</tr>
+<tr>
+<td>Rehash and previous customers</td>
+<td>Deb</td>
+<td>Rehash down roughly 50 versus the same month last year. Reps holding leads or talking the product down.</td>
+<td>Which reps? Has the list gone to Scott?</td>
+</tr>
+<tr>
+<td>Third-party setters</td>
+<td>Deb</td>
+<td>Executive Boutique's four weakest setters flagged to Jasmine: train or replace.</td>
+<td>Outcome?</td>
+</tr>
+<tr>
+<td>Service-call line</td>
+<td>Deb / Lori</td>
+<td>Danielle → Hope → Cassie, overflow to a message or Revvin voice AI that opens a case. Never back to the phone room.</td>
+<td>Is the IVR built in Five9? Seat count verified with Lori before ordering?</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>3. Quality and coaching — patterns, not blame</h2>
+<ul>
+<li><strong>Lead with the good news.</strong> Matured demo rate 77.5% blended and rising five editions running; LightFire above the 78% target for a second edition; US in-house lowest but up four editions in a row. Drop rate under baseline for the first time. 241 issued appointments never resulted this quarter (3.7%), which is a paperwork problem, not a performance one.</li>
+<li><strong>Joe Harper</strong> is the worst setter on the drop-rate board for the third edition (flagged 8/17 and 9/8). At his volume the gap is roughly 35 demos a quarter. No coaching has been logged. This is the single most specific coaching item in the report.</li>
+<li><strong>Sherice Bailey</strong> logged 113 confirmations at 17.7% fail while setting 5 appointments in two weeks, down from 22. She has changed jobs without anyone deciding it. Make it official or move her back.</li>
+<li><strong>Balto.</strong> Scripts, PIP documents, and KPI docs went to Deb 8/24. Missing scripts still to be rebuilt, including the cancel-save script. Playbooks by product and lead source, scoring or leaderboards, and the QA or trainer posting are still open. Which Balto signals did we look at this week, and what are the top two themes?</li>
+<li><strong>Disposition integrity.</strong> Result-code gaming (no-shows entered when quote photos exist, no-shows logged days late). Donald proposed a validation rule that blocks an invalid result when a quote exists. Results get captured from the driveway.</li>
+</ul>
+<hr />
+<h2>4. Staffing and coverage</h2>
+<ul>
+<li><strong>Desk balance is the item for Deb.</strong> Vickie Boyd went from 14.7 to 23.7 confirmations a day (13.7% fail, best on the board). Flavio Dealmeida 14.3 → 18.6. Heather Mohan 10.7 → 8.1 as she moves into the marketing systems role, which is right, but her share landed almost entirely on Vickie. Roughly a quarter of the desk sits on one person with no slack behind her.</li>
+<li>Prime-time coverage target is 8 AM to 8 PM. Scheduling against lead volume by market and shift: <strong>[Five9, Heather]</strong>.</li>
+<li>Five9 seats run about $149 per seat plus taxes. Verify the seat count with Lori before ordering. A Five9 credit is pending; hold new asks unless urgent.</li>
+<li>Heather's office, laptop, and camera were part of the transition plan. Confirm they are in place, and confirm her Salesforce access request has gone in.</li>
+</ul>
+<hr />
+<h2>5. Projects in flight — max three</h2>
+<p>Each project in one line: owner, status, next milestone, on or off track. New projects wait for an open slot, and nothing gets added without naming what it displaces.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Project</th>
+<th>Owner</th>
+<th>Status</th>
+<th>Next milestone</th>
+<th>On track?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Fresh-lead routing: fix the untouched-lead defect and the event-lead entry point; daily AviTrak-to-DNIS reconciliation</td>
+<td>Heather (George until handoff completes)</td>
+<td>176 untouched leads last edition; Five9 RCA owed; reconciliation agreed 9/21</td>
+<td>Leads worked back above 95% on the 9/28 Read; five straight days of the reconciliation log</td>
+<td>[fill]</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Recovery program into Five9: missed leads and callback lists</td>
+<td>Heather (systems) · Deb (people)</td>
+<td>Open since 9/25</td>
+<td>Lists loaded and dialing; dials → re-sets → runs on next Monday's card</td>
+<td>[fill]</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Balto rebuild and QA role</td>
+<td>Deb</td>
+<td>Docs shared 8/24; backend setup and triggers sent to Deb's team</td>
+<td>Cancel-save script live; playbooks by product and source; QA posting up</td>
+<td>[fill]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Waiting for a slot (say what it displaces):</strong> exclusive-lead program and its Salesforce integration · Aqua Finance workflow · Salesforce Contact Center agent · Genesys evaluation · customer-care IVR in Five9 · branded outbound calling and spam remediation · Slack pilot.</p>
+<hr />
+<h2>6. Blockers and decisions — needs Matt or Deb to clear</h2>
+<p><strong>Decisions</strong><br />
+- <strong>Sherice Bailey's role.</strong> Setter or confirmer. Decide it today.<br />
+- <strong>Dial allocation.</strong> Who owns the queue allocation between LightFire, US in-house, EB and the Specialists, and how does a change get communicated?<br />
+- <strong>LightFire / Lavin transfers.</strong> Contract mechanics, transfer cost, and dollar value before the workflow changes (open since 9/4).<br />
+- <strong>Exclusive-lead program.</strong> Which markets get bath leads first, SMS approval, Atlanta ↔ Savannah quantity shifts, leadership sign-off.<br />
+- <strong>Marketing spend.</strong> 22% of sales against a 15% target, $5.72 cost per issued lead. Cuts come from flows that are not producing, not from the ones that are.</p>
+<p><strong>Blockers</strong><br />
+- Five9 root-cause analysis on the call failures.<br />
+- Reps holding rehash or miscoding results. Derek asked Deb to name the reps so Scott can act.<br />
+- Lead counts on the transfer and monthly reports for the same comparison window (Matt).</p>
+<p><strong>Not this room's to fix, and worth saying so</strong><br />
+- <strong>Atlanta's drop rate.</strong> Worst office on the board for six editions, no owner, no diagnosis. At the room average it would return on the order of a hundred demos a quarter. Matt takes it to Derek and the SLT. Deb should stop being shown it.<br />
+- <strong>Market close rates</strong> in Charleston, Chattanooga, and Huntsville are a sales-floor item. The call center's part is confirm quality and source mix into those markets.</p>
+<p><strong>Changes we are making this week, and how we will know they worked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Owner</th>
+<th>Proof next Monday</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fresh leads to the top of the queue; untouched leads worked same day</td>
+<td>Heather</td>
+<td>Leads worked ≥95% on the 9/28 Read, untouched near zero</td>
+</tr>
+<tr>
+<td>Daily AviTrak-to-DNIS reconciliation</td>
+<td>Heather</td>
+<td>Five days logged, zero unrouted numbers, no dead-air reports</td>
+</tr>
+<tr>
+<td>Recovery lists loaded into Five9</td>
+<td>Heather / Deb</td>
+<td>Dials, re-sets, and runs from the recovery pool on the scoreboard</td>
+</tr>
+<tr>
+<td>Desk load rebalanced off Vickie Boyd</td>
+<td>Deb</td>
+<td>Confirmations per day spread across three people; fail rates hold</td>
+</tr>
+<tr>
+<td>Joe Harper coaching logged</td>
+<td>Deb</td>
+<td>Entry in the coaching log; drop rate trend by 10/12</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Coming up</strong><br />
+- <strong>October 1 PIT program</strong> for GSs and OSRs starts Thursday.<br />
+- The George handoff continues; target window is late September through October. Heather is the named successor on the systems side.</p>
+<hr />
+<h2>Appendix A — Monday morning pull list (Heather, before 9:30)</h2>
+<ol>
+<li>Five9: dials, contacts, sets, and confirms by campaign and by market; contact rate and speed to lead on the fresh-lead campaigns.</li>
+<li>Five9: agents logged in per campaign and records remaining per list.</li>
+<li>AviTrak: active tracking numbers versus Five9 DNIS list, with the reconciliation log.</li>
+<li>Salesforce: cancels received last week, saves attempted and won; rehash leads issued versus the same week last year.</li>
+<li>Ops alerts from the weekend.</li>
+</ol>
+<h2>Appendix B — Building the Sep 28 Monday Read (Matt, on the Mac)</h2>
+<p>The Sep 21 edition was built from <code>reports/data/2026-09-21/</code> with the four scripts in <code>reports/src/</code> (<code>monday_week</code>, <code>monday_people</code>, <code>monday_charts</code>, <code>build_read</code>, plus <code>monday_cards</code> for the people scorecards). To produce Sep 28:</p>
+<ol>
+<li>Pull into <code>reports/data/2026-09-28/</code> the same files the 9/21 scripts read: <code>q_opps.csv</code>, <code>q_leads.csv</code>, <code>q_cohort.csv</code>, <code>dials_q.csv</code>, <code>dials_last.json</code>, <code>dials_prior.json</code>, <code>dials_qtr.json</code>, <code>users.json</code>.</li>
+<li>Copy each <code>*_2026-09-21.py</code> to <code>*_2026-09-28.py</code>. In <code>monday_week</code> set <code>RUN=2026-09-28</code> and <code>Q0=2026-06-29</code> so the 13 weeks end Sep 27; the matured window (RUN−60 to RUN−8) and the drop window follow from that.</li>
+<li>In <code>build_read</code>, set the week tuples to Sep 14–20 (prior) and Sep 21–27 (last), and set <code>PREV</code> to the 9/21 edition's matured demo rates so the "last edition" column is right.</li>
+<li>Rewrite the narrative against the new facts. The carried-forward items to check first: leads worked back above 95%, the dial allocation, event-lead day-0, Vickie Boyd's per-day load, Joe Harper, Sherice Bailey, Atlanta.</li>
+<li>Paste the scoreboard lines into section 1 of this brief and remove the <strong>[Monday Read 9/28]</strong> markers.</li>
+</ol></body></html>
