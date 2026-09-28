@@ -1,8 +1,8 @@
 // Vista service worker — app shell offline. Bump VERSION on every deploy.
-const VERSION = 'vista-0.9.0';
+const VERSION = 'vista-0.10.0';
 const SHELL = [
   './', './index.html', './styles.css', './manifest.webmanifest', './icons/vista.svg',
-  './src/app.js', './src/rollout.js', './src/prefs.js', './src/translate.js', './src/i18n.js', './src/db.js', './src/data.js', './src/sync.js', './src/ui.js',
+  './config.js', './src/app.js', './src/api.js', './src/rollout.js', './src/prefs.js', './src/translate.js', './src/i18n.js', './src/db.js', './src/data.js', './src/sync.js', './src/ui.js',
   './src/screens/today.js', './src/screens/job.js', './src/screens/soon.js', './src/screens/approve.js',
   './i18n/en.json', './i18n/es.json',
   './content/checklists/windows.json', './content/checklists/siding.json', './content/draw-rules.json',
@@ -19,7 +19,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   // API calls: network first, cache fallback. Shell: cache first, refresh in background.
-  const isApi = url.pathname.includes('/api/');
+  const isApi = url.pathname.includes('/api/') || url.pathname.endsWith('/config.js');
   e.respondWith(isApi ? networkFirst(e.request) : cacheFirst(e.request));
 });
 async function cacheFirst(req) {

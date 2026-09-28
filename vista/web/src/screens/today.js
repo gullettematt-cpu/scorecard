@@ -1,3 +1,4 @@
+import { apiMode } from '../api.js';
 import { t, fmtDate, fmtTime } from '../i18n.js';
 import { db } from '../db.js';
 import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview, onVista, assignedTo } from '../data.js';
@@ -44,7 +45,7 @@ export async function renderToday(root, ctx) {
   if (ctx.role !== 'pm' && !jobs.some(w => assignedTo(ctx, w) && onVista(ctx, w))) {
     root.innerHTML = `${header(ctx, `<div class="greet">${esc(t(greetingKey(), { name: ctx.crew.lead.name.split(' ')[0] }))}</div>`)}
       <div class="soon"><div class="big">🕓</div><h1>${esc(t('rollout.offTitle'))}</h1><p>${esc(t('rollout.offBody'))}</p>
-      <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t('app.switchCrew'))}</button></div></div>`;
+      <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button></div></div>`;
     root.querySelector('#switchCrew').onclick = ctx.switchCrew;
     return;
   }
@@ -66,7 +67,7 @@ export async function renderToday(root, ctx) {
       ${later.map(w => card(w, draws, ctx)).join('')}
     </section>` : ''}
     <section class="sec" style="padding-bottom:24px">
-      <button class="act" id="switchCrew" style="width:100%">${esc(t('app.switchCrew'))}</button>
+      <button class="act" id="switchCrew" style="width:100%">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button>
     </section>`;
   root.querySelector('#switchCrew').onclick = ctx.switchCrew;
 }

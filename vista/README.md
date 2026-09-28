@@ -20,7 +20,8 @@ Spanish and English at launch.
 | Path | What |
 |---|---|
 | `web/` | Static PWA. No framework, no build step. Offline-first (IndexedDB + service worker + outbox). |
-| `api/` | Serverless API contract: SMS code verification, Salesforce (JWT bearer, integration user), photo upload. Plus the 2-hour heartbeat. **Not wired yet (Step 2).** |
+| `api/` | The Vista API on AWS Lambda: text-code sign-in, Salesforce (JWT bearer, integration user), photo upload, Vi, the text channel, the 10 AM cutoff and the 2-hour heartbeat. See `api/README.md`. |
+| `template.yaml`, `deploy/` | The whole AWS stack (SAM) and the GitHub deploy role. Setup: `docs/deploy-aws.md`. |
 | `salesforce/` | The Vista picklist value, the *Vista - Pay Request Submitted* flow, list views, and sandbox-only deploy scripts. See `salesforce/README.md`. |
 | `config/` | `rollout.json`: the on/off switch by location and account. |
 | `docs/` | `rollout.md` (switch and production run order), `approval-flow.md` (pay requests, draws, daily ACH run), `data-contract.md` (fields the five screens read/write), `describe.sh` (dumps `sf sobject describe` for the four objects), architecture notes. |
@@ -43,6 +44,16 @@ Pick a login on first load:
 
 **By text:** open http://localhost:4173/dev/sms.html for two simulated phones. `npm run test:sms` runs the text conversations.
 
+**Live mode (the real API code, pretend Salesforce and Twilio):**
+
+```bash
+npm install
+npm run api:local                                   # terminal 1: API on :4174; sign-in codes print here
+VISTA_API_URL=http://localhost:4174 npm run dev     # terminal 2: the app signs in by text code
+```
+
+Test numbers: 706-555-0112 (Tucker), 706-555-0107 (Luis), 706-555-0133 (Rafael), 706-555-0100 (Mike, PM). `npm run test:api` runs the API tests.
+
 Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field names exactly, so swapping the fixture adapter for the Salesforce adapter (`web/src/data.js`) does not touch the screens.
 
 ## Status
@@ -54,5 +65,6 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Step 1e — rollout switch by location/account; production deploy path (`--prod`)
 - [x] Step 1f — Vista by text: shared engine, two-phone simulator, conversation tests
 - [x] Step 1g — language picker, bilingual mode, free-text translation, language requests
-- [ ] Step 2 — Submit for Pay (camera, manifest, `SA_Expense__c` write), problem sheet (`Case`); deploy `salesforce/` to DevSandi
-- [ ] Step 3 — Ask Vi (Claude API), SMS login, cutoff notices, heartbeat
+- [x] Step 1h — Vista API on AWS: SMS login, Salesforce reads/writes with server-side rules, texts, cutoff notices, heartbeat, Vi; app live mode; SAM template and GitHub deploy (`docs/deploy-aws.md`)
+- [ ] Step 2 — Submit for Pay camera screen in the app (texts can already submit pay), problem sheet (`Case`), Ask Vi screen
+- [ ] Step 3 — First AWS deploy (Donald), Twilio A2P registration, Augusta pilot

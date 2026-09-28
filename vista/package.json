@@ -9,7 +9,24 @@
     "build": "bash scripts/build.sh",
     "describe": "bash docs/describe.sh",
     "test:sms": "node scripts/sms-test.mjs",
+    "test:api": "node --test api/test/api.test.mjs",
+    "api:local": "node scripts/api-local.mjs",
     "sms:examples": "node scripts/sms-test.mjs --write"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/lib-dynamodb": "^3",
+    "@aws-sdk/client-s3": "^3",
+    "@aws-sdk/s3-request-presigner": "^3",
+    "@aws-sdk/client-ssm": "^3",
+    "@aws-sdk/client-lambda": "^3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

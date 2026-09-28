@@ -2,7 +2,7 @@
 import { loadLang, lang, t } from './i18n.js';
 import { db } from './db.js';
 import { adapter, seedIfNeeded } from './data.js';
-import { pendingCount, onSync, flush, enqueue } from './sync.js';
+import { pendingCount, onSync, flush, enqueue, rejected } from './sync.js';
 import { getPrefs, setPrefs } from './prefs.js';
 import { makeTranslator } from './translate.js';
 import { esc, icons, languageSheet, LANG_LABEL, toast } from './ui.js';
@@ -10,6 +10,7 @@ import { renderToday } from './screens/today.js';
 import { renderJob } from './screens/job.js';
 import { renderSoon } from './screens/soon.js';
 import { renderApprove } from './screens/approve.js';
+import { apiMode, api, session, SignInNeeded } from './api.js';
 
 const root = document.getElementById('app');
 const nav = document.getElementById('nav');
@@ -79,7 +80,45 @@ async function pickCrew() {
   });
 }
 
+// Live mode: sign in with a code texted to the number on file. Resolves with the person (crew shape).
+async function signIn() {
+  let phone = '';
+  const draw = (step, msg = '') => {
+    root.innerHTML = `<div class="picker">
+      <div class="hdr-row"><div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
+        <button class="act" id="pickLang" style="flex:none;min-height:40px;padding:0 12px" aria-label="${esc(t('lang.title'))}">🌐 ${esc(LANG_LABEL[lang()])}</button></div>
+      <h1>${esc(t('signin.title'))}</h1><p>${esc(msg || t('signin.hint'))}</p>
+      <form id="signin" class="card" style="display:grid;gap:12px">
+        ${step === 'phone'
+          ? `<label>${esc(t('signin.phone'))}<input name="v" type="tel" inputmode="tel" autocomplete="tel" required value="${esc(phone)}" style="width:100%;font-size:20px;padding:10px"></label>
+             <button class="act primary">${esc(t('signin.send'))}</button>`
+          : `<label>${esc(t('signin.code'))}<input name="v" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required style="width:100%;font-size:24px;letter-spacing:6px;padding:10px"></label>
+             <button class="act primary">${esc(t('signin.verify'))}</button>
+             <button type="button" class="act" id="again">${esc(t('signin.resend'))}</button>`}
+      </form></div>`;
+    nav.innerHTML = '';
+  };
+  return new Promise(resolve => {
+    const wire = (step, msg) => {
+      draw(step, msg);
+      root.querySelector('#pickLang').onclick = async () => { if (await openLanguage()) wire(step, msg); };
+      root.querySelector('#again')?.addEventListener('click', () => wire('phone'));
+      root.querySelector('#signin').onsubmit = async e => {
+        e.preventDefault();
+        const v = e.target.v.value.trim();
+        if (!navigator.onLine) return wire(step, t('signin.offline'));
+        try {
+          if (step === 'phone') { phone = v; await api.start(phone, ctx.pickedLang || lang()); wire('code', t('signin.sent')); }
+          else resolve(await api.verify(phone, v));
+        } catch { wire(step, step === 'code' ? t('signin.bad') : t('signin.offline')); }
+      };
+    };
+    wire('phone');
+  });
+}
+
 async function switchCrew() {
+  if (apiMode) session.clear();
   localStorage.removeItem('vista.crew'); localStorage.removeItem('vista.lang');
   ctx.pickedLang = null; ctx.pendingRequest = null;
   await db.wipe();
@@ -103,6 +142,7 @@ async function route() {
 }
 
 async function boot() {
+  if (apiMode) return bootLive();
   let crewId = localStorage.getItem('vista.crew');
   let crews = await adapter.crews();
   let crew = crews.find(c => c.id === crewId);
@@ -126,9 +166,39 @@ async function boot() {
   flush();
 }
 
+// Live mode: same screens, data from the Vista API. Works offline from the last snapshot once signed in.
+async function bootLive() {
+  let crew = session.token() && session.person();
+  await loadLang(ctx.pickedLang || crew?.lang || (navigator.language.startsWith('es') ? 'es' : 'en'));
+  if (!crew) {
+    await db.wipe();
+    crew = await signIn();
+    if (ctx.pickedLang && ctx.pickedLang !== crew.lang) { crew.lang = ctx.pickedLang; await enqueue('person.prefs', { personId: crew.id, lang: ctx.pickedLang }); }
+    if (ctx.pendingRequest) await enqueue('language.request', { personId: crew.id, name: crew.name, language: ctx.pendingRequest });
+    session.savePerson(crew);
+  }
+  // The server is the source of truth for the language; the phone keeps a copy for texts and offline use.
+  setPrefs(crew.id, { lang: getPrefs(crew.id).lang || crew.lang });
+  await loadLang(getPrefs(crew.id).lang);
+  Object.assign(ctx, { crew, role: crew.role || 'installer', account: crew.account || null, crewId: crew.id });
+  try { await seedIfNeeded(crew); }
+  catch (e) { if (e instanceof SignInNeeded) return switchCrew(); /* offline or API down: keep last snapshot */ }
+  ctx.tr = makeTranslator(await adapter.translations());
+  ctx.rollout = await adapter.rollout();
+  await route();
+  flush();
+}
+
 window.addEventListener('hashchange', route);
 window.addEventListener('online', route);
 window.addEventListener('offline', route);
-onSync(async () => { const n = await pendingCount(); if (n !== ctx.pending) route(); });
+onSync(async () => {
+  // A change the server refused (e.g. over the contract amount): say so, then reload the truth.
+  if (rejected.length) {
+    const r = rejected.splice(0); toast(t('app.syncRefused', { error: r.map(x => x.error).join('; ') }));
+    if (apiMode && ctx.crew) { try { await seedIfNeeded(ctx.crew); } catch {} return route(); }
+  }
+  const n = await pendingCount(); if (n !== ctx.pending) route();
+});
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
 boot();

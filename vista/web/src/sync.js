@@ -12,12 +12,14 @@ export async function enqueue(kind, payload) {
   if (navigator.onLine) flush();
 }
 let flushing = false;
+export const rejected = []; // server refusals, shown to the person once
 export async function flush() {
   if (flushing || !navigator.onLine) return;
   flushing = true;
   try {
     for (const entry of await db.all('outbox')) {
       const res = await adapter.push(entry);
+      if (res?.rejected) rejected.push({ kind: entry.kind, error: res.rejected });
       if (res?.ok) await db.del('outbox', entry.seq); else break;
     }
   } finally { flushing = false; emit(); }

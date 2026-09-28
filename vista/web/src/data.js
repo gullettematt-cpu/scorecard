@@ -12,6 +12,7 @@
 // Field names below are confirmed against docs/describe/SUMMARY.md (myorg, 2026-09-27).
 import { db } from './db.js';
 import { vistaOn } from './rollout.js';
+import { apiMode, api, deviceId } from './api.js';
 
 export const MANIFEST_FIELD = 'Additional_Work_Performed_Description__c';
 export const MANIFEST_MARK = '<!--vista-manifest-->';
@@ -48,9 +49,36 @@ const fixtureAdapter = {
   async push(entry) { console.info('[vista:fixture] would sync', entry); return { ok: true }; }
 };
 
-export const adapter = fixtureAdapter;
+// Live mode: the Vista API (same shapes as the fixtures, so the screens don't change).
+const apiAdapter = {
+  name: 'api', snap: null,
+  async crews() { return []; },
+  async load() { const s = await api.snapshot(); apiAdapter.snap = s; return { jobs: s.jobs, draws: s.draws, cases: s.cases }; },
+  async rollout() { return apiAdapter.snap?.rollout || (await db.meta('rollout')) || { defaultMode: 'off' }; },
+  async translations() { return apiAdapter.snap?.translations || (await db.meta('translations')) || { pairs: [] }; },
+  // One outbox entry -> POST /sync. Rule refusals (4xx) are dropped and reported; network/5xx retry later.
+  async push(entry) {
+    try {
+      const [r] = (await api.sync([{ id: `${deviceId()}:${entry.seq}`, kind: entry.kind, payload: entry.payload }])).results;
+      if (r.ok) return { ok: true };
+      if (r.status && r.status < 500) return { ok: true, rejected: r.error };
+      return { ok: false };
+    } catch (e) { return { ok: false, error: e }; }
+  }
+};
+
+export const adapter = apiMode ? apiAdapter : fixtureAdapter;
 
 export async function seedIfNeeded(crew) {
+  if (adapter.name === 'api') {
+    // Live: refresh from Salesforce whenever online; keep the outbox and local checklist progress.
+    if (!navigator.onLine) return;
+    const { jobs, draws, cases } = await adapter.load(crew);
+    await Promise.all([db.clear('jobs'), db.clear('draws'), db.clear('cases')]);
+    await db.putAll('jobs', jobs); await db.putAll('draws', draws); await db.putAll('cases', cases);
+    await db.meta('rollout', adapter.snap.rollout); await db.meta('translations', adapter.snap.translations);
+    return;
+  }
   const seeded = await db.meta('seeded');
   if (seeded === crew.id + ':v3') return;
   const { jobs, draws, cases } = await adapter.load(crew);

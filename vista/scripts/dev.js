@@ -19,6 +19,11 @@ const types = {
 
 http.createServer((req, res) => {
   let url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  // VISTA_API_URL=... switches the app to live mode (see scripts/api-local.mjs).
+  if (url === '/config.js' && process.env.VISTA_API_URL) {
+    res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(`window.VISTA_CONFIG = { apiUrl: ${JSON.stringify(process.env.VISTA_API_URL.replace(/\/$/, ''))} };`);
+  }
   let file = url.startsWith('/i18n/') ? path.join(I18N, url.slice(6)) : path.join(WEB, url);
   if (url === '/' || !path.extname(file)) file = path.join(WEB, 'index.html');
   if (!file.startsWith(WEB) && !file.startsWith(I18N)) { res.writeHead(403); return res.end(); }

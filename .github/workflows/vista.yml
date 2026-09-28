@@ -1,0 +1,103 @@
+# Vista: test on every change; deploy to AWS only when someone runs this workflow by hand.
+# Deploys go through the GitHub environment named below, so it can require an approver (Donald).
+# AWS access is by OIDC role (no AWS keys in GitHub). Setup: vista/docs/deploy-aws.md.
+name: Vista
+
+on:
+  pull_request:
+    paths: ['vista/**', '.github/workflows/vista.yml']
+  push:
+    branches: [main]
+    paths: ['vista/**', '.github/workflows/vista.yml']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment to deploy (holds the AWS role and Salesforce/Twilio settings)
+        type: choice
+        options: [vista-prod, vista-sandbox]
+        default: vista-prod
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: vista
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: vista/package-lock.json }
+      - run: npm ci
+      - name: API tests
+        run: node --test api/test/api.test.mjs
+      - name: Text conversation tests
+        run: node scripts/sms-test.mjs
+      - name: String parity (English / Spanish)
+        run: |
+          node -e "const a=Object.keys(require('./i18n/en.json')),b=new Set(Object.keys(require('./i18n/es.json')));const m=a.filter(k=>!b.has(k));if(m.length||a.length!==b.size){console.error('missing',m);process.exit(1)}"
+      - name: App builds
+        run: bash scripts/build.sh
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency: { group: 'vista-deploy-${{ inputs.environment }}', cancel-in-progress: false }
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STACK: ${{ vars.VISTA_STACK_NAME || 'vista' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: vista/package-lock.json }
+      - run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/setup-sam@v2
+        with: { use-installer: true }
+      - name: Build API
+        run: PATH="$PWD/node_modules/.bin:$PATH" sam build
+      - name: Deploy API, storage and schedules
+        env:
+          P_StageName: ${{ vars.VISTA_STAGE || 'prod' }}
+          P_SecretsPath: ${{ vars.VISTA_SECRETS_PATH || '/vista/prod' }}
+          P_SfLoginUrl: ${{ vars.SF_LOGIN_URL || 'https://login.salesforce.com' }}
+          P_SfClientId: ${{ vars.SF_CLIENT_ID }}
+          P_SfUsername: ${{ vars.SF_USERNAME }}
+          P_TwilioAccountSid: ${{ vars.TWILIO_ACCOUNT_SID }}
+          P_TwilioFrom: ${{ vars.TWILIO_FROM }}
+          P_AlertPhones: ${{ vars.ALERT_PHONES }}
+          P_AdminPhones: ${{ vars.ADMIN_PHONES }}
+          P_SchedulesEnabled: ${{ vars.SCHEDULES_ENABLED || 'true' }}
+        run: |
+          params=()
+          for v in $(compgen -e | grep '^P_'); do [ -n "${!v}" ] && params+=("${v#P_}=${!v}"); done
+          sam deploy --stack-name "$STACK" --resolve-s3 --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset --no-fail-on-empty-changeset --tags app=vista \
+            --parameter-overrides "${params[@]}"
+      - name: Publish the app
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          API_URL=$(out ApiUrl); BUCKET=$(out AppBucketName); DIST=$(out AppDistributionId)
+          VISTA_API_URL="$API_URL" bash scripts/build.sh
+          aws s3 sync dist "s3://$BUCKET" --delete
+          aws cloudfront create-invalidation --distribution-id "$DIST" --paths '/*' >/dev/null
+          {
+            echo "### Vista deployed"
+            echo "- App: $(out AppUrl)"
+            echo "- API: $API_URL"
+            echo "- Twilio webhook: $(out SmsWebhookUrl)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Smoke test
+        run: |
+          API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          curl -fsS "$API_URL/health"

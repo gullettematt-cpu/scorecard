@@ -1,46 +1,78 @@
-# Vista API (serverless) — contract only, not wired in Step 1
+# Vista API
 
-Three jobs and one cron. Every handler is stateless; the phone is the only client.
+This is Node 22 code on AWS Lambda. It runs as two functions from one codebase:
 
-| Route | Job | Notes |
+- `src/http.mjs` serves API Gateway.
+- `src/worker.mjs` handles incoming texts and the scheduled jobs.
+
+Salesforce is the only system of record. DynamoDB holds only what Salesforce has no place for:
+
+- sign-in codes
+- text conversations
+- sync receipts
+- the translation cache
+- the live rollout switch
+- heartbeat state
+
+To deploy, see [`docs/deploy-aws.md`](../docs/deploy-aws.md). The infrastructure is defined in [`template.yaml`](../template.yaml).
+
+```bash
+npm run test:api         # 19 tests; fake Salesforce answers the real SOQL from the app's fixtures
+npm run api:local        # the API on :4174 with fakes; sign-in codes print in the terminal
+VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against it
+```
+
+## Routes
+
+| Route | Who | What |
 |---|---|---|
-| `POST /auth/start` `{phone}` | SMS code | Rate-limited per phone. Only phones on the installer/PM allow-list get a code. |
-| `POST /auth/verify` `{phone, code}` → `{token, user:{name, crew, role, lang}}` | SMS code | Short-lived JWT for the phone. Role is `installer` or `pm`. |
-| `GET /sf/today` | Salesforce | WorkOrders for the caller's crew, today ± 7 days, with pay request and draw statuses. Shapes = Salesforce API names (see `docs/data-contract.md`). |
-| `GET /sf/job/:id` | Salesforce | WorkOrder + line items + Job__c + open Cases + pay requests and draws. |
-| `PATCH /sf/visit/:id/start` | Salesforce | `ServiceAppointment.Status = In Progress`, `ActualStartTime`. Only on the caller's Dispatched visits. |
-| `PATCH /sf/visit/:id/finish-measure` | Salesforce | Measure techs only: `Status = Completed`, `ActualEndTime`, when every line item is `Measurement Completed`. |
-| `POST /sf/case` | Salesforce | Creates the Service-record-type Case with the three picklists. |
-| `POST /sf/pay-request` | Salesforce | Installer's *Submit for pay* at completion. Creates `SA_Expense__c` with `Type__c = Vista`, `Status__c = New` (waits for the PM). **Refuses without the trade's minimum photos** or if the visit is not In Progress. Flow *Vista - Draw Submitted* completes the visit and, when every line item is done, moves the WO to `Installation Completed` for review. |
-| `POST /sf/draw` `{workOrderId, amount, covers, requestedBy}` | Salesforce | **PM only.** Payment before completion: creates `SA_Expense__c` already `Approved` (`Approver__c` = PM) with `Did_you_complete_the_job_or_service__c = No`, after the PM confirms in the app. Salesforce emails Mike Duncan. Requires a progress photo on the job and passes `draw-rules.json`. |
-| `PATCH /sf/pay-request/:id/decision` `{decision, checked[], missed[]}` | Salesforce | PM only. `submitted` (every required deliverable ticked, confirmed in the app) → `Status__c = Approved`, `Approver__c` = PM. No approval process. `sent_back` → stays `New`, missed items in the manifest. |
-| `PATCH /sf/line-item/:id` `{status}` | Salesforce | `Installation Completed` (installer) or `Measurement Completed` (measure tech), only on the caller's in-progress visit. |
-| `POST /photos/sign` `{workOrderId, expenseId, count}` → signed PUT URLs | Photo upload | Phone uploads directly to object storage; API never proxies bytes. |
-| `POST /vi/ask` `{workOrderId, lang, question, history}` | Vi | Claude API, `claude-sonnet-5`, streamed. |
-| `GET /me/prefs`, `PATCH /me/prefs` `{lang, channel}` | Prefs | One language (`en` / `es` / `bi`) and channel per person, shared by the app and texts. Stored by the API, not Salesforce. |
-| `POST /translate` `{texts[], target}` | Vi | Free-text translation via Vi, cached once per text and language. The app and the text engine read the cache; Salesforce keeps the original. |
-| `POST /language-request` `{language}` | Prefs | Saves the request on the person and notifies Matt (`ADMIN_NOTIFY`). Vi answers that person in the requested language meanwhile. |
-| `POST /sms/inbound` (text provider webhook) | Text | Verifies the provider signature, runs `web/src/sms/engine.js` for the sender, performs the returned actions (same Salesforce writes as the app), copies picture messages to object storage, sends the replies. |
-| cron 6:30 AM | Text | Morning list for people on `TEXT`. |
-| cron 7:30 AM and 9:30 AM | Text | Review list for PMs with requests waiting. |
-| on dispatch (poll every 5 min for newly Dispatched visits) | Text | "New job dispatched" to the crew. |
-| cron 10:00 AM ET, Mon–Fri | Cutoff notices | For every Vista pay request still `New` at cutoff (sent back or not yet reviewed): one text per sub in their language listing what was missed (respects `ServiceAppointment.SMS_Opt_out__c`); one reminder per PM with unreviewed draws. See `docs/approval-flow.md`. |
-| cron every 2 h | Heartbeat | login → read WorkOrder → create `SA_Expense__c` (`TEST_SA__c = true`) → upload photo → SMS Matt + Mike on failure. |
+| `GET /health` | anyone | Loads secrets and returns `{ok:true}`. Used as the deploy smoke test. |
+| `POST /auth/start` `{phone, lang}` | anyone | Texts a 6-digit code if the number belongs to someone (enrolled, or found in Salesforce). Same answer either way. Limits: 5 codes an hour and 1 per 30 seconds for each number. |
+| `POST /auth/verify` `{phone, code}` → `{token, person}` | anyone | Code is single-use, expires in 10 minutes, and allows 5 tries. Returns an app token (HS256, `APP_JWT_SECRET`). |
+| `GET /me`, `PATCH /me/prefs` `{lang, channel}` | signed in | Language `en` / `es` / `bi` and channel `app` / `text` / `both`, shared with texts. |
+| `GET /snapshot` | signed in | The caller's jobs, pay requests, draws, cases and people, in the same shapes as `web/fixtures/*` (Salesforce API names). Also returns the rollout switch, draw rules and translation pairs for free text. |
+| `POST /sync` `{entries:[{id, kind, payload}]}` | signed in | Replays the phone's outbox. Each `id` is applied once. Each entry gets `{ok}` or `{ok:false, status, error}` (a rule refusal). Kinds are listed below. |
+| `POST /photos/sign` `{workOrderId, kind, count}` | installers, measure techs | Signed S3 PUT URLs (15 minutes), only for the caller's own job. |
+| `POST /translate` `{texts[]}` | signed in | English/Spanish pairs, cached per text. |
+| `POST /vi/ask` `{workOrderId, question}` | signed in | Vi (Claude, `claude-sonnet-5`) answers with the job, its trade checklist and the person's language. |
+| `POST /sms/inbound` | Twilio | Checks the signature, then hands off to the worker and returns an empty TwiML reply. |
+| `GET/POST /admin/people`, `GET/PUT /admin/rollout`, `GET /admin/language-requests`, `POST /admin/run` `{job}` | `x-admin-token` | Use `scripts/vista-admin.sh`, which reads the token from SSM. |
 
-## Salesforce auth
-Connected app, **JWT bearer flow**, a dedicated company-owned integration user (API-only, own profile/permission set,
-IP-restricted). The private key lives in the serverless secret store, never in the repo or the phone.
-Token is cached in memory per warm instance and refreshed on 401.
+### Sync kinds (the same actions the text engine emits)
 
-## Configuration (names only — values live in the secret store)
-```
-SF_LOGIN_URL, SF_CLIENT_ID, SF_USERNAME, SF_JWT_PRIVATE_KEY
-SF_MANIFEST_FIELD                 # e.g. SA_Expense__c.Notes__c — from docs/data-contract.md
-SF_CASE_SERVICE_RECORD_TYPE_ID
-SMS_PROVIDER_SID, SMS_PROVIDER_TOKEN, SMS_FROM   # one number with MMS; A2P 10DLC or toll-free verified
-ALERT_PHONES                      # Matt, Mike
-STORAGE_BUCKET, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY, STORAGE_ENDPOINT
-ANTHROPIC_API_KEY, VI_MODEL=claude-sonnet-5
-APP_JWT_SECRET
-ADMIN_NOTIFY                      # where language requests go (Matt)
-```
+| Kind | Rule enforced on the server |
+|---|---|
+| `serviceappointment.start` | Caller's own visit, only while Dispatched. |
+| `serviceappointment.complete` | Measure techs, once every line item is measured (installers complete through pay). |
+| `woli.status` | Installers can only set *Installation Completed*; measure techs only *Measurement Completed*. |
+| `payrequest.create` | Installer only. Amount must be within the contract and the trade's minimum photos present. Creates `SA_Expense__c` with Type **Vista**, Status **New**, "job complete" **Yes**, and the manifest in `Additional_Work_Performed_Description__c`. |
+| `payrequest.resubmit` | Only after a send-back; asks only for the missing photos. |
+| `payrequest.approve` | PM only. Status must be New and every required deliverable ticked. Sets **Approved** and `Approver__c` = PM name. No approval process. |
+| `payrequest.sendBack` | PM only. Needs the missed items. The record stays New. |
+| `draw.issue` | PM only. Job must be eligible under `draw-rules.json`, have a progress photo, and the amount must be within what remains. Creates the record **Approved** with "job complete" **No**. The Salesforce flow emails Mike Duncan. |
+| `checklist`, `progress.photo`, `person.prefs`, `person.channel`, `language.request`, `vi.ask` | As the names say. |
+
+## Scheduled jobs (worker)
+
+| Job | When (ET) | What |
+|---|---|---|
+| `heartbeat` | every 2 h | Steps: log in to Salesforce, read a WorkOrder, create an `SA_Expense__c` with `TEST_SA__c = true` (deleting the previous one), store a 1×1 photo in S3. Texts `ALERT_PHONES` once when a step starts failing, and once when it recovers. |
+| `morning` | 6:30 AM Mon–Sat | Today's list for installers and measure techs on `text` / `both`. |
+| `pm-digest` | 7:30 and 9:30 AM Mon–Fri | Review list for PMs. |
+| `cutoff` | 10:00 AM Mon–Fri | Vista pay requests still New miss today's run. Subs get the reason; each PM gets a count. Once per record per day. |
+| `dispatch-poll` | every 5 min | "New job dispatched" text for visits dispatched since the last check, where Vista is on. |
+
+## Code map
+
+| File | Role |
+|---|---|
+| `src/lib/salesforce.mjs` | JWT bearer auth (RS256), query with paging, create/update/delete, retry once on 401 |
+| `src/lib/snapshot.mjs` | Salesforce → the app's fixture shapes, per person and role |
+| `src/lib/actions.mjs` | The rules above, then the Salesforce writes |
+| `src/lib/services.mjs` | Snapshot, sync, texts, scheduled jobs, rollout |
+| `src/lib/people.mjs` | Phone → person (enrolled, or found on User / ServiceResource) |
+| `src/lib/auth.mjs` | Sign-in codes and app tokens |
+| `src/lib/vi.mjs` | Vi and translation (Anthropic SDK) |
+| `src/lib/twilio.mjs`, `photos.mjs`, `store.mjs` | Twilio, S3, DynamoDB |
+| `src/lib/shared.mjs` | Imports the app's own engine, strings, rollout and checklists, so the app, the texts and the API share one set of rules |
+| `src/lib/deps.mjs` | Real dependencies. Secrets come from SSM under `SECRETS_PATH`. |

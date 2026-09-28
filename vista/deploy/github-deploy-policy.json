@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StackAndServices",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:*",
+        "lambda:*",
+        "apigateway:*",
+        "dynamodb:*",
+        "s3:*",
+        "cloudfront:*",
+        "scheduler:*",
+        "logs:*",
+        "cloudwatch:*",
+        "xray:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FunctionAndSchedulerRolesForThisStackOnly",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:PassRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:UpdateAssumeRolePolicy"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/vista-*"
+    }
+  ]
+}

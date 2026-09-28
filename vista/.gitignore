@@ -5,3 +5,4 @@ docs/describe/*.json
 .env.*
 !.env.example
 .DS_Store
+.aws-sam/
