@@ -1,0 +1,213 @@
+<!doctype html><html><head><meta charset='utf-8'><title>When It Isn't Working As Intended</title><style>
+@page { size: Letter; margin: 0.6in 0.6in 0.7in; }
+body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 10.2pt; color: #16181d; line-height: 1.38; }
+h1 { font-size: 19pt; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 20px 0 6px; padding-bottom: 3px; border-bottom: 1.5px solid #16181d; page-break-after: avoid; }
+h3 { font-size: 11pt; margin: 14px 0 4px; page-break-after: avoid; }
+p { margin: 5px 0; }
+blockquote { margin: 8px 0; padding: 6px 10px; border-left: 3px solid #b98a2f; background: #f7f4ec; color: #3d434c; }
+table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 8.6pt; page-break-inside: auto; }
+th, td { border: 0.6pt solid #c9ced4; padding: 3px 5px; vertical-align: top; text-align: left; }
+th { background: #eef0f2; font-size: 7.8pt; text-transform: uppercase; letter-spacing: 0.05em; }
+tr { page-break-inside: avoid; }
+code { font-family: Menlo, Consolas, monospace; font-size: 8.8pt; background: #f2f3f5; padding: 0 3px; }
+pre { font-family: Menlo, Consolas, monospace; font-size: 8.4pt; background: #f2f3f5; padding: 8px 10px; white-space: pre-wrap; page-break-inside: avoid; }
+hr { border: 0; border-top: 0.8pt solid #d8dbe0; margin: 12px 0; }
+ul, ol { margin: 4px 0 6px 20px; padding: 0; }
+li { margin: 3px 0; }
+strong { font-weight: 700; }
+</style></head><body><h1>When It Isn't Working As Intended</h1>
+<p><strong>A troubleshooting playbook for marketing systems</strong><br />
+For Heather · marketing systems manager · scoreboard and reporting, Five9 lists and campaigns, lead routing and capture, the recovery program<br />
+Prepared September 28, 2026</p>
+<p>You own the plumbing between a lead showing up and a rep standing in a driveway. When something breaks in that plumbing, this is how to find it, fix it, or hand it off with everything the next person needs. Nobody expects you to know every answer. Everybody expects a clear example, a named layer, and a packet.</p>
+<hr />
+<h2>The method — five steps, every time</h2>
+<ol>
+<li><strong>Pin it down to one example.</strong> One lead, one phone number, one list, one report line. Write down what you expected and what actually happened, with the time and time zone. "Leads aren't getting called" is a feeling. "Lead 00Q…, came in 9:14 AM ET Tuesday from Contractor Appointments, no dial in Five9 by 4 PM" is a ticket.</li>
+<li><strong>Find the layer.</strong> Walk the lead's path (below) and check each hop until you find where the example falls off. The break is almost always at a handoff between two systems.</li>
+<li><strong>Check what changed.</strong> Most breaks follow a change: a new tracking number, a campaign edit, a Salesforce flow, a vendor switch, a rep added or removed. Look at the change log first.</li>
+<li><strong>Fix it if it is yours, or escalate with a packet.</strong> If the fix lives in a list, campaign, or mapping you control, fix it and note it. If it is in Salesforce, a vendor, or a carrier, send the packet (below) to the owner. Do not send a symptom without an example.</li>
+<li><strong>Log it and add the check.</strong> One line in the change log. If it could happen again, add the check to the daily list so it is caught in ten minutes, not a week.</li>
+</ol>
+<hr />
+<h2>The lead's path — where things break</h2>
+<pre><code>Source  →  Capture  →  Routing  →  List / Campaign  →  Dialer / Agent  →  Disposition  →  Report
+ (web,     (Salesforce   (AviTrak      (Five9 list,        (Five9 agent      (result code,     (scoreboard,
+  Google,   lead record,   tracking #    campaign,           logged in,        set, confirm,     Momentum,
+  Facebook, source, lane)  → Five9 DNIS, lane rules)         retry, texts)     cancel, no-show)  transfer report)
+  LSA,
+  third parties)
+</code></pre>
+<p>Rules of the road that most breaks violate:<br />
+- <strong>One active lane per record.</strong> Every lead has one destination. When it books, the flow stops.<br />
+- <strong>No internal text on top of a third party that texts.</strong> Lavin and Contractor Appointments text their own leads. Double texting confuses the customer.<br />
+- <strong>Overflow never goes back to the phone room.</strong> The service line overflows to a message or Revvin voice AI that opens a case.<br />
+- <strong>No brand-new reps on rehash or saves, and never the original rep.</strong><br />
+- <strong>Results are captured from the driveway</strong>, not the next day.</p>
+<hr />
+<h2>Symptom → cause → check → fix</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Most likely cause</th>
+<th>Check first</th>
+<th>Fix, or who gets the packet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Calls to a tracking number get dead air, ring out, or never reach an agent</td>
+<td>AviTrak tracking number not mapped to an active Five9 DNIS, or a SIP failure at the carrier</td>
+<td>Pull the AviTrak active-number list and compare to the Five9 DNIS list. Place a test call from a mobile; note the time, the number dialed, and what you heard.</td>
+<td>Mapping gap: fix the DNIS mapping and re-test. Carrier or Five9 failure: open or update the Five9 ticket with the test-call details, SIP responses and error codes, the customer or test mobile number, and the affected tracking numbers. Send the updated list of problem numbers to Dana.</td>
+</tr>
+<tr>
+<td>A lead arrived but nobody called it</td>
+<td>Not captured in Salesforce; captured with no lane; on a list with no agents logged in; excluded by a list filter; merged as a duplicate</td>
+<td>Find the lead in Salesforce. Confirm source and lane. Find it in the Five9 list. Check the campaign has agents on and records remaining.</td>
+<td>Re-add it to the right list, fix the filter, get agents into the campaign. If capture failed at the source, packet to Donald (Salesforce, Revvin) with the raw form or vendor post.</td>
+</tr>
+<tr>
+<td>Customer says they were called or texted twice, or by two different lanes</td>
+<td>One-lane rule broken; internal text firing on a third-party-handled source; lead in two campaigns</td>
+<td>Check which campaigns and text flows hold the record. Check the source.</td>
+<td>Remove the record from the second lane. Turn off the internal text for that source. Note it in the change log.</td>
+</tr>
+<tr>
+<td>A campaign is crawling or a list is not moving</td>
+<td>Too few agents in the campaign; list exhausted or everything in retry; retry timers too long</td>
+<td>Agents logged in per campaign; records remaining; retry settings. More people in a campaign makes it move faster.</td>
+<td>Add people. Reload or extend the list. Adjust retry timers with Deb's OK.</td>
+</tr>
+<tr>
+<td>Outbound number shows "Spam Likely" and pickup drops</td>
+<td>Number flagged by a carrier</td>
+<td>Check the number in the carrier and remediation portals.</td>
+<td>Submit business info, logo, license, and screenshots through remediation. Push for branded outbound calling on the numbers that matter (saves, confirmations). Rotate if needed and log it.</td>
+</tr>
+<tr>
+<td>Callbacks and return voicemails are not being counted</td>
+<td>Known gap: no report for inbound returns to the campaign or 888 numbers</td>
+<td>Check inbound to the campaign DIDs and how those calls are dispositioned.</td>
+<td>Until the handoff completes, ask George to show the callback pull. Track the percentage (returns over voicemails left), not just the count.</td>
+</tr>
+<tr>
+<td>Scoreboard number looks wrong: set rate collapsed, sold does not match, good dollars off</td>
+<td>Source mix changed (a jump in Contractor Appointments or Porch volume drops set rate); definition drift; dispositions gamed; report date basis; a rate shown without its lead count; newest weeks overstate net rate before good dollars mature</td>
+<td>Re-read the definition line: leads = run, close = sold ÷ run, demo % = demos ÷ run, net rate = good ÷ sold over matured weeks, basis is sales visits due Mon–Sat. Put the lead count beside every rate. Compare the same window. Sample five records by hand.</td>
+<td>If the numbers are right and the story changed, say so straight. If a definition is wrong, packet to Matt with the five records.</td>
+</tr>
+<tr>
+<td>Confirmation calls not happening or wrong</td>
+<td>Confirmation campaign not loaded, wrong assignment, or a flow problem</td>
+<td>Capture one example: the appointment, the expected confirmation time, screenshots or a short video of what happened.</td>
+<td>Packet to George (Five9) or Donald (Salesforce). This example has been owed since Sep 11; send it.</td>
+</tr>
+<tr>
+<td>A cancellation came in and Erica never got it</td>
+<td>Cancellation not logged in Salesforce when it happened; the same-day list did not generate</td>
+<td>Check the cancellation date on the record versus when it was entered. Check the list or report that feeds Erica.</td>
+<td>List problem: packet to Donald. Late logging: note the rep and the gap and hand it to Deb.</td>
+</tr>
+<tr>
+<td>Five9 says we need more "lines"</td>
+<td>It is seats, not lines. Seats cost about $149 each plus taxes.</td>
+<td>Verify the actual seat need with Lori and Deb. Check whether the pending Five9 credit has landed.</td>
+<td>Nothing gets ordered until the count is verified. Vendor contact at Five9 is Petra.</td>
+</tr>
+<tr>
+<td>Reps say the rehash or previous-customer product is "bad" and leads are not going out</td>
+<td>Reps holding leads</td>
+<td>Rehash issued versus the same week last year; which reps' lists are not moving</td>
+<td>Name the reps to Deb. She takes it to Scott.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>The escalation packet — send this every time</h2>
+<p>Copy this block, fill it, send it. A packet gets a fix. A complaint gets a question back.</p>
+<pre><code>What broke:        (one sentence)
+One example:       lead / record ID, phone number, list, or report line
+When:              date and time, time zone
+Expected:          what should have happened
+Actual:            what happened
+Screens:           screenshot, short video, or call recording ID
+Last change:       anything that changed in the last 7 days near this
+Already checked:   what you ruled out
+Impact:            how many leads / markets / hours affected
+</code></pre>
+<p>For Five9 or carrier tickets, add: test-call details (time, from number, to number, result), SIP responses and error codes, the customer or test mobile number, and the list of affected tracking numbers.</p>
+<hr />
+<h2>Who gets the packet</h2>
+<p>Confirm names and coverage as the handoff progresses. As of today:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Owner</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vendors, Five9, AviTrak, tracking numbers</td>
+<td>George, until the handoff completes</td>
+<td>You are the successor. Sit in on every vendor call.</td>
+</tr>
+<tr>
+<td>Five9 routing and tracking-number tickets</td>
+<td>Dana</td>
+<td>Updated list of problem numbers goes to Dana.</td>
+</tr>
+<tr>
+<td>Salesforce, Revvin, automations, cancel-save list</td>
+<td>Donald</td>
+<td>Flows, validation rules, lists.</td>
+</tr>
+<tr>
+<td>Data, reporting, roadblock removal</td>
+<td>Matt</td>
+<td>Scoreboard definitions, Momentum, anything that needs money or a decision.</td>
+</tr>
+<tr>
+<td>People, coaching, the floor</td>
+<td>Deb</td>
+<td>Reps, setters, confirmers, disposition behavior.</td>
+</tr>
+<tr>
+<td>Seat counts and the service line</td>
+<td>Lori (with Deb)</td>
+<td>Verify before ordering.</td>
+</tr>
+</tbody>
+</table>
+<p>Vendors in the flow: Five9 (Petra), AviTrak, LightFire, Lavin, Remodel Boom, Contractor Appointments, Porch, Executive Boutique (Jasmine).</p>
+<hr />
+<h2>Daily checks — ten minutes, before 9:30</h2>
+<ol>
+<li>AviTrak active tracking numbers match the Five9 DNIS list. Log the result, even when it is "all clear."</li>
+<li>Every campaign has agents logged in and records remaining.</li>
+<li>Every lead that arrived since yesterday is in exactly one lane.</li>
+<li>Yesterday's callbacks and return voicemails are dispositioned.</li>
+<li>Cancels from yesterday are on Erica's list.</li>
+<li>Scoreboard refreshed, and every rate has its lead count beside it.</li>
+</ol>
+<p>Weekly: spam status on the outbound numbers that matter; vendor invoices against what was quoted.</p>
+<hr />
+<h2>The change log</h2>
+<p>One line per change to a number, campaign, list, flow, or vendor setting:</p>
+<pre><code>date · what changed · why · who · how to undo it
+</code></pre>
+<p>Keep it where Deb and Matt can see it. When something breaks, this is the first place you look.</p>
+<hr />
+<h2>Call Matt right away when</h2>
+<ul>
+<li>A whole source or market has gone dark for more than an hour.</li>
+<li>A change would touch routing or money for every market at once.</li>
+<li>A vendor asks for a contract change, a new charge, or access.</li>
+<li>A number cannot be explained after thirty minutes of looking.</li>
+<li>A rep or manager pushes back on a scoreboard number and you cannot show the records behind it.</li>
+</ul>
+<p>Honest numbers over good-looking ones. If the truth is that a flow was down for two days, that goes on the card. The room can fix a problem it can see.</p></body></html>
