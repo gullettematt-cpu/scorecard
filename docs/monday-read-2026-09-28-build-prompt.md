@@ -1,0 +1,13 @@
+# Build the Sep 28 Monday Read — prompt for the Mac session
+
+Paste this into a Claude Code session running on the Mac (Remote Control or the desktop app) in `/Users/admin/OneDrive - Personal/`.
+
+---
+
+Build the Sep 28 edition of the call centre Monday Read from the Sep 21 scripts. Read-only against Salesforce (`sf` CLI, target-org `myorg`).
+
+1. Read `reports/src/monday_week_2026-09-21.py`, `monday_people_2026-09-21.py`, `monday_charts_2026-09-21.py`, `monday_cards_2026-09-21.py` and `build_read_2026-09-21.py`, and look at `reports/data/2026-09-21/` (`q_opps.csv`, `q_leads.csv`, `q_cohort.csv`, `dials_q.csv`, `dials_last.json`, `dials_prior.json`, `dials_qtr.json`, `users.json`). Find how the 9/21 data was pulled and repeat the same pulls into `reports/data/2026-09-28/` with the window moved one week: 13 Mon–Sun weeks from 2026-06-29 through 2026-09-27; last week = Sep 21–27; prior week = Sep 14–20. Export `SF_ORG_MAX_QUERY_LIMIT=300000` before the Task pulls.
+2. Copy each `*_2026-09-21.py` to `*_2026-09-28.py`. In `monday_week` set `RUN=dt.date(2026,9,28)` and `Q0=dt.date(2026,6,29)`. In `build_read` set the week tuples to Sep 14–20 (prior) and Sep 21–27 (last), set `PREV` to the 9/21 edition's matured demo rates from its `facts.json`, and update header dates and footers. Same date changes in `monday_people`, `monday_charts`, `monday_cards`. Fix the scratchpad paths (`read_css.txt`, `panels824.html`); the CSS is in the `<style>` block of `reports/src/monday_read_2026-09-21.html`.
+3. Run `monday_week`, `monday_people`, `monday_charts`, then `build_read`; write `reports/src/monday_read_2026-09-28.html`. Rewrite the narrative against the new facts. Check first: leads worked back above 95% (176 untouched last edition), the dial allocation (Specialists 1,018 → 3,187, LightFire +2,738, US in-house 1.51 → 1.09 sets per 100), event-lead day-0 (~10% vs canvass 48–56%), Vickie Boyd at 23.7 confirmations a day, Joe Harper, Sherice Bailey, Atlanta.
+4. Save a copy to `~/Downloads/monday_read_2026-09-28.html`, and copy `reports/2026-09-28-call-center-weekly-sync.md` and `docs/heather-troubleshooting-playbook.md` from the `claude/debs-report-heather-troubleshooting-jg0xvh` branch of `gullettematt-cpu/scorecard` into `~/Downloads/`.
+5. Report the page-1 scoreboard lines for Sep 21–27 against Sep 14–20 (sets all teams and by team, new leads excl. Porch, day-0 set rate, outbound dials, sets per 100 dials, leads worked % and untouched count, matured demo rate by team and blended, drop rate, confirmer fail, desk load per day by confirmer) and the four "what to do" items, then paste those lines into section 1 of the weekly sync brief in place of the `[Monday Read 9/28]` markers.
