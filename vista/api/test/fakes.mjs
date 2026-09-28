@@ -92,7 +92,7 @@ export function fakeSalesforce(world = salesforceWorld()) {
   return sf;
 }
 
-export function fakeTwilio() { const sent = []; return { sent, async send(to, body) { sent.push({ to, body }); return 'SM' + sent.length; }, async fetchMedia(url) { return { body: Buffer.from('jpeg:' + url), contentType: 'image/jpeg' }; } }; }
+export function fakeTwilio() { const sent = [], deleted = []; return { sent, deleted, async send(to, body) { sent.push({ to, body }); return 'SM' + sent.length; }, async fetchMedia(url) { return { body: Buffer.from('jpeg:' + url), contentType: 'image/jpeg' }; }, async deleteMedia(url) { deleted.push(url); return true; } }; }
 export function fakePhotos() { const objects = new Map(); return { objects, bucket: 'test', async signPut(key) { return `https://s3.test/${key}?sig`; }, async signGet(key) { return `https://s3.test/${key}?get`; }, async put(key, body) { objects.set(key, body); }, async head(key) { if (!objects.has(key)) throw new Error('404'); } }; }
 export function fakeVi() {
   const calls = { ask: [], translate: [] };

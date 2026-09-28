@@ -5,7 +5,7 @@ import { createHandler } from '../src/http.mjs';
 import { createWorker } from '../src/worker.mjs';
 import { signToken, verifyToken, normalizePhone, createAuth } from '../src/lib/auth.mjs';
 import { jwtAssertion, createSalesforce, lit, inList } from '../src/lib/salesforce.mjs';
-import { twilioSignature, validTwilioSignature } from '../src/lib/twilio.mjs';
+import { twilioSignature, validTwilioSignature, createTwilio } from '../src/lib/twilio.mjs';
 import { createPhotos, photoKey } from '../src/lib/photos.mjs';
 import { createVi, createTranslations, VI_MODEL } from '../src/lib/vi.mjs';
 import { memoryStore } from '../src/lib/store.mjs';
@@ -96,6 +96,21 @@ test('Twilio webhook signatures', () => {
   const sig = twilioSignature('tok', 'https://api.test/sms/inbound', params);
   assert.ok(validTwilioSignature({ authToken: 'tok', url: 'https://api.test/sms/inbound', params, signature: sig }));
   assert.ok(!validTwilioSignature({ authToken: 'tok', url: 'https://api.test/sms/inbound', params: { ...params, Body: 'yes' }, signature: sig }));
+});
+
+test('Twilio client: sends from a Messaging Service when set; deletes only this account\'s media', async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts) => { calls.push({ url, ...opts }); return { ok: true, status: 200, json: async () => ({ sid: 'SM1' }) }; };
+  await createTwilio({ accountSid: 'AC1', authToken: 't', from: '+17065550100', fetchImpl }).send('+17065550112', 'hi');
+  assert.equal(new URLSearchParams(calls[0].body).get('From'), '+17065550100');
+  await createTwilio({ accountSid: 'AC1', authToken: 't', from: '+17065550100', messagingServiceSid: 'MG1', fetchImpl }).send('+17065550112', 'hi');
+  const b = new URLSearchParams(calls[1].body); assert.equal(b.get('MessagingServiceSid'), 'MG1'); assert.equal(b.get('From'), null);
+  const tw = createTwilio({ accountSid: 'AC1', authToken: 't', fetchImpl });
+  assert.equal(await tw.deleteMedia('https://api.twilio.com/2010-04-01/Accounts/AC1/Messages/MM1/Media/ME1'), true);
+  assert.equal(calls.at(-1).method, 'DELETE'); assert.equal(calls.at(-1).url, 'https://api.twilio.com/2010-04-01/Accounts/AC1/Messages/MM1/Media/ME1.json');
+  assert.equal(await tw.deleteMedia('https://api.twilio.com/2010-04-01/Accounts/OTHER/Messages/MM1/Media/ME1'), false);
+  assert.equal(await tw.deleteMedia('https://evil.test/2010-04-01/Accounts/AC1/Messages/MM1/Media/ME1'), false);
+  assert.equal(calls.length, 3);
 });
 
 test('photo uploads use short-lived S3 signed URLs under the job', async () => {
@@ -260,6 +275,7 @@ test('texts: pay request with picture messages copies photos into S3', async () 
   const m = readManifest(created.fields.Additional_Work_Performed_Description__c);
   assert.equal(m.photos.length, 4); assert.ok(m.photos.every(p => p.key?.startsWith('vista/0WO5e00000A1k9pEAB/')));
   assert.equal(deps.photos.objects.size, 4);
+  assert.deepEqual(deps.twilio.deleted.sort(), [1, 2, 3, 4].map(n => `https://api.twilio.com/m/${n}`), 'picture messages removed from Twilio once saved');
   assert.match(deps.twilio.sent.find(x => x.to === PEOPLE.tucker.phone && /Sent to/.test(x.body)).body, /Sent to Mike Duncan/);
 });
 

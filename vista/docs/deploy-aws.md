@@ -52,14 +52,28 @@ separately by those providers.
 5. Deploy the Vista Salesforce pieces if you haven't: the **Vista** picklist value, the two flows and the list
    views. See `salesforce/README.md`.
 
-### 2. Twilio: the Vista number (Matt or Donald)
+### 2. Twilio (Donald, in the Twilio account you already use)
 
-1. Buy one local number with **SMS and MMS**, and register it for **A2P 10DLC**:
-   - Brand: Southern Industries.
-   - Campaign: "Account notifications / customer care". Sample messages are in `docs/sms-examples.md`.
+Vista works with your existing Twilio account; nothing new to sign up for.
 
-   Carriers filter unregistered traffic, so do this first. Approval can take a few days.
-2. The webhook URL is set after the first deploy (step 7).
+1. **A number for Vista.** Use a new local number with SMS and MMS, or a spare one. Don't use a number that
+   already handles incoming texts for something else: Vista takes over its incoming webhook.
+2. **A2P 10DLC.** Southern Industries' brand is probably already registered. Vista still needs a campaign
+   whose use case covers its messages. If the existing campaign covers different messages (marketing or
+   review requests, for example), register a new campaign under the same brand:
+   - use case "Account notifications" (or "Mixed");
+   - sample messages from `docs/sms-examples.md`;
+   - opt-in: "Subcontractors and employees give their mobile number to Southern Industries for job
+     dispatch and pay notifications; reply STOP to opt out."
+
+   Carriers filter unregistered traffic, so start this first. Approval can take a few days.
+3. **Messaging Service (recommended).** Create one called *Vista*, add the number to it and attach the
+   campaign. Note its `MG…` SID for GitHub variables (step 5). Without a Messaging Service, Vista sends
+   from the number in `TWILIO_FROM`.
+4. **Keys.** Vista needs the account's Account SID, which is not secret, and its **Auth Token**. The Auth
+   Token is required, not an API key, because Twilio signs incoming webhooks with it. You type it only
+   into `scripts/aws-secrets.sh` (step 6).
+5. **The webhook URL** is set after the first deploy (step 7).
 
 ### 3. Anthropic
 
@@ -96,7 +110,8 @@ Open the repo's **Settings**, then **Environments**, and click **New environment
 | `SF_USERNAME` | `vista@southernindustries.com.prod` |
 | `SF_LOGIN_URL` | `https://login.salesforce.com` (sandbox: `https://test.salesforce.com`) |
 | `TWILIO_ACCOUNT_SID` | `AC…` |
-| `TWILIO_FROM` | `+17065550100` |
+| `TWILIO_MESSAGING_SERVICE_SID` | `MG…` (recommended; step 2) |
+| `TWILIO_FROM` | `+17065550100` (only if no Messaging Service) |
 | `ALERT_PHONES` | Matt's and Mike's mobiles, comma-separated, `+1…` |
 | `ADMIN_PHONES` | who hears about language requests (Matt) |
 | `VISTA_STACK_NAME` | optional, default `vista` |
@@ -127,8 +142,13 @@ Run it again any time to rotate a value.
 1. In GitHub, open **Actions**, then **Vista**, click **Run workflow**, and pick `vista-prod`. Approve it when
    asked.
 2. The run's summary shows the **App URL**, the **API URL** and the **Twilio webhook**.
-3. In Twilio, open the Vista number's **Messaging** settings, set "A message comes in" to **Webhook**, method
-   **HTTP POST**, and paste the webhook URL.
+3. In Twilio, paste the webhook URL, method **HTTP POST**:
+   - **With a Messaging Service:** open **Messaging**, then **Services**, then *Vista*, then **Integration**,
+     and choose **Send a webhook**. Paste the URL in *Request URL*.
+   - **Without one:** open the number's **Messaging configuration** and paste it into "A message comes in".
+
+   Then text `today` to the Vista number from a phone that isn't in Salesforce. You should get the bilingual
+   "ask your PM to add you" reply. (Twilio answers `HELP` and `STOP` itself, so don't test with those.)
 4. Within 2 hours the heartbeat runs for the first time. If any step fails (log in, read a job, write a test SA
    Expense, store a photo), Matt and Mike get a text. To run it now:
    ```bash
@@ -181,6 +201,8 @@ Salesforce stay as they are.
   - At most 5 codes per hour per number, and none within 30 seconds of the last.
   - Unknown numbers get the same "code sent" answer, so nobody can probe who works for Southern.
 - **Incoming texts:** every webhook call is checked against Twilio's signature. Anything else gets a 403.
+- **Picture messages:** each photo is copied to Vista's S3 bucket. Once the Salesforce record is saved, the
+  photo is deleted from Twilio, so homeowners' photos don't pile up with the text provider.
 - **Rules the server enforces, whatever the phone sends:**
   - installers only touch their own dispatched visits;
   - pay needs the trade's minimum photos and stays within the contract;

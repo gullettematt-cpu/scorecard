@@ -13,7 +13,7 @@ const today = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone:
 export function createActions({ sf, store, photos, twilio, people, adminPhones = [], now = () => new Date() }) {
   const need = (cond, msg, status = 403) => { if (!cond) throw new ActionError(msg, status); };
 
-  async function importPhotos(list, job, sa) {
+  async function importPhotos(list, job, sa, imported) {
     const out = [];
     for (const [i, p] of (list || []).entries()) {
       if (p.key) { need(p.key.startsWith(`vista/${job.Id}/`), 'photo belongs to another job'); out.push({ kind: p.kind, key: p.key, taken_at: p.taken_at }); continue; }
@@ -22,6 +22,7 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const key = photoKey({ workOrderId: job.Id, serviceAppointmentId: sa?.Id, kind: p.kind, n: i + 1, at: now() });
         await photos.put(key, media.body, media.contentType);
         out.push({ kind: p.kind, key, bytes: media.body.length, channel: 'sms' });
+        imported.push(p.source);
         continue;
       }
       out.push({ kind: p.kind });
@@ -31,6 +32,15 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
 
   // snapshot: this person's loadSnapshot() result; person: from people.byPhone / token
   return async function perform(person, snap, action) {
+    // Picture messages are copied to S3 first; once Salesforce has the record, they're deleted from Twilio
+    // so homeowners' photos don't sit with the text provider. If the write fails they stay for the retry.
+    const imported = [];
+    const result = await run(person, snap, action, imported);
+    for (const url of imported) await twilio.deleteMedia?.(url).catch(err => console.warn('twilio media delete failed', err.message));
+    return result;
+  };
+
+  async function run(person, snap, action, imported) {
     const { kind, payload: p = {} } = action;
     const job = id => snap.jobs.find(j => j.Id === id);
     const jobOfVisit = id => snap.jobs.find(j => j.ServiceAppointment?.Id === id);
@@ -70,7 +80,7 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const amount = Math.round(Number(p.Amount__c));
         need(amount > 0 && (!domain.contractAmount(w) || amount <= domain.remaining(w)), 'amount over the contract', 422);
         const m = { ...(p.manifest || {}), v: 1, app: 'vista', kind: 'completion', submitted_at: now().toISOString(), submitted_by: { phone: person.phone, name: person.name } };
-        m.photos = await importPhotos(m.photos, w, sa);
+        m.photos = await importPhotos(m.photos, w, sa, imported);
         const cl = checklists[domain.tradeKey(w)];
         for (const req of (cl?.photos || []).filter(x => x.min > 0)) need(m.photos.filter(x => x.kind === req.kind).length >= req.min, `no photos, no pay: ${req.en}`, 422);
         const id = await sf.create('SA_Expense__c', {
@@ -87,7 +97,7 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const d = expense(p.expenseId); need(person.role === 'installer' && d && job(d.Work_Order__c), 'not your pay request');
         need(d.Status__c === 'New', 'already submitted', 409);
         const w = job(d.Work_Order__c), m = readManifest(d[MANIFEST_FIELD]);
-        const added = await importPhotos((p.manifest?.photos || []).filter(x => !(m.photos || []).some(y => y.key && y.key === x.key)), w, w.ServiceAppointment);
+        const added = await importPhotos((p.manifest?.photos || []).filter(x => !(m.photos || []).some(y => y.key && y.key === x.key)), w, w.ServiceAppointment, imported);
         const next = { ...m, ...(p.manifest?.checklist ? { checklist: p.manifest.checklist } : {}), photos: [...(m.photos || []), ...added], resubmitted_at: now().toISOString() };
         await sf.update('SA_Expense__c', d.Id, { [MANIFEST_FIELD]: writeManifest(next), ...(p.description ? { Description_of_Work_Performed__c: String(p.description).slice(0, 32000) } : {}) });
         return { ok: true };
@@ -157,5 +167,5 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
       default:
         throw new ActionError(`unknown action ${kind}`);
     }
-  };
+  }
 }

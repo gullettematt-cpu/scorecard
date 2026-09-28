@@ -75,6 +75,7 @@ jobs:
           P_SfUsername: ${{ vars.SF_USERNAME }}
           P_TwilioAccountSid: ${{ vars.TWILIO_ACCOUNT_SID }}
           P_TwilioFrom: ${{ vars.TWILIO_FROM }}
+          P_TwilioMessagingServiceSid: ${{ vars.TWILIO_MESSAGING_SERVICE_SID }}
           P_AlertPhones: ${{ vars.ALERT_PHONES }}
           P_AdminPhones: ${{ vars.ADMIN_PHONES }}
           P_SchedulesEnabled: ${{ vars.SCHEDULES_ENABLED || 'true' }}

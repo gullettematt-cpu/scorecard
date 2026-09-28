@@ -28,7 +28,7 @@ export async function realDeps(env = process.env) {
   const need = k => { if (!secrets[k]) throw new Error(`missing secret ${env.SECRETS_PATH}/${k}`); return secrets[k]; };
   const store = await dynamoStore({ table: env.TABLE, region });
   const sf = createSalesforce({ loginUrl: env.SF_LOGIN_URL, clientId: env.SF_CLIENT_ID, username: env.SF_USERNAME, privateKey: need('SF_PRIVATE_KEY') });
-  const twilio = createTwilio({ accountSid: env.TWILIO_ACCOUNT_SID, authToken: need('TWILIO_AUTH_TOKEN'), from: env.TWILIO_FROM });
+  const twilio = createTwilio({ accountSid: env.TWILIO_ACCOUNT_SID, authToken: need('TWILIO_AUTH_TOKEN'), from: env.TWILIO_FROM, messagingServiceSid: env.TWILIO_MESSAGING_SERVICE_SID || undefined });
   const vi = createVi({ apiKey: need('ANTHROPIC_API_KEY') });
   cached = {
     sf, store, twilio, vi,

@@ -28,7 +28,12 @@ Parameters:
     Type: String
   TwilioFrom:
     Type: String
-    Description: The Vista text number, E.164 (+17065550100).
+    Default: ''
+    Description: The Vista text number, E.164 (+17065550100). Leave empty when sending through a Messaging Service.
+  TwilioMessagingServiceSid:
+    Type: String
+    Default: ''
+    Description: Optional MG... Messaging Service that holds the Vista number and its A2P 10DLC campaign. Used instead of TwilioFrom when set.
   AlertPhones:
     Type: String
     Description: Comma-separated E.164 numbers texted when the heartbeat fails (Matt, Mike).
@@ -63,6 +68,7 @@ Globals:
         SF_USERNAME: !Ref SfUsername
         TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
         TWILIO_FROM: !Ref TwilioFrom
+        TWILIO_MESSAGING_SERVICE_SID: !Ref TwilioMessagingServiceSid
         APP_URL: !Sub https://${AppDistribution.DomainName}
         ALERT_PHONES: !Ref AlertPhones
         ADMIN_PHONES: !Ref AdminPhones
@@ -363,7 +369,7 @@ Outputs:
     Description: Vista API base URL (the deploy writes this into the app's config.js)
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
   SmsWebhookUrl:
-    Description: Paste into Twilio > the Vista number > Messaging > "A message comes in" (HTTP POST)
+    Description: Twilio incoming-message webhook (HTTP POST), on the Messaging Service or on the number
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/sms/inbound'
   AppUrl:
     Description: Where installers, measure techs and PMs open Vista

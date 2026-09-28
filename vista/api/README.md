@@ -17,7 +17,7 @@ Salesforce is the only system of record. DynamoDB holds only what Salesforce has
 To deploy, see [`docs/deploy-aws.md`](../docs/deploy-aws.md). The infrastructure is defined in [`template.yaml`](../template.yaml).
 
 ```bash
-npm run test:api         # 19 tests; fake Salesforce answers the real SOQL from the app's fixtures
+npm run test:api         # 20 tests; fake Salesforce answers the real SOQL from the app's fixtures
 npm run api:local        # the API on :4174 with fakes; sign-in codes print in the terminal
 VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against it
 ```
