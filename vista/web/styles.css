@@ -193,3 +193,28 @@ ul { list-style: none; }
 .openlist small { color: var(--muted); }
 .casethumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
 .casethumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+
+/* Ask Vi */
+.vi-job { display: grid; gap: 4px; margin-top: 10px; font-size: 13px; color: rgba(255,255,255,.75); font-weight: 600; }
+.vi-job select { font: inherit; font-size: 16px; font-weight: 600; color: var(--ink); background: #fff; border: 0; border-radius: 10px; padding: 10px 12px; min-height: var(--tap); }
+.sec.vi { padding-bottom: 96px; }
+.vi .demo { margin: 0 0 10px; }
+.vi-thread { display: flex; flex-direction: column; gap: 10px; }
+.bubble { max-width: 88%; padding: 10px 14px; border-radius: 16px; font-size: 16px; line-height: 1.45; }
+.bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.me { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.vi { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; display: grid; gap: 8px; }
+.bubble.vi .tag { color: var(--muted); font-size: 12px; }
+.bubble.thinking p { color: var(--muted); font-style: italic; }
+.problem-offer { flex: none; display: grid; grid-template-columns: auto 1fr; justify-items: start; text-align: left; gap: 2px 8px; padding: 10px 12px; border-color: var(--bad); color: var(--bad); font-size: 15px; }
+.problem-offer svg { grid-row: span 2; align-self: center; }
+.problem-offer small { color: var(--text); font-weight: 400; }
+.vi-empty p { color: var(--muted); margin: 4px 0 12px; }
+.vi-suggest { display: grid; gap: 8px; }
+.suggest { text-align: left; font: inherit; font-size: 15px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); min-height: var(--tap); cursor: pointer; }
+.vi-error { margin-top: 4px; }
+.linkbtn { background: none; border: 0; color: var(--muted); text-decoration: underline; font: inherit; font-size: 14px; padding: 12px 0 0; cursor: pointer; }
+.vi-fine { font-size: 13px; }
+.vi-compose { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px; background: var(--paper); border-top: 1px solid var(--line); z-index: 9; }
+.vi-compose textarea { flex: 1; font: inherit; font-size: 16px; resize: none; border: 1.5px solid var(--line); border-radius: 22px; padding: 11px 16px; min-height: var(--tap); max-height: 140px; background: var(--card); color: var(--text); }
+.vi-compose .act { flex: none; width: var(--tap); padding: 0; border-radius: 999px; }

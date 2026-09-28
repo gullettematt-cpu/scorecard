@@ -149,6 +149,43 @@ test('Vi and translation send the right Claude requests', async () => {
 });
 
 // ---- the API end to end, against fixture-backed Salesforce ---------------------------------------
+test('Vi conversation: history, cached job context, structured reply, fallbacks', async () => {
+  const reqs = [], opts = [];
+  let reply = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ answer: 'Stop and call Mike before you close it up.', suggest_problem_report: true, problem_summary: 'Rot in the sill at the picture window' }) }] };
+  const vi = createVi({ client: { messages: { create: async (r, o) => { reqs.push(r); opts.push(o); return reply; } } } });
+  const job = { WorkOrderNumber: '00041872', Subject: 's', Street: 'a', City: 'b', State: 'GA', PostalCode: '1', WorkOrderLineItems: [] };
+  const out = await vi.chat({ lang: 'en', job, extras: { problems: [], pay: [{ kind: 'completion pay', amount: 1500, status: 'WithPM' }] },
+    history: [{ q: 'How long does the foam cure?', a: 'About 30 minutes.' }], question: 'The sill is soft. What do I do?' });
+  assert.deepEqual(out, { answer: 'Stop and call Mike before you close it up.', problem: { summary: 'Rot in the sill at the picture window' } });
+  const r = reqs[0];
+  assert.equal(r.model, 'claude-sonnet-5'); assert.equal(r.output_config.effort, 'medium'); assert.equal(r.output_config.format.type, 'json_schema');
+  assert.equal(r.system.at(-1).cache_control.type, 'ephemeral');
+  assert.deepEqual(r.messages.map(m => m.role), ['user', 'assistant', 'user'], 'earlier turn kept');
+  assert.equal(r.messages[0].content[0].cache_control.type, 'ephemeral', 'job context opens the conversation and is cached');
+  assert.match(r.messages[0].content[0].text, /pay_requests_and_draws/);
+  assert.match(r.messages[2].content, /Reply in English[\s\S]*sill is soft/);
+  assert.equal(opts[0].timeout, 25000, 'gives up before API Gateway does');
+  reply = { stop_reason: 'refusal', content: [] };
+  assert.match((await vi.chat({ lang: 'es', question: 'x' })).answer, /Llame a su PM/);
+  reply = { stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"answer": "cut off' }] };
+  assert.deepEqual(await vi.chat({ lang: 'en', question: 'x' }), { answer: "I don't have an answer for that. Please call your PM.", problem: null });
+});
+
+test('Ask Vi route: own jobs only, job context with problems and pay, history passed, daily cap', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps), tok = tokenFor(deps, PEOPLE.tucker);
+  const ask = body => call(h, 'POST', '/vi/ask', { token: tok, body });
+  let r = await ask({ workOrderId: '0WO5e00000A1k9pEAB', question: 'The sill has rot, what now?', history: [{ q: 'hi', a: 'hello' }] });
+  assert.equal(r.statusCode, 200); assert.equal(r.json.answer, '(Vi answer)'); assert.deepEqual(r.json.problem, { summary: 'Rot in the sill' });
+  const c = deps.vi.calls.chat[0];
+  assert.equal(c.job.WorkOrderNumber, '00041872'); assert.deepEqual(c.history, [{ q: 'hi', a: 'hello' }]);
+  assert.ok(Array.isArray(c.extras.problems) && Array.isArray(c.extras.pay)); assert.ok(c.checklist?.steps?.length, 'trade checklist included');
+  assert.equal((await ask({ workOrderId: '0WO5e00000B2m1qEAB', question: 'x' })).statusCode, 403, "not Tucker's job");
+  assert.equal((await ask({ question: '  ' })).statusCode, 422);
+  assert.equal((await ask({ question: 'general question' })).statusCode, 200, 'no job = general question');
+  for (let i = 0; i < 60; i++) await ask({ question: 'again' });
+  r = await ask({ question: 'one too many' }); assert.equal(r.statusCode, 429); assert.equal(r.json.limit, 60);
+});
+
 test('sign in by text code, then load a live snapshot with translations', async () => {
   const deps = await testDeps(), h = createHandler(async () => deps);
   assert.equal((await call(h, 'POST', '/auth/start', { body: { phone: '(706) 555-0107' } })).statusCode, 200);

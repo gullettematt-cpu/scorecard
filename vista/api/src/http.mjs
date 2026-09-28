@@ -9,6 +9,7 @@ import { timingSafeEqual, createHash } from 'node:crypto';
 
 const sameSecret = (a, b) => { const h = x => createHash('sha256').update(String(x ?? '')).digest(); return !!a && !!b && timingSafeEqual(h(a), h(b)); };
 const ADMIN_JOBS = ['heartbeat', 'morning', 'pmDigest', 'cutoff', 'dispatchPoll'];
+const VI_DAILY_LIMIT = 60;
 const json = (status, body, origin) => ({ statusCode: status, headers: { 'content-type': 'application/json', ...(origin ? { 'access-control-allow-origin': origin, vary: 'origin' } : {}) }, body: JSON.stringify(body) });
 
 export function createHandler(getDeps) {
@@ -112,11 +113,24 @@ export function createHandler(getDeps) {
         return json(200, { pairs: await deps.translations.pairsFor(texts) }, origin);
       }
       if (method === 'POST' && path === '/vi/ask') {
-        const b = body(), snap = b.workOrderId ? await svc.snapshotFor(person, { translate: false }) : null;
+        const b = body(), question = String(b.question || '').trim().slice(0, 2000);
+        if (!question) return json(422, { error: 'ask a question' }, origin);
+        // A daily cap per person keeps a stuck phone or a long chat from running up the bill.
+        const day = new Date().toISOString().slice(0, 10), rate = (await deps.store.get(`VIRATE#${person.id}`, day)) || { pk: `VIRATE#${person.id}`, sk: day, n: 0, ttl: Math.floor(Date.now() / 1000) + 2 * 86400 };
+        if (rate.n >= VI_DAILY_LIMIT) return json(429, { error: 'daily limit', limit: VI_DAILY_LIMIT }, origin);
+        await deps.store.put({ ...rate, n: rate.n + 1 });
+        const snap = b.workOrderId ? await svc.snapshotFor(person, { translate: false }) : null;
         const job = snap?.jobs.find(j => j.Id === b.workOrderId) || null;
+        if (b.workOrderId && !job) return json(403, { error: 'not your job' }, origin);
         const { checklists, domain } = await import('./lib/shared.mjs');
-        const answer = await deps.vi.ask({ lang: person.lang, viLanguage: person.requested || null, job, checklist: job ? checklists[domain.tradeKey(job)] : null, question: String(b.question || '').slice(0, 2000) });
-        return json(200, { answer }, origin);
+        // What Vi may know about the job beyond the record: open problems and where pay stands (status and amount only).
+        const extras = job ? {
+          problems: domain.casesFor(snap.cases, job).map(c => ({ subject: c.Subject, status: c.Status, priority: c.Priority })),
+          pay: domain.drawsFor(snap.draws, job.Id).map(d => ({ kind: domain.isDraw(d) ? 'draw' : 'completion pay', amount: d.Amount__c, status: domain.drawStatus(d) }))
+        } : {};
+        const history = (Array.isArray(b.history) ? b.history : []).map(h => ({ q: String(h?.q || ''), a: String(h?.a || '') }));
+        const out = await deps.vi.chat({ lang: person.lang, viLanguage: person.requested || null, job, checklist: job ? checklists[domain.tradeKey(job)] : null, extras, history, question });
+        return json(200, { answer: out.answer, problem: out.problem || null, left: VI_DAILY_LIMIT - rate.n - 1 }, origin);
       }
       return json(404, { error: 'not found' }, origin);
     } catch (err) {

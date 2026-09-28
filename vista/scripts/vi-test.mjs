@@ -1,0 +1,52 @@
+// Ask Vi, end to end in demo mode: suggested questions, a follow-up, the problem-report offer carried into a
+// pre-filled report, the conversation surviving a reload, the job picker, and Spanish.
+// Run with the dev server up:  npm run dev  (another terminal)  then  npm run test:vi
+import os from 'node:os'; import fs from 'node:fs'; import path from 'node:path';
+import { chromium } from 'playwright';
+const S = fs.mkdtempSync(path.join(os.tmpdir(), 'vista-vi-')), BASE = process.env.BASE || 'http://localhost:4173';
+const b = await chromium.launch(); const errors = [];
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const p = await ctx.newPage(); p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && errors.push(m.text()));
+const shot = async n => { await p.waitForTimeout(350); await p.screenshot({ path: `${S}/${n}.jpg`, type: 'jpeg', quality: 78 }); };
+const pick = async crew => { await p.waitForSelector('[data-crew]'); await p.click(`[data-crew="${crew}"]`); await p.waitForSelector('#nav a'); await p.waitForTimeout(400); };
+const switchTo = async crew => { await p.goto(BASE + '/#/today'); await p.waitForSelector('#switchCrew'); await p.click('#switchCrew'); await pick(crew); };
+const lastVi = () => p.$$eval('.bubble.vi:not(.thinking) p', e => e.at(-1)?.textContent || '');
+const ask = async q => { await p.fill('#viQ', q); await p.click('#viSend'); await p.waitForSelector('.bubble.thinking', { state: 'detached' }); await p.waitForTimeout(200); };
+let fail = 0; const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fail++; };
+
+await p.goto(BASE + '/'); await pick('crew-12');
+const wo = '0WO5e00000A1k9pEAB';
+await p.goto(BASE + '/#/job/' + wo); await p.waitForTimeout(300);
+await p.click(`a[href="#/vi?job=${wo}"]`); await p.waitForSelector('#viQ');
+check((await p.$eval('#viJob', e => e.value)) === wo, 'opens on the job it came from');
+check((await p.$$('.suggest')).length === 4, 'four suggested questions for an installer');
+await shot('01-empty');
+await p.click('.suggest'); await p.waitForSelector('.bubble.thinking', { state: 'detached' }); await p.waitForTimeout(200);
+check(/Before, each opening: 1\+/.test(await lastVi()), 'photos question answered from the checklist');
+await ask("What's left to finish on this job?");
+check(/Still open on WO 00041872/.test(await lastVi()), 'follow-up answered from the line items');
+await ask('The sill under the picture window is soft, looks like rot');
+check((await p.$$('.problem-offer')).length === 1, 'offers a problem report when something is wrong');
+await shot('02-conversation');
+await p.reload(); await p.waitForSelector('#viQ');
+check((await p.$$('.bubble.me')).length === 3, 'conversation kept after a reload');
+await p.click('.problem-offer'); await p.waitForSelector('#pbSubject');
+check((await p.$eval('#pbSubject', e => e.value)).startsWith('The sill under the picture window is soft'), 'problem report pre-filled from Vi');
+check(await p.$eval('#pbSend', e => e.disabled), 'report still needs who pays and which warranty (Vi never sends it)');
+await p.goto(BASE + `/#/vi?job=${wo}`); await p.waitForSelector('#viQ');
+await p.selectOption('#viJob', ''); await p.waitForTimeout(500);
+check((await p.$$('.bubble')).length === 0 && (await p.$$('.suggest')).length === 2, 'general question: its own empty conversation');
+await ask('When is the pay cutoff?');
+check(/10:00 AM Eastern/.test(await lastVi()), 'general question answered');
+await p.goto(BASE + `/#/vi?job=${wo}`); await p.waitForSelector('#viQ'); await p.click('#viClear'); await p.waitForTimeout(300);
+check((await p.$$('.bubble')).length === 0, 'new conversation clears the thread');
+await switchTo('crew-7'); await p.goto(BASE + '/#/vi'); await p.waitForSelector('#viQ');
+check(/Pregúntale a Vi/.test(await p.textContent('#app')), 'Spanish screen');
+await ask('¿Qué fotos necesito para cobrar?');
+check(/Antes, cada fachada: 4\+/.test(await lastVi()), 'Spanish answer from the siding checklist');
+await shot('03-es');
+await switchTo('pm-mike'); await p.goto(BASE + '/#/vi'); await p.waitForSelector('#viQ');
+check((await p.$$('.suggest')).length === 3, 'PM gets PM suggestions');
+console.log('errors:', errors); await b.close();
+console.log('screenshots in', S);
+if (fail || errors.length) process.exit(1);

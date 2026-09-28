@@ -19,12 +19,12 @@ const tradeToWorkType = { windows: 'Window', siding: 'Siding', roofing: 'Roofing
 export const workTypeFor = w => (/^door/i.test(w.WorkType?.Name || w.Work_Type_Name__c || '') ? 'Door' : tradeToWorkType[tradeKey(w)] || 'Window');
 const MAX_PHOTOS = 6;
 
-export async function renderProblem(root, ctx, jobId) {
+export async function renderProblem(root, ctx, jobId, { subject = '' } = {}) {
   const jobs = await db.all('jobs');
   const w = jobs.filter(visibleFor(ctx)).find(j => j.Id === jobId);
   if (!w) { location.hash = '#/today'; return; }
   const sa = visit(w), pm = pmOf(w)?.Name || 'PM';
-  const form = { subject: '', details: '', workType: workTypeFor(w), serviceType: '', warrantyType: '', blocking: false };
+  const form = { subject: subject.slice(0, 200), details: '', workType: workTypeFor(w), serviceType: '', warrantyType: '', blocking: false };
   const head = `<a class="back" href="#/job/${esc(w.Id)}">${icons.back}${esc(t('nav.job'))}</a>
     <div class="jobhead"><h1>${esc(t('problem.title'))}</h1><div class="sub">${esc(w.Account?.Name || '')} · WO ${esc(w.WorkOrderNumber)}</div></div>`;
 

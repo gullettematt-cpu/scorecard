@@ -37,5 +37,5 @@ export const api = {
     const res = await fetch(url, { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: blob });
     if (!res.ok) throw Object.assign(new Error(`upload ${res.status}`), { status: res.status });
   },
-  ask: (workOrderId, question) => req('POST', '/vi/ask', { workOrderId, question })
+  ask: (workOrderId, question, history = []) => req('POST', '/vi/ask', { workOrderId, question, history })
 };

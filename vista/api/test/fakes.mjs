@@ -99,6 +99,7 @@ export function fakeVi() {
   const pairs = new Map(J('web/fixtures/translations.json').pairs.flatMap(p => [[p.en, p], [p.es, p]]));
   return { calls,
     async ask(a) { calls.ask.push(a); return a.viLanguage ? `(Vi in ${a.viLanguage})` : a.lang === 'es' ? '(respuesta de Vi)' : '(Vi answer)'; },
+    async chat(a) { (calls.chat ||= []).push(a); return { answer: a.lang === 'es' ? '(respuesta de Vi)' : '(Vi answer)', problem: /rot|podrid/i.test(a.question) ? { summary: 'Rot in the sill' } : null }; },
     async translate(texts) { calls.translate.push(texts); return texts.map(t => pairs.get(t) || { en: t, es: `[es] ${t}`, src: 'en' }); } };
 }
 
