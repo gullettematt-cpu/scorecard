@@ -122,7 +122,7 @@ Open the repo's **Settings**, then **Environments**, and click **New environment
 | `TWILIO_ACCOUNT_SID` | `AC…` |
 | `TWILIO_MESSAGING_SERVICE_SID` | `MG…` (recommended; step 2) |
 | `TWILIO_FROM` | `+17065550100` (only if no Messaging Service) |
-| `ALERT_PHONES` | Matt's and Mike's mobiles, comma-separated, `+1…` |
+| `ALERT_PHONES` | Matt's and Mike's mobiles, comma-separated, `+1…`. Each must text START to the Vista number to receive alerts. |
 | `ADMIN_PHONES` | who hears about language requests (Matt) |
 | `VISTA_STACK_NAME` | optional, default `vista` |
 | `VISTA_SECRETS_PATH` | optional, default `/vista/prod` |

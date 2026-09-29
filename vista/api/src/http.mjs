@@ -45,7 +45,7 @@ export function createHandler(getDeps) {
       if (method === 'POST' && path === '/sms/inbound') {
         const params = Object.fromEntries(new URLSearchParams(raw));
         if (!validTwilioSignature({ authToken: deps.secrets.twilioAuthToken, url: `${deps.config.publicApiUrl || `https://${event.requestContext?.domainName}`}/sms/inbound`, params, signature: header('X-Twilio-Signature') })) return { statusCode: 403, body: 'bad signature' };
-        const msg = { from: params.From, body: params.Body || '', messageId: params.MessageSid,
+        const msg = { from: params.From, body: params.Body || '', messageId: params.MessageSid, optOutType: params.OptOutType || null,
           media: Array.from({ length: Number(params.NumMedia || 0) }, (_, i) => params[`MediaUrl${i}`]).filter(Boolean) };
         if (deps.invokeWorker) await deps.invokeWorker({ job: 'sms', msg }); else await svc.handleText(msg);
         return { statusCode: 200, headers: { 'content-type': 'text/xml' }, body: '<Response></Response>' };
@@ -72,7 +72,10 @@ export function createHandler(getDeps) {
             lang: b.lang ?? existing?.lang ?? 'en', channel: b.channel ?? existing?.channel ?? 'both', disabled: !!b.disabled, source: actor ? `admin:${actor.name}` : 'admin' });
           return json(200, { person: p }, origin);
         }
-        if (method === 'GET' && path === '/admin/people') return json(200, { people: await deps.people.list() }, origin);
+        if (method === 'GET' && path === '/admin/people') {
+          const [list, opt] = await Promise.all([deps.people.list(), svc.optIns.all()]);
+          return json(200, { people: list.map(p => ({ ...p, textOptIn: opt[p.phone]?.status || 'none' })) }, origin);
+        }
         if (method === 'GET' && path === '/admin/rollout') return json(200, { rollout: await svc.getRollout() }, origin);
         if (method === 'PUT' && path === '/admin/rollout') return json(200, { rollout: await svc.setRollout(body()) }, origin);
         if (method === 'GET' && path === '/admin/language-requests') return json(200, { requests: await deps.store.query('LANGREQ') }, origin);

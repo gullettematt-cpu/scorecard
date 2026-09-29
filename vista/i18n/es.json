@@ -514,5 +514,9 @@
   "admin.call.aws": "Vista caído, textos que no salen, códigos que no llegan",
   "admin.call.aws.who": "Donald (AWS y Twilio)",
   "admin.call.crew": "Una cuadrilla no puede entrar o no ve un trabajo",
-  "admin.call.crew.who": "Revise primero Personas y Despliegue aquí. Un trabajo solo aparece cuando está despachado; luego pregunte al PM de la cuadrilla."
+  "admin.call.crew.who": "Revise primero Personas y Despliegue aquí. Un trabajo solo aparece cuando está despachado; luego pregunte al PM de la cuadrilla.",
+  "admin.nudgeNotOptedIn": "{pm} no se ha inscrito a los textos de Vista (mandar START al (706) 955-2075). Llame: {phone}",
+  "admin.optin.in": "Textos activos",
+  "admin.optin.none": "No ha mandado START",
+  "admin.optin.out": "Mandó STOP"
 }

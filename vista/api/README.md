@@ -60,7 +60,7 @@ VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against
 
 | Job | When (ET) | What |
 |---|---|---|
-| `heartbeat` | every 2 h | Steps: log in to Salesforce, read a WorkOrder, create an `SA_Expense__c` with `TEST_SA__c = true` (deleting the previous one), store a 1×1 photo in S3. Texts `ALERT_PHONES` once when a step starts failing, and once when it recovers. |
+| `heartbeat` | every 2 h | Steps: log in to Salesforce, read a WorkOrder, create an `SA_Expense__c` with `TEST_SA__c = true` (deleting the previous one), store a 1×1 photo in S3. Texts `ALERT_PHONES` once when a step starts failing, and once when it recovers (only phones that have texted START). |
 | `morning` | 6:30 AM Mon–Sat | Today's list for installers and measure techs on `text` / `both`. |
 | `pm-digest` | 7:30 and 9:30 AM Mon–Fri | Review list for PMs. |
 | `cutoff` | 10:00 AM Mon–Fri | Vista pay requests still New miss today's run. Subs get the reason; each PM gets a count. Once per record per day. |

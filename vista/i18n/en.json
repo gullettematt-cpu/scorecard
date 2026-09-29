@@ -514,5 +514,9 @@
   "admin.call.aws": "Vista down, texts not sending, sign-in codes not arriving",
   "admin.call.aws.who": "Donald (AWS and Twilio)",
   "admin.call.crew": "A crew can't sign in or doesn't see a job",
-  "admin.call.crew.who": "Check People and Rollout here first. A job only shows once it's dispatched; then ask the crew's PM."
+  "admin.call.crew.who": "Check People and Rollout here first. A job only shows once it's dispatched; then ask the crew's PM.",
+  "admin.nudgeNotOptedIn": "{pm} hasn't signed up for Vista texts (text START to (706) 955-2075). Call instead: {phone}",
+  "admin.optin.in": "Texts on",
+  "admin.optin.none": "Hasn't texted START",
+  "admin.optin.out": "Texted STOP"
 }

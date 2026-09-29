@@ -146,7 +146,8 @@ there. Nothing already in Salesforce changes.
 | "They'd rather get texts / use the app" | **People** | Change **How they get Vista**. |
 | "Switch them to Spanish (or English, or both)" | **People** | Change the language, or they tap 🌐 at the top of the app, or text ESPAÑOL, ENGLISH or BILINGUAL. |
 | "Wrong amount / duplicate" | **Pay run** | The PM sends it back with a reason. Vista already blocks amounts over the contract. |
-| "They texted STOP" | — | Twilio stops all texts to that phone. They text START to get texts again. The app still works. |
+| "They don't get any texts" | **People**: does it say *Hasn't texted START*? | Vista only texts phones that have texted **START** to (706) 955-2075. Ask them to text START. The app works either way. |
+| "They texted STOP" | **People** shows *Texted STOP* | Vista stops all texts to that phone. They text START to get texts again. The app still works. |
 | "Someone left the company" | **People** | Turn Vista off for them, and deactivate them in Salesforce (Matt). |
 | The Health screen shows a failure | **Health** | It names who to contact. Mike and Matt also get a text when it happens. |
 
@@ -165,12 +166,12 @@ there. Nothing already in Salesforce changes.
 
 Message to crews (the PM can send it):
 
-> Starting Monday, submit for pay in Vista: open **[App URL]** on your phone, or text **TODAY** to **[Vista
-> number]**. Sign in with the code we text you. A photo of each required shot is needed to get paid. Approved by
+> Starting Monday, submit for pay in Vista: open **[App URL]** on your phone. To get Vista texts, text **START**
+> to **(706) 955-2075**, then text **TODAY** for your jobs. Sign in with the code we text you. A photo of each required shot is needed to get paid. Approved by
 > 10 AM = paid that day. Questions: call me.
 >
-> Desde el lunes, envíe para cobro en Vista: abra **[App URL]** en su celular, o mande **HOY** al **[número de
-> Vista]**. Entre con el código que le mandamos por texto. Se necesita una foto de cada toma requerida para cobrar.
+> Desde el lunes, envíe para cobro en Vista: abra **[App URL]** en su celular. Para recibir textos de Vista, mande
+> **START** al **(706) 955-2075**, luego **HOY** para ver sus trabajos. Entre con el código que le mandamos por texto. Se necesita una foto de cada toma requerida para cobrar.
 > Aprobado antes de las 10 a.m. = pagado ese día. Preguntas: llámeme.
 
 ---

@@ -90,6 +90,14 @@ Carriers take several days to approve texting campaigns, so start this now.
    - **Opt-in wording:** "Subcontractors and employees give their mobile number to Southern Industries for job
      dispatch and pay notifications; reply STOP to opt out."
 3. **A Messaging Service named *Vista*.** Add the number to it and attach the campaign.
+4. **Opt-out management on the service:** opt-in keywords **START** and **UNSTOP** only (not YES: Vista uses YES to
+   approve pay). The HELP reply should include the support line, 1-800-992-2400.
+
+**How Vista follows the campaign (built in):** it texts only phones that have texted START; every text starts with
+"Vista (Southern Industries):"; the first text to each phone carries the HELP/STOP line; automatic texts are capped
+at 10 per phone per day; STOP silences everything until START. A phone that hasn't opted in and texts in gets one
+"reply START" message a day and nothing else. Sign-in codes are the one exception: the person asks for them in the
+app, so they're sent without the opt-in check. Make sure the campaign's description covers those codes.
 
 🏷️ **Tag Matt** when the campaign is approved, or if the carriers reject it. Texting to crews can't start until
 it's approved; everything else can go ahead.
@@ -241,8 +249,11 @@ aws cloudformation describe-stacks --stack-name vista --query "Stacks[0].Outputs
 1. In Twilio, open **Messaging**, then **Services**, then *Vista*, then **Integration**, and choose **Send a
    webhook**.
 2. Paste the Twilio webhook address into **Request URL**, with method **HTTP POST**.
-3. Test it: text `today` to the Vista number from a phone that isn't in Salesforce. You should get a bilingual
-   reply asking you to have your PM add you. Twilio answers HELP and STOP itself, so don't test with those.
+3. Test it from a phone that isn't in Salesforce: text `today` and you should get Vista's "reply START" message.
+   Text `START` (Twilio confirms), then `today` again: you should get a bilingual reply asking you to have your PM
+   add you.
+4. **Matt and Mike each text START** to the Vista number from their mobiles, or the health-check alerts won't reach
+   them.
 
 If the campaign isn't approved yet, carriers may block the reply. Test again once it's approved.
 

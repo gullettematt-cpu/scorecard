@@ -338,9 +338,64 @@ test('texts: signed webhook runs the engine, writes Salesforce, answers; forged 
   await text(PEOPLE.mike.phone, 'yes', 'SM8');
   assert.equal(deps.sf.world.SA_Expense__c.find(d => d.Id === 'a0X5').Status__c, 'Approved');
   assert.ok(deps.twilio.sent.some(m => m.to === PEOPLE.tucker.phone && /approved \$1,400/.test(m.body)), 'installer told');
-  // unknown number
+  // unknown number: first it must opt in; after START it's told to ask the PM
   await text('+19995550000', 'hi', 'SM9');
+  assert.match(deps.twilio.sent.at(-1).body, /reply START/);
+  await text('+19995550000', 'START', 'SM10');
+  await text('+19995550000', 'hi', 'SM11');
   assert.match(deps.twilio.sent.at(-1).body, /isn't set up for Vista/);
+});
+
+test('opt-in: only phones that texted START get texts; STOP ends it; branded; first-text notice; daily cap', async () => {
+  const deps = await testDeps({ optedIn: false }), h = createHandler(async () => deps), w = createWorker(async () => deps);
+  let sid = 0;
+  const text = (from, body, extra = {}) => {
+    const form = { From: from, Body: body, MessageSid: `SM${++sid}`, NumMedia: '0', ...extra };
+    return call(h, 'POST', '/sms/inbound', { form, headers: { 'x-twilio-signature': twilioSignature('twilio-token', 'https://api.test/sms/inbound', form) } });
+  };
+  const to = phone => deps.twilio.sent.filter(m => m.to === phone);
+  // Nobody opted in: scheduled texts go to no one, even people enrolled with channel "both".
+  await w({ job: 'morning' }); await w({ job: 'dispatch-poll' });
+  assert.equal(deps.twilio.sent.length, 0, 'no texts without START');
+  // A crew member who texts a command before opting in gets one "reply START" answer a day, and nothing happens.
+  await text(PEOPLE.luis.phone, 'hoy'); await text(PEOPLE.luis.phone, 'hoy');
+  assert.equal(to(PEOPLE.luis.phone).length, 1); assert.match(to(PEOPLE.luis.phone)[0].body, /^Vista \(Southern Industries\): .*reply START/);
+  // YES is not an opt-in keyword (Vista uses it to confirm approvals).
+  await text(PEOPLE.luis.phone, 'yes');
+  assert.equal((await deps.store.get(`OPTIN#${PEOPLE.luis.phone}`, 'STATE'))?.status, undefined);
+  // START (Twilio passes OptOutType) opts in; Vista doesn't reply, Twilio does.
+  const n = deps.twilio.sent.length;
+  await text(PEOPLE.luis.phone, 'START', { OptOutType: 'START' });
+  assert.equal(deps.twilio.sent.length, n, 'Twilio sends the opt-in confirmation, not Vista');
+  // First Vista text: branded, in Spanish, with the opt-out line; the next one without it.
+  await text(PEOPLE.luis.phone, 'hoy');
+  const first = to(PEOPLE.luis.phone).at(-1).body;
+  assert.match(first, /^Vista \(Southern Industries\): /); assert.match(first, /Responda HELP para ayuda, STOP para cancelar\.$/);
+  await text(PEOPLE.luis.phone, '1');
+  assert.doesNotMatch(to(PEOPLE.luis.phone).at(-1).body, /STOP para cancelar/);
+  // "START 1" is a Vista command, not a keyword.
+  assert.equal((await import('../src/lib/optin.mjs')).keywordOf('start 1'), null);
+  // HELP is answered by Twilio: Vista stays quiet.
+  const m = deps.twilio.sent.length; await text(PEOPLE.luis.phone, 'HELP'); assert.equal(deps.twilio.sent.length, m);
+  // Morning texts now reach Luis (opted in) but not Tucker (not opted in).
+  deps.twilio.sent.length = 0; await w({ job: 'morning' });
+  assert.ok(to(PEOPLE.luis.phone).length === 1 && to(PEOPLE.tucker.phone).length === 0);
+  // STOP ends it until START again.
+  await text(PEOPLE.luis.phone, 'stop');
+  deps.twilio.sent.length = 0; await w({ job: 'morning' }); await text(PEOPLE.luis.phone, 'hoy');
+  assert.equal(to(PEOPLE.luis.phone).length, 0, 'nothing after STOP, not even the opt-in prompt');
+  // Payroll's reminder to a PM who hasn't opted in: not sent, number to call instead.
+  const lisa = { id: 'admin:lisa', phone: '+17065550150', name: 'Lisa', role: 'admin', serviceResourceIds: [] }; await deps.people.save(lisa);
+  const nudge = (await call(h, 'POST', '/admin/nudge', { token: tokenFor(deps, lisa), body: { pmUserId: PEOPLE.mike.userId } })).json;
+  assert.equal(nudge.reason, 'not-opted-in'); assert.equal(nudge.phone, PEOPLE.mike.phone);
+  const people = (await call(h, 'GET', '/admin/people', { token: tokenFor(deps, lisa) })).json.people;
+  assert.equal(people.find(p => p.phone === PEOPLE.luis.phone).textOptIn, 'out'); assert.equal(people.find(p => p.phone === PEOPLE.tucker.phone).textOptIn, 'none');
+  // Daily cap: at most 10 automatic texts per phone per day (replies to their own texts don't count).
+  const { gatedTwilio, createOptIns } = await import('../src/lib/optin.mjs');
+  const optIns = createOptIns({ store: deps.store }); await optIns.set('+17065550199', 'in');
+  const g = gatedTwilio({ twilio: deps.twilio, optIns, people: deps.people, store: deps.store, log: {} });
+  let sent = 0; for (let i = 0; i < 12; i++) if (await g.send('+17065550199', `notice ${i}`)) sent++;
+  assert.equal(sent, 10); assert.ok(await g.send('+17065550199', 'answer', { reply: true }), 'replies still go out');
 });
 
 test('texts: pay request with picture messages copies photos into S3', async () => {

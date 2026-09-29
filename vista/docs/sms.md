@@ -52,7 +52,21 @@ Jobs can be referenced by list number or by the last digits of the WO number.
 | `ORIGINAL 1` | Job 1 as written in Salesforce, untranslated |
 | `APP` / `TEXT` / `BOTH` | Choose your channel |
 | Anything else | Goes to **Vi**, with the job you last looked at as context. Vi answers in your language. |
-| `STOP` / `START` | Handled by the text provider (carrier opt-out). |
+| `START` / `UNSTOP` | Sign up for Vista texts (the only opt-in words; YES is not one). Twilio confirms. |
+| `STOP` | Stop all Vista texts until you text START again. The app keeps working. |
+
+## Who gets texts (opt-in)
+
+Vista texts only phones that have texted **START** (or UNSTOP) to the Vista number, **(706) 955-2075**. Being in
+Salesforce or in Vista's People list is not enough.
+
+- A phone that hasn't opted in and texts anything else gets one reply a day asking it to text START, and nothing else.
+- Every text starts with **Vista (Southern Industries):**. The first text to each phone ends with "Reply HELP for
+  help, STOP to opt out" (in their language).
+- Automatic texts (morning texts, pay and PM notices, alerts) are capped at **10 per phone per day**, the frequency
+  registered with the carriers. Replies to a text the person just sent don't count.
+- Sign-in codes aren't gated: the person asks for them in the app.
+- Payroll's **People** screen shows each person's status: *Texts on*, *Hasn't texted START*, or *Texted STOP*.
 
 ## Texts Vista sends
 

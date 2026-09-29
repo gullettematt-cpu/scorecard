@@ -109,11 +109,17 @@ export function fakeVi() {
     async translate(texts) { calls.translate.push(texts); return texts.map(t => pairs.get(t) || { en: t, es: `[es] ${t}`, src: 'en' }); } };
 }
 
-export async function testDeps({ now } = {}) {
+export async function testDeps({ now, optedIn = true } = {}) {
   const store = memoryStore(), sf = fakeSalesforce(), twilio = fakeTwilio(), photos = fakePhotos(), vi = fakeVi();
   const people = createPeople({ store, sf: null });
   for (const p of Object.values(PEOPLE)) await people.save(p);
   await store.put({ pk: 'CONFIG', sk: 'ROLLOUT', rollout: { defaultMode: 'off', locations: { Augusta: { mode: 'on', pilotAccounts: [], optOutAccounts: [] } } } });
+  // Everyone in the sample world has texted START (and already had their first opt-out notice), unless a test
+  // says otherwise with { optedIn: false }.
+  if (optedIn) for (const phone of [...Object.values(PEOPLE).map(p => p.phone), '+17065550001']) {
+    await store.put({ pk: `OPTIN#${phone}`, sk: 'STATE', status: 'in', via: 'keyword', at: new Date().toISOString(), noticed: true });
+    await store.put({ pk: 'OPTINS', sk: phone, status: 'in' });
+  }
   return { sf, store, people, twilio, photos, vi, translations: createTranslations({ store, vi }), now,
     secrets: { jwt: 'test-jwt-secret', admin: 'test-admin', twilioAuthToken: 'twilio-token' },
     config: { appUrl: 'https://vista.test', publicApiUrl: 'https://api.test', alertPhones: ['+17065550001', '+17065550100'], adminPhones: ['+17065550001'] } };

@@ -5,6 +5,7 @@ import { loadSnapshot, freeTexts, EXPENSE_FIELDS } from './snapshot.mjs';
 import { createActions, ActionError } from './actions.mjs';
 import { asCrew } from './people.mjs';
 import { lit, inList } from './salesforce.mjs';
+import { createOptIns, gatedTwilio, keywordOf, OPT_IN_PROMPT } from './optin.mjs';
 
 const fill = (lang, key, vars = {}) => {
   const one = l => Object.entries(vars).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), strings[l]?.[key] ?? strings.en[key] ?? key);
@@ -13,7 +14,11 @@ const fill = (lang, key, vars = {}) => {
 const money = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
 
 export function createServices(deps) {
-  const { sf, store, people, photos, twilio, vi, translations, config = {} } = deps;
+  const { sf, store, people, photos, vi, translations, config = {} } = deps;
+  // Every automatic text goes through the opt-in gate (lib/optin.mjs). The raw client is only for answering an
+  // incoming text from a phone that hasn't opted in yet with how to opt in.
+  const optIns = createOptIns({ store });
+  const twilio = gatedTwilio({ twilio: deps.twilio, optIns, people, store });
   const perform = createActions({ sf, store, photos, twilio, people, adminPhones: config.adminPhones || [], now: deps.now });
   // The rollout switch: set with PUT /admin/rollout (no redeploy); config/rollout.json is the starting default.
   const getRollout = async () => (await store.get('CONFIG', 'ROLLOUT'))?.rollout || fileRollout;
@@ -46,8 +51,19 @@ export function createServices(deps) {
   }
 
   // One incoming text: run the conversation engine, perform what it decided, send the replies.
-  async function handleText({ from, body = '', media = [], messageId = null }) {
+  async function handleText({ from, body = '', media = [], messageId = null, optOutType = null }) {
     if (messageId && !(await store.putIfAbsent({ pk: `SMSMSG#${messageId}`, sk: 'SEEN', ttl: Math.floor(Date.now() / 1000) + 86400 }))) return { duplicate: true };
+    // Carrier keywords first. Twilio already answered START / STOP / HELP; Vista records opt-in and opt-out.
+    const kw = keywordOf(body, optOutType);
+    if (kw === 'in' || kw === 'out') { await optIns.set(from, kw); return { optIn: kw }; }
+    if (kw === 'help') return { help: true };
+    const st = await optIns.get(from);
+    if (st?.status === 'out') return { optedOut: true };
+    if (st?.status !== 'in') {
+      // Not opted in: at most one reply a day, saying how to opt in. Nothing else happens.
+      if (await store.putIfAbsent({ pk: `OPTINPROMPT#${from}`, sk: new Date().toISOString().slice(0, 10), ttl: Math.floor(Date.now() / 1000) + 2 * 86400 })) await deps.twilio.send(from, OPT_IN_PROMPT);
+      return { notOptedIn: true };
+    }
     const person = await people.byPhone(from);
     const snap = person ? await snapshotFor(person) : { jobs: [], draws: [], cases: [], people: [], translations: { pairs: [] } };
     const world = structuredClone({ people: snap.people, jobs: snap.jobs, draws: snap.draws }); // the engine edits its own copy
@@ -67,7 +83,7 @@ export function createServices(deps) {
     }
     if (person) await store.put({ pk: `SMS#${person.id}`, sk: 'SESSION', session: engine.sessions.get(person.id), ttl: Math.floor(Date.now() / 1000) + 14 * 86400 });
     const replies = failed ? [{ to: from, text: fill(person?.lang, 'txt.saveFailed') }, ...out.replies.filter(r => r.to !== from)] : out.replies;
-    for (const r of replies) await twilio.send(r.to, r.text);
+    for (const r of replies) await twilio.send(r.to, r.text, { reply: r.to === from });
     return { replies, actions: out.actions, failed };
   }
 
@@ -187,6 +203,7 @@ export function createServices(deps) {
     const pm = await people.byUser(pmUserId).catch(() => null);
     if (!pm || pm.disabled) return { sent: false, reason: 'not-enrolled' };
     if ((pm.channel || 'both') === 'app') return { sent: false, reason: 'app-only', phone: pm.phone, name: pm.name };
+    if (!(await twilio.canText(pm.phone))) return { sent: false, reason: 'not-opted-in', phone: pm.phone, name: pm.name };
     const last = await store.get(`NUDGE#${pmUserId}`, 'LAST');
     if (last && Date.now() - Date.parse(last.at) < 3600e3) return { sent: false, reason: 'recently', at: last.at, phone: pm.phone, name: pm.name };
     await twilio.send(pm.phone, fill(pm.lang, 'txt.notice.nudge', { from, n: waiting.length, amount: money(waiting.reduce((s, r) => s + r.amount, 0)) }));
@@ -198,7 +215,7 @@ export function createServices(deps) {
     return { lastOk: s.lastOk || null, failing: s.failing || null, failedAt: s.failedAt || null, error: s.error || null };
   }
 
-  return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout, board, nudgePm, health,
+  return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout, board, nudgePm, health, optIns,
     async setRollout(r) {
       const ok = r && typeof r === 'object' && Object.values(r.locations || {}).every(l => ['off', 'pilot', 'on'].includes(l.mode));
       if (!ok) throw Object.assign(new Error('each location needs mode off, pilot or on'), { status: 422 });

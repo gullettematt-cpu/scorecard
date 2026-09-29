@@ -1,5 +1,5 @@
 // Vista service worker — app shell offline. Bump VERSION on every deploy.
-const VERSION = 'vista-0.14.0';
+const VERSION = 'vista-0.15.0';
 const SHELL = [
   './', './index.html', './styles.css', './manifest.webmanifest', './icons/vista.svg',
   './config.js', './src/app.js', './src/api.js', './src/rollout.js', './src/prefs.js', './src/translate.js', './src/i18n.js', './src/db.js', './src/data.js', './src/sync.js', './src/ui.js',

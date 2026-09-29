@@ -41,7 +41,7 @@ const demo = {
   },
   async people() {
     const crews = await adapter.crews(), edits = (await db.meta('demoPeople')) || {}, prefs = allPrefs();
-    const base = crews.map(c => ({ id: c.id, name: c.lead.name, phone: c.lead.phone, role: c.role || 'installer', lang: prefs[c.id]?.lang || c.lang, channel: prefs[c.id]?.channel || 'both', account: c.account || null, requested: prefs[c.id]?.requested || null }));
+    const base = crews.map(c => ({ textOptIn: 'in', id: c.id, name: c.lead.name, phone: c.lead.phone, role: c.role || 'installer', lang: prefs[c.id]?.lang || c.lang, channel: prefs[c.id]?.channel || 'both', account: c.account || null, requested: prefs[c.id]?.requested || null }));
     const merged = base.map(p => ({ ...p, ...(edits[p.phone] || {}) }));
     for (const [phone, p] of Object.entries(edits)) if (!merged.some(x => x.phone === phone)) merged.push(p);
     return merged;
@@ -133,7 +133,7 @@ async function renderBoard(root, ctx) {
     const who = (r.name || 'PM').split(' ')[0];
     out.innerHTML = r.sent
       ? `<div class="hint ok">${esc(t('admin.nudged', { pm: who, n: r.n }))}</div>${r.preview ? `<div class="bubble vi"><p>${esc(r.preview)}</p><small class="tag">${esc(t('admin.demoText', { pm: who }))}</small></div>` : ''}`
-      : `<div class="hint">${esc({ 'app-only': t('admin.nudgeAppOnly', { pm: who, phone: r.phone || '' }), recently: t('admin.nudgeRecently', { pm: who, time: r.at ? fmtTime(r.at) : '' }), 'not-enrolled': t('admin.nudgeNoPhone', { pm: who }), 'nothing-waiting': t('admin.noneWaiting') }[r.reason] || r.reason)}</div>`;
+      : `<div class="hint">${esc({ 'app-only': t('admin.nudgeAppOnly', { pm: who, phone: r.phone || '' }), recently: t('admin.nudgeRecently', { pm: who, time: r.at ? fmtTime(r.at) : '' }), 'not-enrolled': t('admin.nudgeNoPhone', { pm: who }), 'not-opted-in': t('admin.nudgeNotOptedIn', { pm: who, phone: r.phone || '' }), 'nothing-waiting': t('admin.noneWaiting') }[r.reason] || r.reason)}</div>`;
     if (r.sent) toast(t('admin.nudged', { pm: who, n: r.n })); else b.disabled = false;
   });
 }
@@ -155,7 +155,7 @@ async function renderPeople(root, ctx, filter = '') {
           <div class="card"><ul class="blist">${rows.map(p => `<li class="brow person ${p.disabled ? 'off' : ''}" ${role === 'admin' ? '' : `data-phone="${esc(p.phone)}" tabindex="0" role="button"`}>
             <div><b>${esc(p.name)}</b>${p.disabled ? ` <span class="chip bad">${esc(t('admin.off'))}</span>` : ''}
               <div class="sub">${esc(p.phone)}${p.account?.Name ? ` · ${esc(p.account.Name)}` : ''}</div>
-              <div class="sub">${esc(LANGS[p.lang] || p.lang || '')} · ${esc(t('admin.channel.' + (p.channel || 'both')))}${p.requested ? ` · ${esc(t('admin.asked', { language: p.requested }))}` : ''}</div></div>
+              <div class="sub">${esc(LANGS[p.lang] || p.lang || '')} · ${esc(t('admin.channel.' + (p.channel || 'both')))}${p.textOptIn ? ` · <span class="optin ${esc(p.textOptIn)}">${esc(t('admin.optin.' + p.textOptIn))}</span>` : ''}${p.requested ? ` · ${esc(t('admin.asked', { language: p.requested }))}` : ''}</div></div>
             ${role === 'admin' ? `<span class="chip muted">${esc(t('admin.you'))}</span>` : '<span class="chev">›</span>'}</li>`).join('')}</ul></div>` : ''; }).join('') || `<div class="card"><p>${esc(t('admin.noMatch'))}</p></div>`}
         <div class="stack" style="margin:16px 0 28px"><button class="act primary" id="pAdd">${esc(t('admin.addPerson'))}</button>
           <div class="hint" style="margin-top:0">${esc(t('admin.addHint'))}</div></div>
