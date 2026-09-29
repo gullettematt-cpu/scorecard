@@ -28,11 +28,15 @@ separately by those providers.
 
 ### 1. Salesforce: integration user and connected app (Matt or the Salesforce admin)
 
-1. Make a certificate and key on your own computer. The key never goes into chat, email or the repo.
+1. **Donald generates the key pair** on his own computer, so the private key never leaves it:
    ```bash
    openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=vista-integration" \
      -keyout vista-sf.key -out vista-sf.crt
    ```
+   - He keeps `vista-sf.key` and loads it into Parameter Store in step 6. It never goes into chat, email or the
+     repo.
+   - He sends Matt `vista-sf.crt`, the public certificate. Email is fine for that.
+   - The certificate lasts 2 years. To renew, repeat this step, load the new key, and upload the new certificate.
 2. Create an **integration user** (license *Salesforce Integration*, permission set license *Salesforce API
    Integration*, plus *Field Service Integration* for the FSL objects). Username, for example,
    `vista@southernindustries.com.prod`. Give it a permission set with:
@@ -77,7 +81,13 @@ Vista works with your existing Twilio account; nothing new to sign up for.
 
 ### 3. Anthropic
 
-Create an API key for Vi in the Claude Console, under a workspace named "Vista" so its usage is easy to find.
+Matt creates the key in the Claude Console (https://console.anthropic.com):
+1. Create a workspace named **Vista**, so Vi's usage and cost are separate.
+2. Give the workspace a monthly spend limit as a backstop. Vista already caps each person at 60 questions a day.
+3. In that workspace, create an API key named **`vista-prod`**.
+4. Send it to Donald by one-time link: a 1Password share or Bitwarden Send, good for 1 view and expiring in 1 day.
+   Never by text or email.
+5. Once Donald has loaded it in step 6, delete the share.
 
 ### 4. AWS: GitHub deploy role (Donald)
 
