@@ -8,6 +8,7 @@ import { pendingReview, reviewLines, checklistFor, tradeKey, manifestOf, photoCo
 import { enqueue } from '../sync.js';
 import { esc, icons, toast, confirmSheet, freeText, wireOriginalToggle } from '../ui.js';
 import { header } from '../app.js';
+import { cutoffLine } from './admin.js';
 
 const REASONS = ['missing', 'unclear', 'mismatch', 'incomplete'];
 
@@ -153,7 +154,7 @@ export async function renderApprove(root, ctx, id) {
 
 function renderQueue(root, ctx, queue, jobOf) {
   root.innerHTML = `
-    ${header(ctx, `<div class="greet">${esc(t('approve.title'))}</div><div class="date">${esc(t('approve.cutoff'))}</div>`)}
+    ${header(ctx, `<div class="greet">${esc(t('approve.title'))}</div><div class="date">${esc(t('approve.cutoff'))}</div><div class="date"><span class="cutoff ${cutoffLine().open ? 'open' : ''}">${esc(cutoffLine().text)}</span></div>`)}
     <section class="sec">
       <h2>${esc(t('approve.waiting'))} <span>${esc(String(queue.length))}</span></h2>
       ${queue.length ? queue.map(d => {

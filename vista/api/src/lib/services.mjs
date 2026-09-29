@@ -168,7 +168,37 @@ export function createServices(deps) {
     }
   }
 
-  return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout,
+  // ---- Program admin (payroll) ---------------------------------------------------------------
+  // Every Vista pay request and draw: open ones, plus the last 30 days, sorted into stages.
+  async function board() {
+    const rows = await sf.query(`SELECT ${EXPENSE_FIELDS}, Production_Manager__c, Production_Manager__r.Name, Account__r.Name,
+      Work_Order__r.WorkOrderNumber, Work_Order__r.Account.Name, Work_Order__r.Job_Number__r.Office__r.Name
+      FROM SA_Expense__c WHERE Type__c = 'Vista' AND TEST_SA__c = false AND (Status__c = 'New' OR CreatedDate = LAST_N_DAYS:30)
+      ORDER BY CreatedDate DESC LIMIT 500`);
+    const items = rows.map(d => domain.boardRow(d, { wo: d.Work_Order__r?.WorkOrderNumber || '', homeowner: d.Work_Order__r?.Account?.Name || '',
+      office: d.Work_Order__r?.Job_Number__r?.Office__r?.Name || '', crew: d.Account__r?.Name || '', pmUserId: d.Production_Manager__c || null, pmName: d.Production_Manager__r?.Name || '' }));
+    return { items, byPm: domain.boardByPm(items), at: new Date().toISOString() };
+  }
+  // Payroll asks a PM to review what's waiting on them. Once an hour per PM at most.
+  async function nudgePm({ pmUserId, from }) {
+    const { items } = await board();
+    const waiting = items.filter(r => r.stage === 'withPm' && r.pmUserId === pmUserId);
+    if (!waiting.length) return { sent: false, reason: 'nothing-waiting' };
+    const pm = await people.byUser(pmUserId).catch(() => null);
+    if (!pm || pm.disabled) return { sent: false, reason: 'not-enrolled' };
+    if ((pm.channel || 'both') === 'app') return { sent: false, reason: 'app-only', phone: pm.phone, name: pm.name };
+    const last = await store.get(`NUDGE#${pmUserId}`, 'LAST');
+    if (last && Date.now() - Date.parse(last.at) < 3600e3) return { sent: false, reason: 'recently', at: last.at, phone: pm.phone, name: pm.name };
+    await twilio.send(pm.phone, fill(pm.lang, 'txt.notice.nudge', { from, n: waiting.length, amount: money(waiting.reduce((s, r) => s + r.amount, 0)) }));
+    await store.put({ pk: `NUDGE#${pmUserId}`, sk: 'LAST', at: new Date().toISOString(), by: from, ttl: Math.floor(Date.now() / 1000) + 86400 });
+    return { sent: true, n: waiting.length, phone: pm.phone, name: pm.name };
+  }
+  async function health() {
+    const s = (await store.get('HEARTBEAT', 'STATE')) || {};
+    return { lastOk: s.lastOk || null, failing: s.failing || null, failedAt: s.failedAt || null, error: s.error || null };
+  }
+
+  return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout, board, nudgePm, health,
     async setRollout(r) {
       const ok = r && typeof r === 'object' && Object.values(r.locations || {}).every(l => ['off', 'pilot', 'on'].includes(l.mode));
       if (!ok) throw Object.assign(new Error('each location needs mode off, pilot or on'), { status: 422 });

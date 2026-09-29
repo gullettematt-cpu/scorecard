@@ -331,7 +331,7 @@ export function createEngine({ store, strings, links = {}, askVi = null, tr = nu
     const lines = reviewLines(d, w, store.checklists[tradeKey(w)]), at = now().toISOString(), m = manifestOf(d) || {};
     const approval = { by: person.lead.name, at, decision: 'submitted', channel: 'sms', checked: lines.map(l => l.id), missed: [] };
     d.Status__c = 'Approved'; d.Approver__c = person.lead.name; d[MANIFEST_FIELD] = MANIFEST_MARK + JSON.stringify({ ...m, approval });
-    out.actions.push({ kind: 'payrequest.approve', payload: { expenseId: d.Id, Status__c: 'Approved', Approver__c: person.lead.name, approval } });
+    out.actions.push({ kind: 'payrequest.approve', payload: { expenseId: d.Id, Status__c: 'Approved', Approver__c: person.lead.name, approval, channel: 'sms' } });
     const crew = crewPerson(w);
     if (crew && wantsText(crew)) { const cl = session(crew).lang; out.replies.push({ to: crew.lead.phone, text: t(cl, 'txt.notice.approved', { amount: money(cl, drawAmount(d)), wo: w.WorkOrderNumber }) }); }
     return t(L, 'txt.pm.approved', { amount: money(L, drawAmount(d)), wo: w.WorkOrderNumber });
@@ -350,7 +350,7 @@ export function createEngine({ store, strings, links = {}, askVi = null, tr = nu
     const at = now().toISOString(), m = manifestOf(d) || {};
     const approval = { by: person.lead.name, at, decision: 'sent_back', channel: 'sms', checked: lines.filter((l, i) => !picked.has(i + 1)).map(l => l.id), missed };
     d[MANIFEST_FIELD] = MANIFEST_MARK + JSON.stringify({ ...m, approval });
-    out.actions.push({ kind: 'payrequest.sendBack', payload: { expenseId: d.Id, approval } });
+    out.actions.push({ kind: 'payrequest.sendBack', payload: { expenseId: d.Id, approval, channel: 'sms' } });
     if (crew && wantsText(crew)) out.replies.push({ to: crew.lead.phone, text: t(il, 'txt.notice.sentBack', { wo: w.WorkOrderNumber, items: missed.map(x => x.text).join('; '), ref: w.WorkOrderNumber.slice(-5) }) });
     return t(L, 'txt.pm.sentBack', { crew: w._crewName || '', items: pickedLines.map(l => `${lineLabel(L, l, d)} — ${t(L, 'reason.' + reason)}`).join('; ') });
   }

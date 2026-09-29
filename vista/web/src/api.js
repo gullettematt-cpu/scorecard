@@ -37,5 +37,16 @@ export const api = {
     const res = await fetch(url, { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: blob });
     if (!res.ok) throw Object.assign(new Error(`upload ${res.status}`), { status: res.status });
   },
+  admin: {
+    board: () => req('GET', '/admin/board'),
+    nudge: pmUserId => req('POST', '/admin/nudge', { pmUserId }),
+    people: () => req('GET', '/admin/people'),
+    savePerson: p => req('POST', '/admin/people', p),
+    rollout: () => req('GET', '/admin/rollout'),
+    setRollout: r => req('PUT', '/admin/rollout', r),
+    health: () => req('GET', '/admin/health'),
+    runHeartbeat: () => req('POST', '/admin/run', { job: 'heartbeat' }),
+    languageRequests: () => req('GET', '/admin/language-requests')
+  },
   ask: (workOrderId, question, history = []) => req('POST', '/vi/ask', { workOrderId, question, history })
 };

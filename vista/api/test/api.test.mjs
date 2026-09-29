@@ -428,6 +428,80 @@ test('morning and dispatch texts respect the person\'s channel', async () => {
   assert.equal((await w2({ job: 'dispatch-poll' })).sent, 0, 'no dispatch texts where Vista is off');
 });
 
+test('program admin (payroll): signs in by text, sees the pay board, nudges a PM, limited powers', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps);
+  const lisa = { id: 'admin:lisa', phone: '+17065550150', name: 'Lisa Payroll', role: 'admin', lang: 'en', channel: 'both', serviceResourceIds: [] };
+  await deps.people.save(lisa);
+  const tok = tokenFor(deps, lisa), as = (m, path, body) => call(h, m, path, { token: tok, body });
+  // Crews and PMs can't use admin routes; Lisa can, without the admin token.
+  assert.equal((await call(h, 'GET', '/admin/board', { token: tokenFor(deps, PEOPLE.mike) })).statusCode, 403);
+  const board = (await as('GET', '/admin/board')).json;
+  assert.ok(board.items.length > 0);
+  const waiting = board.items.filter(r => r.stage === 'withPm');
+  assert.ok(waiting.length >= 1 && waiting.every(r => r.pmUserId === PEOPLE.mike.userId && r.pmName === 'Mike Duncan' && r.wo && r.homeowner));
+  assert.ok(board.items.some(r => r.kind === 'draw'), 'draws are on the board');
+  assert.equal(board.byPm[0].pmUserId, PEOPLE.mike.userId); assert.equal(board.byPm[0].count, waiting.length);
+  // Nudge Mike: one text, then not again within the hour.
+  deps.twilio.sent.length = 0;
+  let r = (await as('POST', '/admin/nudge', { pmUserId: PEOPLE.mike.userId })).json;
+  assert.equal(r.sent, true); assert.equal(r.n, waiting.length);
+  assert.match(deps.twilio.sent[0].body, /Lisa Payroll in payroll: \d+ pay request\(s\) are waiting/); assert.equal(deps.twilio.sent[0].to, PEOPLE.mike.phone);
+  r = (await as('POST', '/admin/nudge', { pmUserId: PEOPLE.mike.userId })).json;
+  assert.equal(r.sent, false); assert.equal(r.reason, 'recently'); assert.equal(deps.twilio.sent.length, 1);
+  // A PM on app-only isn't texted; Lisa gets the number to call instead.
+  await deps.people.update(await deps.people.byUser(PEOPLE.mike.userId), { channel: 'app' });
+  await deps.store.del(`NUDGE#${PEOPLE.mike.userId}`, 'LAST');
+  r = (await as('POST', '/admin/nudge', { pmUserId: PEOPLE.mike.userId })).json;
+  assert.equal(r.reason, 'app-only'); assert.equal(r.phone, PEOPLE.mike.phone);
+  // Health and heartbeat; mass-text jobs stay on the schedule.
+  assert.equal((await as('POST', '/admin/run', { job: 'heartbeat' })).json.ok, true);
+  assert.ok((await as('GET', '/admin/health')).json.lastOk);
+  assert.equal((await as('POST', '/admin/run', { job: 'morning' })).statusCode, 422);
+  // People: enroll and turn off crews and PMs, but not admins or herself.
+  r = await as('POST', '/admin/people', { phone: '706-555-0177', name: 'New Installer', role: 'installer', lang: 'es' });
+  assert.equal(r.statusCode, 200); assert.equal(r.json.person.source, 'admin:Lisa Payroll');
+  assert.equal((await as('POST', '/admin/people', { phone: '706-555-0178', name: 'X', role: 'admin' })).statusCode, 422);
+  assert.equal((await as('POST', '/admin/people', { phone: lisa.phone, name: 'Lisa', role: 'pm' })).statusCode, 403);
+  // Rollout
+  const roll = (await as('GET', '/admin/rollout')).json.rollout;
+  assert.equal((await as('PUT', '/admin/rollout', { ...roll, locations: { Augusta: { mode: 'pilot', pilotAccounts: ['Tucker Installs LLC'], optOutAccounts: [] } } })).json.rollout.locations.Augusta.mode, 'pilot');
+  // An admin has no jobs of their own.
+  assert.deepEqual((await as('GET', '/snapshot')).json.jobs, []);
+});
+
+test('app actions text whoever is next: PM on submit, crew on approve or send-back (in their language); none twice for texts', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps);
+  const syncAs = (who, entries) => call(h, 'POST', '/sync', { token: tokenFor(deps, who), body: { entries } }).then(r => r.json.results);
+  const sent = to => deps.twilio.sent.filter(m => m.to === to);
+  // PM approves Tucker's request in the app -> Tucker gets "approved"
+  let r = await syncAs(PEOPLE.mike, [{ id: 1, kind: 'payrequest.approve', payload: { expenseId: 'a0X5', channel: 'app' } }]);
+  assert.equal(r[0].ok, true);
+  assert.match(sent(PEOPLE.tucker.phone).at(-1)?.body || '', /approved \$1,400 for job 00041866/);
+  // PM sends Luis's back -> Luis gets it in Spanish with what's missing
+  r = await syncAs(PEOPLE.mike, [{ id: 2, kind: 'payrequest.sendBack', payload: { expenseId: 'a0X3', channel: 'app', approval: { missed: [{ item: 'photo:before', text: 'Antes: 2 (mínimo 4)' }] } } }]);
+  assert.equal(r[0].ok, true);
+  const luis = sent(PEOPLE.luis.phone).at(-1)?.body || '';
+  assert.match(luis, /00041880/); assert.match(luis, /Antes: 2 \(mínimo 4\)/); assert.doesNotMatch(luis, /your PM sent back/, 'Spanish, not English');
+  // Tucker submits in the app -> Mike gets "new pay request"
+  const wo = '0WO5e00000A1k9pEAB', sa = '08p5e0000001aA1';
+  await syncAs(PEOPLE.tucker, [{ id: 3, kind: 'serviceappointment.start', payload: { serviceAppointmentId: sa } }]);
+  const photos = ['before', 'flashing', 'serial', 'after'].map(kind => ({ kind, key: `vista/${wo}/${sa}/20260928T120000-${kind}-1.jpg` }));
+  for (const ph of photos) deps.photos.objects.set(ph.key, 'jpeg');
+  const before = sent(PEOPLE.mike.phone).length;
+  r = await syncAs(PEOPLE.tucker, [{ id: 4, kind: 'payrequest.create', payload: { workOrderId: wo, Amount__c: 1500, description: 'Replaced 9 windows.', channel: 'app', manifest: { photos } } }]);
+  assert.equal(r[0].ok, true);
+  assert.equal(sent(PEOPLE.mike.phone).length, before + 1); assert.match(sent(PEOPLE.mike.phone).at(-1).body, /new pay request, Patricia Simmons \$1,500/);
+  // The same kind of action coming from the text engine (channel sms) doesn't text again from here.
+  const n = deps.twilio.sent.length;
+  await syncAs(PEOPLE.mike, [{ id: 5, kind: 'payrequest.approve', payload: { expenseId: r[0].id, channel: 'sms' } }]);
+  assert.equal(deps.twilio.sent.length, n);
+  // Someone on app-only gets no texts.
+  await deps.people.update(await deps.people.byPhone(PEOPLE.luis.phone), { channel: 'app' });
+  const m = sent(PEOPLE.luis.phone).length;
+  await syncAs(PEOPLE.mike, [{ id: 6, kind: 'payrequest.sendBack', payload: { expenseId: 'a0X3', channel: 'app', approval: { missed: [{ item: 'x', text: 'x' }] } } }]);
+  assert.equal(sent(PEOPLE.luis.phone).length, m);
+});
+
 test('admin can enroll a person who has no Salesforce user', async () => {
   const deps = await testDeps(), h = createHandler(async () => deps);
   const r = await call(h, 'POST', '/admin/people', { headers: { 'x-admin-token': 'test-admin' }, body: { phone: '706-555-0150', name: 'Jorge Ruiz', role: 'installer', serviceResourceIds: ['0HnRUIZ'], lang: 'es' } });

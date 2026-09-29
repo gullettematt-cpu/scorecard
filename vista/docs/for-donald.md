@@ -238,6 +238,13 @@ bash scripts/vista-admin.sh run heartbeat     # expect {"ok":true}
 bash scripts/vista-admin.sh rollout           # expect Augusta "off": nobody sees Vista yet
 ```
 
+**Give Lisa (payroll) her admin access.** Lisa runs the program from Vista's admin screens, and only the admin token
+can grant that role. I'll send you Lisa's mobile number.
+
+```bash
+bash scripts/vista-admin.sh add '+1XXXXXXXXXX' 'Lisa Lastname' admin en
+```
+
 If the heartbeat fails, the reply names the step (`login`, `read`, `write` or `upload`) and the error.
 - **`login`, `read` or `write`:** those are Salesforce. 🏷️ **Tag Matt** with the reply.
 - **`upload`:** that's AWS. See Troubleshooting below.

@@ -1,5 +1,5 @@
 // Who is texting / signing in. A phone number maps to one person:
-//   { id, phone, name, role: 'installer'|'measure'|'pm', userId?, serviceResourceIds[], account{Id,Name},
+//   { id, phone, name, role: 'installer'|'measure'|'pm'|'admin' (payroll/program admin), userId?, serviceResourceIds[], account{Id,Name},
 //     lang: 'en'|'es'|'bi', channel: 'app'|'text'|'both', requested?, disabled? }
 // First looked up in Vista's store (admins can add or correct people there), otherwise found in Salesforce
 // by phone and cached. Nothing is written to Salesforce.

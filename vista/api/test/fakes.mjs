@@ -72,6 +72,12 @@ export function fakeSalesforce(world = salesforceWorld()) {
       if (/FROM WorkOrder WHERE Id IN/.test(soql)) { const s = ids(soql, 'Id'); return world.WorkOrder.filter(x => s.includes(x.Id)).map(withLines); }
       if (/FROM WorkOrder/.test(soql)) return world.WorkOrder.slice(0, 1);
       if (/FROM SA_Expense__c WHERE Work_Order__c IN/.test(soql)) { const s = ids(soql, 'Work_Order__c'); return world.SA_Expense__c.filter(x => s.includes(x.Work_Order__c) && !x.TEST_SA__c); }
+      if (/FROM SA_Expense__c WHERE Type__c = 'Vista' AND TEST_SA__c = false AND \(Status__c = 'New' OR/.test(soql)) {
+        const crewOf = Object.fromEntries(Object.values(PEOPLE).filter(p => p.account).map(p => [p.account.Id, p.account.Name]));
+        return world.SA_Expense__c.filter(x => x.Type__c === 'Vista' && !x.TEST_SA__c).map(x => { const wo = world.WorkOrder.find(w => w.Id === x.Work_Order__c);
+          return { ...x, Production_Manager__r: x.Production_Manager__c ? { Name: PEOPLE.mike.name } : null, Account__r: x.Account__c ? { Name: crewOf[x.Account__c] || '' } : null,
+            Work_Order__r: wo && { WorkOrderNumber: wo.WorkOrderNumber, Account: wo.Account, Job_Number__r: { Office__r: wo.Job_Number__r.Office__r } } }; });
+      }
       if (/FROM SA_Expense__c WHERE Type__c = 'Vista' AND Status__c = 'New'/.test(soql)) return world.SA_Expense__c.filter(x => x.Type__c === 'Vista' && x.Status__c === 'New' && !x.TEST_SA__c && x.Did_you_complete_the_job_or_service__c === 'Yes').map(withRel);
       if (/FROM Case WHERE Job__c IN/.test(soql)) { const s = ids(soql, 'Job__c'); return world.Case.filter(x => s.includes(x.Job__c)); }
       throw new Error(`fake Salesforce has no answer for: ${soql.slice(0, 120)}`);

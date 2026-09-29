@@ -25,6 +25,16 @@ const today = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone:
 export function createActions({ sf, store, photos, twilio, people, adminPhones = [], now = () => new Date() }) {
   const need = (cond, msg, status = 403) => { if (!cond) throw new ActionError(msg, status); };
 
+  // Keep people moving: whoever acts next gets a text, in their language, unless they chose the app only.
+  // Requests made by text already get these from the conversation engine, so only app actions notify here.
+  const usd = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+  const notify = async (to, key, vars) => {
+    if (!to || to.disabled || (to.channel || 'both') === 'app' || !twilio) return;
+    await twilio.send(to.phone, say(to.lang, key, vars)).catch(err => console.warn('notify failed', key, err.message));
+  };
+  const pmOfJob = w => (w?.Job_Number__r?.Production_Manager__c ? people.byUser(w.Job_Number__r.Production_Manager__c).catch(() => null) : null);
+  const crewOf = async (w, m) => (m?.submitted_by?.phone && await people.byPhone(m.submitted_by.phone).catch(() => null)) || (w?._crew && await people.byId(w._crew).catch(() => null)) || null;
+
   async function importPhotos(list, job, sa, imported) {
     const out = [];
     for (const [i, p] of (list || []).entries()) {
@@ -108,6 +118,7 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
           [MANIFEST_FIELD]: writeManifest(m, m.additional_work?.note || ''), TEST_SA__c: false
         });
         snap.draws.unshift({ Id: id, Type__c: 'Vista', Status__c: 'New', Amount__c: amount, Work_Order__c: w.Id, Did_you_complete_the_job_or_service__c: 'Yes', [MANIFEST_FIELD]: writeManifest(m) });
+        if (p.channel !== 'sms') await notify(await pmOfJob(w), 'txt.notice.newReview', { who: w.Account?.Name || '', amount: usd(amount), crew: w._crewName || person.name });
         return { ok: true, id };
       }
       case 'payrequest.resubmit': {
@@ -117,6 +128,7 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const added = await importPhotos((p.manifest?.photos || []).filter(x => !(m.photos || []).some(y => y.key && y.key === x.key)), w, w.ServiceAppointment, imported);
         const next = { ...m, ...(p.manifest?.checklist ? { checklist: p.manifest.checklist } : {}), photos: [...(m.photos || []), ...added], resubmitted_at: now().toISOString() };
         await sf.update('SA_Expense__c', d.Id, { [MANIFEST_FIELD]: writeManifest(next), ...(p.description ? { Description_of_Work_Performed__c: String(p.description).slice(0, 32000) } : {}) });
+        if (p.channel !== 'sms') await notify(await pmOfJob(w), 'txt.notice.newReview', { who: w.Account?.Name || '', amount: usd(d.Amount__c), crew: w._crewName || person.name });
         return { ok: true };
       }
       case 'payrequest.approve': {
@@ -129,6 +141,8 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const approval = { ...(p.approval || {}), by: person.name, at: now().toISOString(), decision: 'submitted', missed: [] };
         // Same result as the Titan approval process's final approval: Approved + Approver (First Last).
         await sf.update('SA_Expense__c', d.Id, { Status__c: 'Approved', Approver__c: person.name, [MANIFEST_FIELD]: writeManifest({ ...m, approval }) });
+        d.Status__c = 'Approved';
+        if (p.channel !== 'sms') await notify(await crewOf(w, m), 'txt.notice.approved', { amount: usd(d.Amount__c), wo: w.WorkOrderNumber });
         return { ok: true };
       }
       case 'payrequest.sendBack': {
@@ -137,6 +151,8 @@ export function createActions({ sf, store, photos, twilio, people, adminPhones =
         const approval = { ...(p.approval || {}), by: person.name, at: now().toISOString(), decision: 'sent_back' };
         need((approval.missed || []).length, 'say what is missing');
         await sf.update('SA_Expense__c', d.Id, { [MANIFEST_FIELD]: writeManifest({ ...m, approval }) });
+        const w = job(d.Work_Order__c);
+        if (w && p.channel !== 'sms') await notify(await crewOf(w, m), 'txt.notice.sentBack', { wo: w.WorkOrderNumber, items: approval.missed.map(x => x.text).join('; '), ref: String(w.WorkOrderNumber).slice(-5) });
         return { ok: true };
       }
       case 'draw.issue': {

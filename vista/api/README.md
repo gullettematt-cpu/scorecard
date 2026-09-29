@@ -36,7 +36,10 @@ VISTA_API_URL=http://localhost:4174 npm run dev   # the app in live mode against
 | `POST /translate` `{texts[]}` | signed in | English/Spanish pairs, cached per text. |
 | `POST /vi/ask` `{workOrderId?, question, history[]}` → `{answer, problem, left}` | signed in | Vi (Claude, `claude-sonnet-5`, effort medium) answers a conversation about one of the caller's jobs (or a general question): the job record, line items, open problems, pay status (amount and status only), the trade checklist and a short list of Vista facts, in the person's language. The last 6 turns go with each question; the job context is cached so follow-ups are cheap. `problem` is a suggested problem report (`{summary}`) when the person describes something wrong; the app offers it pre-filled and the person decides. 60 questions per person per day (429 after that); gives up after 25 s. |
 | `POST /sms/inbound` | Twilio | Checks the signature, then hands off to the worker and returns an empty TwiML reply. |
-| `GET/POST /admin/people`, `GET/PUT /admin/rollout`, `GET /admin/language-requests`, `POST /admin/run` `{job}` | `x-admin-token` | Use `scripts/vista-admin.sh`, which reads the token from SSM. |
+| `GET/POST /admin/people`, `GET/PUT /admin/rollout`, `GET /admin/language-requests`, `POST /admin/run` `{job}` | `x-admin-token`, or a signed-in person with role `admin` | The token (IT, `scripts/vista-admin.sh`) can do everything, including making admins. An admin person (payroll) can manage installers, measure techs and PMs (not admins, not themselves) and can only run the `heartbeat` job. |
+| `GET /admin/board` → `{items, byPm, at}` | same | Every Vista pay request and draw (open ones, plus the last 30 days) sorted into stages (`withPm`, `sentBack`, `approved`, `paid`), with job, homeowner, crew company, PM, amount and hours waiting; `byPm` totals what's waiting on each PM, oldest first. |
+| `POST /admin/nudge` `{pmUserId}` | same | Texts the PM how many requests wait on them, the total and the 10 AM cutoff. At most once an hour per PM; if the PM chose app only, returns their number to call instead. |
+| `GET /admin/health` | same | The health check's last good run, and the failing step if any. |
 
 ### Sync kinds (the same actions the text engine emits)
 

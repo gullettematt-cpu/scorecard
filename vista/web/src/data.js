@@ -23,7 +23,8 @@ const dayOff = offset => { const d = new Date(); d.setDate(d.getDate() + offset)
 const fixtureAdapter = {
   name: 'fixture',
   async crews() { return (await fetch('./fixtures/crews.json')).json(); },
-  async rollout() { return (await fetch('./fixtures/rollout.json')).json(); },
+  // Demo: the admin's Rollout screen saves an override on this phone, so switching a location off shows.
+  async rollout() { return (await db.meta('rolloutOverride')) || (await fetch('./fixtures/rollout.json')).json(); },
   async translations() { return (await fetch('./fixtures/translations.json')).json(); },
   async load(crew) {
     const crews = await this.crews();
@@ -147,6 +148,42 @@ export function manifestOf(d) {
 }
 export const photoCount = d => manifestOf(d)?.photos?.length || 0;
 export const isDraw = d => d.Did_you_complete_the_job_or_service__c === 'No' || manifestOf(d)?.kind === 'draw';
+
+// --- Program board (payroll's view of every Vista pay request) -----------------------------------
+// Stages, in the order money moves: withPm -> (sentBack -> withPm) -> approved -> paid. Draws are issued
+// already approved by a PM, so they go straight to approved/paid. ctx carries what the caller resolved:
+// { wo, homeowner, office, crew, pmUserId, pmName }.
+export function boardRow(d, ctx = {}, now = new Date()) {
+  const m = manifestOf(d) || {}, status = drawStatus(d);
+  const stage = status === 'Paid' ? 'paid' : isDraw(d) ? 'approved' : ({ WithPM: 'withPm', SentBack: 'sentBack', Approved: 'approved' }[status] || 'other');
+  const since = (stage === 'withPm' && m.resubmitted_at) || (stage === 'sentBack' && m.approval?.at) || m.submitted_at || d.CreatedDate;
+  return {
+    id: d.Id, name: d.Name, amount: drawAmount(d), kind: isDraw(d) ? 'draw' : 'pay', stage,
+    since, hours: since ? Math.max(0, Math.round((now - new Date(since)) / 36e5)) : null,
+    approvedAt: stage === 'approved' || stage === 'paid' ? (m.approval?.decision === 'submitted' ? m.approval.at : m.issued_at || m.submitted_at || d.CreatedDate) : null,
+    approver: d.Approver__c || m.approval?.by || null, missed: (m.approval?.decision === 'sent_back' ? m.approval.missed || [] : []).map(x => x.text),
+    photos: (m.photos || []).length, channel: m.channel || 'app', ...ctx
+  };
+}
+// The daily ACH cutoff: 10:00 AM Eastern, Monday to Friday. Anything approved before it is on that day's run.
+// -> { open: true, minutesLeft } before the cutoff on a weekday, else { open: false, next: 'tomorrow'|'monday' }.
+export function cutoffInfo(now = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+    .formatToParts(now).map(x => [x.type, x.value]));
+  const mins = Number(p.hour) * 60 + Number(p.minute), weekend = p.weekday === 'Sat' || p.weekday === 'Sun';
+  if (!weekend && mins < 600) return { open: true, minutesLeft: 600 - mins };
+  return { open: false, next: weekend || p.weekday === 'Fri' ? 'monday' : 'tomorrow' };
+}
+// Per PM: how many requests wait on them, the total, and the oldest (for nudges before the 10 AM cutoff).
+export function boardByPm(rows) {
+  const out = new Map();
+  for (const r of rows.filter(x => x.stage === 'withPm')) {
+    const k = r.pmUserId || r.pmName || '?';
+    const e = out.get(k) || { pmUserId: r.pmUserId, pmName: r.pmName, count: 0, total: 0, oldestHours: 0 };
+    e.count++; e.total += r.amount; e.oldestHours = Math.max(e.oldestHours, r.hours || 0); out.set(k, e);
+  }
+  return [...out.values()].sort((a, b) => b.oldestHours - a.oldestHours);
+}
 
 // Draw eligibility: PM judgment, optionally narrowed by content/draw-rules.json.
 export async function drawRules() {

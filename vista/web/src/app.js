@@ -12,6 +12,7 @@ import { renderApprove } from './screens/approve.js';
 import { renderPay } from './screens/pay.js';
 import { renderProblem } from './screens/problem.js';
 import { renderVi } from './screens/vi.js';
+import { renderAdmin, ADMIN_NAV } from './screens/admin.js';
 import { apiMode, api, session, SignInNeeded } from './api.js';
 
 const root = document.getElementById('app');
@@ -37,6 +38,10 @@ export function header(ctx, body) {
 const navLabel = s => { const [a, b] = s.split(' / '); return b ? `<span>${esc(a)}</span><span class="alt">${esc(b)}</span>` : `<span>${esc(s)}</span>`; };
 
 function renderNav(route) {
+  if (ctx.role === 'admin') {
+    nav.innerHTML = ADMIN_NAV.map(([k, key, ic, href]) => `<a href="${href}" class="${route === k ? 'on' : ''}">${icons[ic]}${navLabel(t(key))}</a>`).join('');
+    return;
+  }
   const items = [
     ['today', 'nav.today', icons.today, '#/today'],
     ['job', 'nav.job', icons.job, ctx.lastJob ? `#/job/${ctx.lastJob}` : '#/today'],
@@ -73,7 +78,7 @@ async function pickCrew() {
     <div class="hdr-row"><div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
       <button class="act" id="pickLang" style="flex:none;min-height:40px;padding:0 12px" aria-label="${esc(t('lang.title'))}">🌐 ${esc(LANG_LABEL[lang()])}</button></div>
     <h1>${esc(t('app.pickCrew'))}</h1><p>${esc(t('app.pickCrewHint'))}</p>
-    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${esc(LANG_NAME[getPrefs(c.id).lang || c.lang])}</div></button>`).join('')}
+    ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : c.role === 'admin' ? esc(t('app.adminRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${esc(LANG_NAME[getPrefs(c.id).lang || c.lang])}</div></button>`).join('')}
   </div>`;
   nav.innerHTML = '';
   return new Promise(resolve => {
@@ -125,8 +130,10 @@ async function switchCrew() {
   ctx.pickedLang = null; ctx.pendingRequest = null;
   const carry = apiMode ? null : { jobs: await db.all('jobs'), draws: await db.all('draws'), cases: await db.all('cases'), checklist: await db.all('checklist') };
   const photos = apiMode ? [] : await db.all('photos');
+  // Demo: the admin's changes (rollout, people, reminders, health) stay when switching people.
+  const keepMeta = apiMode ? [] : (await db.all('meta')).filter(m => /^(rolloutOverride|demoPeople|demoHealth|demoNudge:)/.test(m.Id));
   await db.wipe();
-  if (carry) { await db.meta('demoCarry', carry); await db.putAll('photos', photos); }
+  if (carry) { await db.meta('demoCarry', carry); await db.putAll('photos', photos); await db.putAll('meta', keepMeta); }
   location.hash = '#/today'; boot();
 }
 
@@ -136,6 +143,16 @@ async function route() {
   const [screen, id] = path.split('/');
   const q = new URLSearchParams(query || '');
   ctx.pending = await pendingCount();
+  // Payroll/program admin: their own screens; crew and PM screens aren't theirs.
+  if (ctx.role === 'admin' && screen !== 'vi') {
+    const section = screen === 'admin' ? id || '' : '';
+    await renderAdmin(root, ctx, section);
+    renderNav(section ? `admin/${section}` : 'admin');
+    window.scrollTo(0, 0);
+    root.querySelector('#langBtn')?.addEventListener('click', async () => { if (await openLanguage()) route(); });
+    return;
+  }
+  if (screen === 'admin') { location.hash = '#/today'; return; }
   if (screen === 'job' && id) { ctx.lastJob = id; await renderJob(root, ctx, id); }
   else if (screen === 'approve') await renderApprove(root, ctx, id);
   else if (screen === 'draw') await renderPay(root, ctx, q.get('job'));

@@ -3,6 +3,7 @@
 #   bash scripts/vista-admin.sh people                                   # list enrolled people
 #   bash scripts/vista-admin.sh add '+17065550112' 'Dwayne Tucker' installer [en|es|bi] [ServiceResourceId]
 #   bash scripts/vista-admin.sh add '+17065550100' 'Mike Duncan' pm en [UserId]
+#   bash scripts/vista-admin.sh add '+17065550150' 'Lisa Lastname' admin en    # payroll/program admin: gets the admin screens
 #   (Most people need no enrolling: Vista finds them in Salesforce by the mobile number on their User or ServiceResource.)
 #   bash scripts/vista-admin.sh rollout                                  # show the live rollout switch
 #   bash scripts/vista-admin.sh set-location Augusta off|pilot|on        # flip a location
@@ -22,7 +23,7 @@ cmd="${1:-}"; shift || true
 case "$cmd" in
   people) call GET /admin/people ;;
   add)
-    [ $# -ge 3 ] || { echo "usage: add PHONE 'NAME' installer|measure|pm [lang] [ServiceResourceId, or UserId for a pm]"; exit 1; }
+    [ $# -ge 3 ] || { echo "usage: add PHONE 'NAME' installer|measure|pm|admin [lang] [ServiceResourceId, or UserId for a pm]"; exit 1; }
     body=$(node -e 'const [phone,name,role,lang,sfid]=process.argv.slice(1);
       const link = !sfid ? {} : role === "pm" ? { userId: sfid, id: "user:" + sfid } : { serviceResourceIds: [sfid], id: "res:" + sfid };
       console.log(JSON.stringify({ phone, name, role, lang: lang || "en", ...link }))' "$@")

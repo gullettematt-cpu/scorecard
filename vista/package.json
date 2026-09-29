@@ -13,6 +13,7 @@
     "test:pay": "node scripts/pay-test.mjs",
     "test:problem": "node scripts/problem-test.mjs",
     "test:vi": "node scripts/vi-test.mjs",
+    "test:admin": "node scripts/admin-test.mjs",
     "api:local": "node scripts/api-local.mjs",
     "sms:examples": "node scripts/sms-test.mjs --write"
   },

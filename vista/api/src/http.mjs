@@ -51,24 +51,42 @@ export function createHandler(getDeps) {
         return { statusCode: 200, headers: { 'content-type': 'text/xml' }, body: '<Response></Response>' };
       }
 
-      // ---- Admin (x-admin-token) ---------------------------------------------------------------
+      // ---- Admin: the admin token (Donald's scripts) or a signed-in person with the admin role (Lisa, payroll) ----
       if (path.startsWith('/admin/')) {
-        if (!sameSecret(header('x-admin-token'), deps.secrets.admin)) return json(403, { error: 'forbidden' });
+        let actor = null; // null = the admin token
+        if (!sameSecret(header('x-admin-token'), deps.secrets.admin)) {
+          const c = verifyToken(String(header('authorization') || '').replace(/^Bearer /, ''), deps.secrets.jwt);
+          const p = c && await deps.people.byPhone(c.phone).catch(() => null);
+          if (!p || p.disabled || p.role !== 'admin') return json(403, { error: 'forbidden' }, origin);
+          actor = p;
+        }
         if (method === 'POST' && path === '/admin/people') {
           const b = body(); const phone = normalizePhone(b.phone);
-          if (!phone || !['installer', 'measure', 'pm'].includes(b.role) || !b.name) return json(422, { error: 'phone, name and role (installer|measure|pm) are required' });
+          const roles = actor ? ['installer', 'measure', 'pm'] : ['installer', 'measure', 'pm', 'admin']; // only the token makes admins
+          if (!phone || !roles.includes(b.role) || !b.name) return json(422, { error: `phone, name and role (${roles.join('|')}) are required` }, origin);
           const existing = await deps.people.byPhone(phone).catch(() => null);
+          if (actor && existing?.role === 'admin') return json(403, { error: 'admins are managed by the IT admin' }, origin);
+          if (actor && existing?.id === actor.id) return json(422, { error: "you can't change your own access" }, origin);
           const p = await deps.people.save({ ...(existing || {}), id: b.id || existing?.id || `${b.role}:${phone}`, phone, name: b.name, role: b.role,
             userId: b.userId ?? existing?.userId, serviceResourceIds: b.serviceResourceIds ?? existing?.serviceResourceIds ?? [], account: b.account ?? existing?.account ?? null,
-            lang: b.lang ?? existing?.lang ?? 'en', channel: b.channel ?? existing?.channel ?? 'both', disabled: !!b.disabled, source: 'admin' });
-          return json(200, { person: p });
+            lang: b.lang ?? existing?.lang ?? 'en', channel: b.channel ?? existing?.channel ?? 'both', disabled: !!b.disabled, source: actor ? `admin:${actor.name}` : 'admin' });
+          return json(200, { person: p }, origin);
         }
-        if (method === 'GET' && path === '/admin/people') return json(200, { people: await deps.people.list() });
-        if (method === 'GET' && path === '/admin/rollout') return json(200, { rollout: await svc.getRollout() });
-        if (method === 'PUT' && path === '/admin/rollout') return json(200, { rollout: await svc.setRollout(body()) });
-        if (method === 'GET' && path === '/admin/language-requests') return json(200, { requests: await deps.store.query('LANGREQ') });
-        if (method === 'POST' && path === '/admin/run') return ADMIN_JOBS.includes(body().job) ? json(200, (await svc[body().job]()) ?? { ok: true }) : json(422, { error: `job must be one of ${ADMIN_JOBS.join(', ')}` });
-        return json(404, { error: 'not found' });
+        if (method === 'GET' && path === '/admin/people') return json(200, { people: await deps.people.list() }, origin);
+        if (method === 'GET' && path === '/admin/rollout') return json(200, { rollout: await svc.getRollout() }, origin);
+        if (method === 'PUT' && path === '/admin/rollout') return json(200, { rollout: await svc.setRollout(body()) }, origin);
+        if (method === 'GET' && path === '/admin/language-requests') return json(200, { requests: await deps.store.query('LANGREQ') }, origin);
+        if (method === 'GET' && path === '/admin/board') return json(200, await svc.board(), origin);
+        if (method === 'POST' && path === '/admin/nudge') {
+          const b = body(); if (!b.pmUserId) return json(422, { error: 'pmUserId is required' }, origin);
+          return json(200, await svc.nudgePm({ pmUserId: String(b.pmUserId), from: actor?.name || 'Payroll' }), origin);
+        }
+        if (method === 'GET' && path === '/admin/health') return json(200, await svc.health(), origin);
+        if (method === 'POST' && path === '/admin/run') {
+          const jobs = actor ? ['heartbeat'] : ADMIN_JOBS; // people can re-run the health check; mass texts stay on the schedule
+          return jobs.includes(body().job) ? json(200, (await svc[body().job]()) ?? { ok: true }, origin) : json(422, { error: `job must be one of ${jobs.join(', ')}` }, origin);
+        }
+        return json(404, { error: 'not found' }, origin);
       }
 
       // ---- Everything below needs a signed-in person ------------------------------------------

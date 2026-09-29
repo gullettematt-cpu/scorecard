@@ -95,5 +95,27 @@
       "measure-3.json"
     ],
     "account": null
+  },
+  {
+    "id": "admin-lisa",
+    "name": "Lisa · Payroll",
+    "role": "admin",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": null,
+    "lead": {
+      "name": "Lisa",
+      "phone": "+17065550150"
+    },
+    "members": [
+      "Program admin"
+    ],
+    "pm": null,
+    "fixtures": [
+      "crew-12.json",
+      "crew-7.json",
+      "measure-3.json"
+    ],
+    "account": null
   }
 ]
