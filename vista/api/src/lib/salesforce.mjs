@@ -16,10 +16,12 @@ export function jwtAssertion({ clientId, username, audience, privateKey, now = D
 export const lit = s => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 export const inList = xs => `(${(xs.length ? xs : ['']).map(lit).join(',')})`;
 
-export function createSalesforce({ loginUrl, clientId, username, privateKey, apiVersion = 'v62.0', fetchImpl = fetch }) {
-  let tok = null;
+// `token` ({ access_token, instance_url }) skips the JWT login: scripts/check-salesforce.mjs uses the sf CLI's session.
+export function createSalesforce({ loginUrl, clientId, username, privateKey, token = null, apiVersion = 'v62.0', fetchImpl = fetch }) {
+  let tok = token;
   const base = `/services/data/${apiVersion}`;
   async function auth() {
+    if (!privateKey && tok) return tok; // a session from the sf CLI
     const res = await fetchImpl(`${loginUrl}/services/oauth2/token`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwtAssertion({ clientId, username, audience: loginUrl, privateKey }) })
@@ -34,7 +36,7 @@ export function createSalesforce({ loginUrl, clientId, username, privateKey, api
       method, headers: { authorization: `Bearer ${tok.access_token}`, 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
-    if (res.status === 401 && retry) { tok = null; return call(method, path, body, false); }
+    if (res.status === 401 && retry && privateKey) { tok = null; return call(method, path, body, false); }
     if (!res.ok) throw new SalesforceError(`${method} ${path.split('?')[0]}`, res.status, await res.text());
     return res.status === 204 ? null : res.json();
   }
@@ -46,6 +48,7 @@ export function createSalesforce({ loginUrl, clientId, username, privateKey, api
       while (!r.done && r.nextRecordsUrl) { r = await call('GET', r.nextRecordsUrl); out.push(...r.records); }
       return out;
     },
+    describe: sobject => call('GET', `${base}/sobjects/${sobject}/describe`),
     async search(sosl) { return (await call('GET', `${base}/search?q=${encodeURIComponent(sosl)}`))?.searchRecords || []; },
     async create(sobject, fields) { return (await call('POST', `${base}/sobjects/${sobject}`, fields)).id; },
     update: (sobject, id, fields) => call('PATCH', `${base}/sobjects/${sobject}/${id}`, fields),

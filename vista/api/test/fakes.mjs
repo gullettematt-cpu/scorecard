@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { memoryStore } from '../src/lib/store.mjs';
 import { createPeople } from '../src/lib/people.mjs';
+import { WRITES } from '../src/lib/sfcheck.mjs';
 import { createTranslations } from '../src/lib/vi.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -51,6 +52,10 @@ export function salesforceWorld() {
 const ids = (soql, field) => { const m = soql.match(new RegExp(`${field} IN \\(([^)]*)\\)`)); return m ? m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '')) : []; };
 const val = (soql, field) => soql.match(new RegExp(`${field} = '([^']*)'`))?.[1];
 
+// Every field Vista writes must be in sfcheck's WRITES, so Check Salesforce covers it.
+const listed = (sobject, fields, how) => { const unknown = Object.keys(fields).filter(f => !(WRITES[sobject]?.[how] || []).includes(f));
+  if (unknown.length) throw new Error(`${sobject} ${how}: add ${unknown.join(', ')} to WRITES in lib/sfcheck.mjs`); };
+
 export function fakeSalesforce(world = salesforceWorld()) {
   const log = { creates: [], updates: [], deletes: [], queries: [] };
   let n = 0, authFail = false;
@@ -84,11 +89,13 @@ export function fakeSalesforce(world = salesforceWorld()) {
     },
     async create(sobject, fields) {
       if (authFail) throw new Error('invalid_grant');
+      listed(sobject, fields, 'create');
       const id = `a0X${String(++n).padStart(12, '0')}`; log.creates.push({ sobject, id, fields });
       (world[sobject] ||= []).push({ Id: id, Name: `SA-${9200 + n}`, CreatedDate: new Date().toISOString(), ...fields });
       return id;
     },
     async update(sobject, id, fields) {
+      listed(sobject, fields, 'update');
       log.updates.push({ sobject, id, fields });
       const rec = (world[sobject] || []).find(r => r.Id === id); if (!rec) throw Object.assign(new Error(`no ${sobject} ${id}`), { status: 404 });
       Object.assign(rec, fields);

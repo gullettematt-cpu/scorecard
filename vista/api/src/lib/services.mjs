@@ -1,10 +1,11 @@
 // Vista's use cases, shared by the HTTPS API (api/src/http.mjs) and the worker (api/src/worker.mjs).
 // `deps` = { sf, store, people, photos, twilio, vi, translations, config } — real in AWS, fakes in tests.
 import { strings, checklists, rollout as fileRollout, drawRules, createEngine, makeTranslator, domain, readManifest, vistaOn } from './shared.mjs';
-import { loadSnapshot, freeTexts, EXPENSE_FIELDS } from './snapshot.mjs';
+import { loadSnapshot, freeTexts } from './snapshot.mjs';
 import { createActions, ActionError } from './actions.mjs';
 import { asCrew } from './people.mjs';
-import { lit, inList } from './salesforce.mjs';
+import { SOQL } from './soql.mjs';
+import { checkSalesforce } from './sfcheck.mjs';
 import { createOptIns, gatedTwilio, keywordOf, OPT_IN_PROMPT } from './optin.mjs';
 
 const fill = (lang, key, vars = {}) => {
@@ -105,10 +106,9 @@ export function createServices(deps) {
 
   // 10:00 AM: every Vista pay request still at New misses today's run.
   async function cutoff({ day = new Date().toISOString().slice(0, 10) } = {}) {
-    const pending = await sf.query(`SELECT ${EXPENSE_FIELDS}, Work_Order__r.WorkOrderNumber, Work_Order__r.Account.Name, Service_Appointment__r.SMS_Opt_out__c
-      FROM SA_Expense__c WHERE Type__c = 'Vista' AND Status__c = 'New' AND TEST_SA__c = false AND Did_you_complete_the_job_or_service__c = 'Yes'`);
+    const pending = await sf.query(SOQL.cutoffPending());
     if (!pending.length) return { subs: 0, pms: 0 };
-    const assigned = await sf.query(`SELECT ServiceAppointmentId, ServiceResourceId, Lead_Installer__c FROM AssignedResource WHERE ServiceAppointmentId IN ${inList([...new Set(pending.map(d => d.Service_Appointment__c).filter(Boolean))])}`);
+    const assigned = await sf.query(SOQL.assignedForVisits([...new Set(pending.map(d => d.Service_Appointment__c).filter(Boolean))]));
     let subs = 0; const perPm = new Map();
     for (const d of pending) {
       if (!(await store.putIfAbsent({ pk: `NOTICE#${day}`, sk: d.Id, ttl: Math.floor(Date.now() / 1000) + 7 * 86400 }))) continue;
@@ -136,8 +136,7 @@ export function createServices(deps) {
     const state = await store.get('POLL', 'DISPATCH');
     const since = state?.at || new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const nowIso = new Date().toISOString();
-    const sas = await sf.query(`SELECT Id, SchedStartTime, Work_Order__r.Account.Name, Work_Order__r.Street, Work_Order__r.Job_Number__r.Office__c, Work_Order__r.Job_Number__r.Office__r.Name, (SELECT ServiceResourceId FROM ServiceResources)
-      FROM ServiceAppointment WHERE Status = 'Dispatched' AND LastModifiedDate > ${since.replace(/\.\d+Z$/, 'Z')} AND Test_SA__c = false`);
+    const sas = await sf.query(SOQL.dispatchedSince(since));
     let sent = 0; const rollout = await getRollout();
     for (const sa of sas) {
       if (!(await store.putIfAbsent({ pk: `DISPATCHED#${sa.Id}`, sk: 'SENT', ttl: Math.floor(Date.now() / 1000) + 30 * 86400 }))) continue;
@@ -163,8 +162,8 @@ export function createServices(deps) {
     try {
       await sf.auth();
       step = 'read';
-      const wo = (await sf.query(`SELECT Id FROM WorkOrder WHERE Test_WO__c = true ORDER BY LastModifiedDate DESC LIMIT 1`))[0]
-        || (await sf.query(`SELECT Id FROM WorkOrder ORDER BY LastModifiedDate DESC LIMIT 1`))[0];
+      const wo = (await sf.query(SOQL.heartbeatTestWorkOrder()))[0]
+        || (await sf.query(SOQL.heartbeatAnyWorkOrder()))[0];
       if (!wo) throw new Error('no work order readable');
       step = 'write';
       const id = await sf.create('SA_Expense__c', { Type__c: 'Vista', Status__c: 'New', TEST_SA__c: true, Amount__c: 0.01, Expense_Type__c: 'Labour',
@@ -187,10 +186,7 @@ export function createServices(deps) {
   // ---- Program admin (payroll) ---------------------------------------------------------------
   // Every Vista pay request and draw: open ones, plus the last 30 days, sorted into stages.
   async function board() {
-    const rows = await sf.query(`SELECT ${EXPENSE_FIELDS}, Production_Manager__c, Production_Manager__r.Name, Account__r.Name,
-      Work_Order__r.WorkOrderNumber, Work_Order__r.Account.Name, Work_Order__r.Job_Number__r.Office__r.Name
-      FROM SA_Expense__c WHERE Type__c = 'Vista' AND TEST_SA__c = false AND (Status__c = 'New' OR CreatedDate = LAST_N_DAYS:30)
-      ORDER BY CreatedDate DESC LIMIT 500`);
+    const rows = await sf.query(SOQL.board());
     const items = rows.map(d => domain.boardRow(d, { wo: d.Work_Order__r?.WorkOrderNumber || '', homeowner: d.Work_Order__r?.Account?.Name || '',
       office: d.Work_Order__r?.Job_Number__r?.Office__r?.Name || '', crew: d.Account__r?.Name || '', pmUserId: d.Production_Manager__c || null, pmName: d.Production_Manager__r?.Name || '' }));
     return { items, byPm: domain.boardByPm(items), at: new Date().toISOString() };
@@ -216,6 +212,7 @@ export function createServices(deps) {
   }
 
   return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout, board, nudgePm, health, optIns,
+    checkSalesforce: () => checkSalesforce({ sf }),
     async setRollout(r) {
       const ok = r && typeof r === 'object' && Object.values(r.locations || {}).every(l => ['off', 'pilot', 'on'].includes(l.mode));
       if (!ok) throw Object.assign(new Error('each location needs mode off, pilot or on'), { status: 422 });

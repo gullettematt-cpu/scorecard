@@ -23,3 +23,11 @@ export function readManifest(fieldValue) {
   try { return JSON.parse(raw.slice(i + MANIFEST_MARK.length)); } catch { return {}; }
 }
 export const writeManifest = (m, note = '') => `${note ? note + '\n\n' : ''}${MANIFEST_MARK}${JSON.stringify(m)}`;
+
+// Case (problem report) picklists, exactly as in Salesforce (docs/data-contract.md).
+export const CASE_PICKLISTS = {
+  Work_Type__c: ['Baths', 'Cover', 'Door', 'Gutters', 'Insulation', 'Rainsoft', 'Roofing', 'Siding', 'Window', 'Cabinet'],
+  Service_Type__c: ['Paid Service', 'Warranty'],
+  Warranty_Type__c: ['Installer Warranty', 'Company Warranty', 'Sales/Service', 'Customer Accommodation']
+};
+export const SERVICE_RECORD_TYPE = '0124P000000OMP8QAO';

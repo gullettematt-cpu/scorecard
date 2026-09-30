@@ -8,7 +8,7 @@ import { photoKey } from './lib/photos.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
 const sameSecret = (a, b) => { const h = x => createHash('sha256').update(String(x ?? '')).digest(); return !!a && !!b && timingSafeEqual(h(a), h(b)); };
-const ADMIN_JOBS = ['heartbeat', 'morning', 'pmDigest', 'cutoff', 'dispatchPoll'];
+const ADMIN_JOBS = ['heartbeat', 'morning', 'pmDigest', 'cutoff', 'dispatchPoll', 'checkSalesforce'];
 const VI_DAILY_LIMIT = 60;
 const json = (status, body, origin) => ({ statusCode: status, headers: { 'content-type': 'application/json', ...(origin ? { 'access-control-allow-origin': origin, vary: 'origin' } : {}) }, body: JSON.stringify(body) });
 

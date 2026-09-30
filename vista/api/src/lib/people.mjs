@@ -3,7 +3,7 @@
 //     lang: 'en'|'es'|'bi', channel: 'app'|'text'|'both', requested?, disabled? }
 // First looked up in Vista's store (admins can add or correct people there), otherwise found in Salesforce
 // by phone and cached. Nothing is written to Salesforce.
-import { lit, inList } from './salesforce.mjs';
+import { SOQL, SOSL } from './soql.mjs';
 
 export function createPeople({ store, sf }) {
   const save = async p => {
@@ -21,15 +21,15 @@ export function createPeople({ store, sf }) {
   async function fromSalesforce(phone) {
     if (!sf) return null;
     const digits = phone.replace(/^\+1/, '');
-    const hits = await sf.search(`FIND {${digits}} IN PHONE FIELDS RETURNING User(Id, Name, MobilePhone, LanguageLocaleKey WHERE IsActive = true)`);
+    const hits = await sf.search(SOSL.userByPhone(digits));
     const user = hits.find(u => (u.MobilePhone || '').replace(/\D/g, '').endsWith(digits));
     if (!user) return null;
-    const resources = await sf.query(`SELECT Id, Name, AccountId, Account.Name FROM ServiceResource WHERE RelatedRecordId = ${lit(user.Id)} AND IsActive = true`);
-    const pmJobs = await sf.query(`SELECT Id FROM Job__c WHERE Production_Manager__c = ${lit(user.Id)} AND Is_Open__c = true LIMIT 1`);
+    const resources = await sf.query(SOQL.resourcesOfUser(user.Id));
+    const pmJobs = await sf.query(SOQL.pmOpenJob(user.Id));
     let role = pmJobs.length && !resources.length ? 'pm' : 'installer';
     if (pmJobs.length && resources.length) role = 'pm';
     if (role === 'installer' && resources.length) {
-      const types = await sf.query(`SELECT ServiceAppointment.SS_Service_Appointment_Type__c FROM AssignedResource WHERE ServiceResourceId IN ${inList(resources.map(r => r.Id))} AND ServiceAppointment.SchedStartTime = LAST_N_DAYS:60 LIMIT 50`);
+      const types = await sf.query(SOQL.recentVisitTypes(resources.map(r => r.Id)));
       if (types.length && types.every(x => x.ServiceAppointment?.SS_Service_Appointment_Type__c === 'Measurement')) role = 'measure';
     }
     return save({

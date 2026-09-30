@@ -11,6 +11,7 @@
 #   bash scripts/vista-admin.sh pilot Augusta 'Hernández Siding'         # add an account to a pilot
 #   bash scripts/vista-admin.sh language-requests
 #   bash scripts/vista-admin.sh run heartbeat|morning|pmDigest|cutoff|dispatchPoll
+#   bash scripts/vista-admin.sh check-salesforce                         # read-only: Vista's queries, fields and setup, as the integration user
 # Env: STACK (default vista), SECRETS_PATH (default /vista/prod), AWS_REGION.
 set -euo pipefail
 STACK="${STACK:-vista}"; P="${SECRETS_PATH:-/vista/prod}"
@@ -42,5 +43,9 @@ case "$cmd" in
     call PUT /admin/rollout "$body" ;;
   language-requests) call GET /admin/language-requests ;;
   run) call POST /admin/run "$(json "{\"job\":\"${1:?job}\"}")" ;;
-  *) sed -n '2,12p' "$0"; exit 1 ;;
+  check-salesforce)
+    out=$(call POST /admin/run '{"job":"checkSalesforce"}')
+    node --input-type=module -e 'const { formatReport } = await import(process.argv[1]); const r = JSON.parse(process.argv[2]); console.log(formatReport(r)); process.exit(r.ok ? 0 : 1);' \
+      "$(cd "$(dirname "$0")/.." && pwd)/api/src/lib/sfcheck.mjs" "$out" ;;
+  *) sed -n '2,13p' "$0"; exit 1 ;;
 esac

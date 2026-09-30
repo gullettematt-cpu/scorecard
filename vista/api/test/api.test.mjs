@@ -578,3 +578,66 @@ test('rollout switch: set by admin without a redeploy, and applied to texts', as
   const snap = await call(h, 'GET', '/snapshot', { token: tokenFor(deps, PEOPLE.tucker) });
   assert.equal(snap.json.rollout.locations.Augusta.mode, 'pilot', 'the app gets the same switch');
 });
+
+// ---- Check Salesforce ---------------------------------------------------------------------------
+import { checkSalesforce, formatReport, WRITES, FLOWS, LIST_VIEWS } from '../src/lib/sfcheck.mjs';
+import { SOQL } from '../src/lib/soql.mjs';
+
+// A Salesforce that answers every query with nothing and describes objects from WRITES; `broken` bends it.
+function checkOrg(broken = {}) {
+  const queries = [], writes = [];
+  const describe = obj => {
+    const spec = WRITES[obj];
+    const names = [...new Set([...(spec.create || []), ...(spec.update || []), ...Object.keys(spec.values || {})])].filter(f => f !== broken.missingField);
+    return { createable: true, updateable: true, deletable: true,
+      recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', available: true }],
+      fields: names.map(name => ({ name, createable: true, updateable: true, type: spec.values?.[name] ? 'picklist' : 'string', restrictedPicklist: true,
+        picklistValues: (spec.values?.[name] || []).filter(v => !(obj === 'SA_Expense__c' && name === 'Type__c' && broken.noVistaType && v === 'Vista')).map(value => ({ value, active: true })) })) };
+  };
+  return { queries, writes,
+    async auth() { if (broken.login) throw new Error('Salesforce login failed (400): invalid_grant'); },
+    async query(q) {
+      queries.push(q);
+      if (broken.query && q.includes(broken.query)) throw new Error("Salesforce GET /query failed (400): INVALID_FIELD: No such column 'Is_Open__c'");
+      if (q.includes('FlowDefinitionView')) return FLOWS.map(ApiName => ({ ApiName, IsActive: !broken.flowsDraft }));
+      if (q.includes('FROM ListView')) return LIST_VIEWS.map(DeveloperName => ({ DeveloperName }));
+      return [];
+    },
+    async search() { return []; },
+    async describe(obj) { return describe(obj); },
+    create: async () => writes.push('create'), update: async () => writes.push('update'), del: async () => writes.push('del') };
+}
+
+test('check Salesforce: runs every Vista query read-only and checks every written field', async () => {
+  const org = checkOrg();
+  const r = await checkSalesforce({ sf: org });
+  assert.equal(r.ok, true, formatReport(r));
+  assert.equal(r.failed, 0); assert.equal(r.warnings, 0);
+  assert.equal(org.writes.length, 0, 'never writes');
+  const reads = org.queries.filter(q => !/FlowDefinitionView|FROM ListView/.test(q));
+  assert.equal(reads.length, Object.keys(SOQL).length, 'every query in soql.mjs');
+  assert.ok(reads.every(q => /LIMIT 1$/.test(q)), 'each capped at one row');
+  assert.ok(!reads.some(q => /LIMIT \d+ LIMIT/.test(q)));
+  assert.match(formatReport(r), /Ready: /);
+});
+
+test('check Salesforce: names what is broken', async () => {
+  let r = await checkSalesforce({ sf: checkOrg({ query: 'FROM Job__c', noVistaType: true, missingField: 'Service_Issue__c', flowsDraft: true }) });
+  assert.equal(r.ok, false);
+  const row = name => r.results.find(x => x.name === name || x.name.endsWith(`(${name})`));
+  assert.equal(row('pmOpenJob').status, 'fail'); assert.match(row('pmOpenJob').detail, /Is_Open__c/);
+  assert.equal(row('SA_Expense__c').status, 'fail'); assert.match(row('SA_Expense__c').detail, /Type__c has no picklist value "Vista"/);
+  assert.equal(row('Case').status, 'fail'); assert.match(row('Case').detail, /Service_Issue__c missing/);
+  assert.equal(row('Flow Vista_Pay_Request_Submitted').status, 'warn');
+  assert.match(formatReport(r), /NOT ready: 3 failed/);
+  r = await checkSalesforce({ sf: checkOrg({ login: true }) });
+  assert.equal(r.ok, false); assert.equal(r.results.length, 1); assert.match(r.results[0].detail, /invalid_grant/);
+});
+
+test('check Salesforce: admin token only, over the API', async () => {
+  const deps = await testDeps(); deps.sf.describe = async () => ({ fields: [], createable: true, updateable: true, deletable: true });
+  const h = createHandler(async () => deps);
+  const r = await call(h, 'POST', '/admin/run', { body: { job: 'checkSalesforce' }, headers: { 'x-admin-token': 'test-admin' } });
+  assert.equal(r.statusCode, 200); assert.equal(typeof r.json.ok, 'boolean'); assert.ok(r.json.results.length > 10);
+  assert.equal(deps.sf.log.creates.length + deps.sf.log.updates.length + deps.sf.log.deletes.length, 0);
+});

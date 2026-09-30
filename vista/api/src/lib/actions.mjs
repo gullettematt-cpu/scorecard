@@ -4,15 +4,9 @@
 //   - approval is refused while any deliverable is short (photo minimums, checklist, line items)
 //   - amounts can't exceed the contract minus labor already paid; draws follow draw-rules.json
 //   - Vista only ever writes the statuses the design allows (see docs/approval-flow.md)
-import { domain, checklists, drawRules, readManifest, writeManifest, MANIFEST_FIELD, strings } from './shared.mjs';
+import { domain, checklists, drawRules, readManifest, writeManifest, MANIFEST_FIELD, strings, CASE_PICKLISTS, SERVICE_RECORD_TYPE } from './shared.mjs';
+export { CASE_PICKLISTS, SERVICE_RECORD_TYPE };
 
-// Case (problem report) picklists, exactly as in Salesforce (docs/data-contract.md).
-export const CASE_PICKLISTS = {
-  Work_Type__c: ['Baths', 'Cover', 'Door', 'Gutters', 'Insulation', 'Rainsoft', 'Roofing', 'Siding', 'Window', 'Cabinet'],
-  Service_Type__c: ['Paid Service', 'Warranty'],
-  Warranty_Type__c: ['Installer Warranty', 'Company Warranty', 'Sales/Service', 'Customer Accommodation']
-};
-export const SERVICE_RECORD_TYPE = '0124P000000OMP8QAO';
 const say = (lang, key, vars) => {
   const one = l => Object.entries(vars).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), strings[l]?.[key] ?? strings.en[key]);
   return lang === 'bi' ? `${one('en')}\n${one('es')}` : one(lang === 'es' ? 'es' : 'en');

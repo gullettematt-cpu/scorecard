@@ -4,22 +4,9 @@
 //   draws = SA_Expense__c on those WorkOrders (pay requests and draws)
 //   cases = open Cases on their Jobs
 //   people = this person plus the PMs and crews on those jobs (for notices)
-import { lit, inList } from './salesforce.mjs';
+import { SOQL } from './soql.mjs';
 import { asCrew } from './people.mjs';
 
-const SA_FIELDS = `Id, AppointmentNumber, Status, SchedStartTime, SchedEndTime, ActualStartTime, SS_Service_Appointment_Type__c,
-  PulseM_Bio_Sent__c, SMS_Opt_out__c, Work_Order__c, Job__c,
-  (SELECT ServiceResourceId, ServiceResource.Name, ServiceResource.AccountId, ServiceResource.Account.Name, Lead_Installer__c FROM ServiceResources)`;
-const WO_FIELDS = `Id, WorkOrderNumber, Subject, Status, Priority, Street, City, State, PostalCode, Latitude, Longitude, Description, CaseId, AccountId, ContactId,
-  RecordType.Name, Account.Name, Contact.Phone, Contact.MobilePhone, WorkType.Name, Work_Type_Name__c, Job_Number__c,
-  Job_Number__r.Name, Job_Number__r.Sales_Price__c, Job_Number__r.Total_SA_Expense_Labor__c, Job_Number__r.Product_type__c,
-  Job_Number__r.Office__c, Job_Number__r.Office__r.Name, Job_Number__r.Production_Manager__c,
-  Job_Number__r.Production_Manager__r.Name, Job_Number__r.Production_Manager__r.MobilePhone,
-  (SELECT Id, LineItemNumber, Description, Quantity, Status FROM WorkOrderLineItems ORDER BY LineItemNumber)`;
-export const EXPENSE_FIELDS = `Id, Name, CreatedDate, Date__c, Type__c, Status__c, Amount__c, Work_Order__c, Job__c, Service_Appointment__c,
-  Did_you_complete_the_job_or_service__c, Additional_Work_Performed__c, Description_of_Work_Performed__c,
-  Additional_Work_Performed_Description__c, Approver__c, TEST_SA__c, Paycheck_Period__c, Payable_Invoice_New__c`;
-const WINDOW = 'SchedStartTime >= YESTERDAY AND SchedStartTime <= NEXT_N_DAYS:7';
 
 // The visit that matters for a work order: in progress, then today's dispatched, then the earliest.
 function pickVisit(sas) {
@@ -32,21 +19,21 @@ export async function loadSnapshot({ sf, people, store, person }) {
   // 1. Visits
   let sas = [];
   if (person.role === 'pm') {
-    sas = await sf.query(`SELECT ${SA_FIELDS} FROM ServiceAppointment WHERE Work_Order__r.Job_Number__r.Production_Manager__c = ${lit(person.userId)} AND ${WINDOW} AND Test_SA__c = false`);
+    sas = await sf.query(SOQL.pmVisits(person.userId));
   } else if (person.serviceResourceIds?.length) {
-    const ars = await sf.query(`SELECT ServiceAppointmentId FROM AssignedResource WHERE ServiceResourceId IN ${inList(person.serviceResourceIds)} AND ServiceAppointment.SchedStartTime >= YESTERDAY AND ServiceAppointment.SchedStartTime <= NEXT_N_DAYS:7`);
-    if (ars.length) sas = await sf.query(`SELECT ${SA_FIELDS} FROM ServiceAppointment WHERE Id IN ${inList([...new Set(ars.map(a => a.ServiceAppointmentId))])} AND Test_SA__c = false`);
+    const ars = await sf.query(SOQL.crewAssignments(person.serviceResourceIds));
+    if (ars.length) sas = await sf.query(SOQL.visitsById([...new Set(ars.map(a => a.ServiceAppointmentId))]));
   }
   const woIds = [...new Set(sas.map(s => s.Work_Order__c).filter(Boolean))];
   if (!woIds.length) return { jobs: [], draws: [], cases: [], people: [asCrew(person)] };
 
   // 2. Work orders, pay, problems
   const [wos, expenses] = await Promise.all([
-    sf.query(`SELECT ${WO_FIELDS} FROM WorkOrder WHERE Id IN ${inList(woIds)}`),
-    sf.query(`SELECT ${EXPENSE_FIELDS} FROM SA_Expense__c WHERE Work_Order__c IN ${inList(woIds)} AND TEST_SA__c = false ORDER BY CreatedDate DESC`)
+    sf.query(SOQL.workOrders(woIds)),
+    sf.query(SOQL.expensesForWorkOrders(woIds))
   ]);
   const jobIds = [...new Set(wos.map(w => w.Job_Number__c).filter(Boolean))];
-  const cases = jobIds.length ? await sf.query(`SELECT Id, CaseNumber, Subject, Status, CreatedDate, Job__c, Work_Type__c, Service_Type__c, Warranty_Type__c, Priority, Description FROM Case WHERE Job__c IN ${inList(jobIds)} AND IsClosed = false`) : [];
+  const cases = jobIds.length ? await sf.query(SOQL.openCases(jobIds)) : [];
 
   // 3. Crews and PMs on these jobs (people Vista knows, for notices and their language)
   const peopleOut = new Map([[person.id, asCrew(person)]]);

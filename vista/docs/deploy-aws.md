@@ -164,7 +164,11 @@ Run it again any time to rotate a value.
    ```bash
    bash scripts/vista-admin.sh run heartbeat
    ```
-   A healthy run returns `{"ok":true,...}`.
+   A healthy run returns `{"ok":true,...}`. Then check the whole Salesforce side, read-only, as the integration user:
+   ```bash
+   bash scripts/vista-admin.sh check-salesforce   # every query Vista runs, every field it writes, flows and list views
+   ```
+   It ends with **Ready** or **NOT ready**; each ✗ line names the field, value or permission to fix.
 
 ### 8. Turn it on
 

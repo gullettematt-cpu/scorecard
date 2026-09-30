@@ -24,6 +24,7 @@ The design is in `../docs/approval-flow.md`.
 # 1. Read-only: what automation already exists, and the approval process Vista submits through (production is fine here)
 ORG=myorg bash salesforce/automation-check.sh
 ORG=myorg bash salesforce/retrieve-approval.sh
+node scripts/check-salesforce.mjs --org myorg     # every query Vista runs + every field it writes; rerun after each step below
 
 # 2. Sandbox: add the picklist value (dry run, then real)
 bash salesforce/add-vista-type.sh

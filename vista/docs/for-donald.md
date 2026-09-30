@@ -261,8 +261,12 @@ If the campaign isn't approved yet, carriers may block the reply. Test again onc
 
 ```bash
 bash scripts/vista-admin.sh run heartbeat     # expect {"ok":true}
+bash scripts/vista-admin.sh check-salesforce  # read-only; expect "Ready" (flows show "!" until I activate them)
 bash scripts/vista-admin.sh rollout           # expect Augusta "off": nobody sees Vista yet
 ```
+
+`check-salesforce` runs every query Vista uses and checks every field it writes, as the integration user, without
+changing anything. 🏷️ **Tag Matt** with its output if any line has ✗; those are mine to fix in Salesforce.
 
 **Give Lisa (payroll) her admin access.** Lisa runs the program from Vista's admin screens, and only the admin token
 can grant that role. I'll send you Lisa's mobile number.
