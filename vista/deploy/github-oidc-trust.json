@@ -8,7 +8,10 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:gullettematt-cpu/scorecard:environment:vista-prod"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:gullettematt-cpu@280511037/scorecard@1306890523:environment:vista-prod",
+            "repo:gullettematt-cpu/scorecard:environment:vista-prod"
+          ]
         }
       }
     }

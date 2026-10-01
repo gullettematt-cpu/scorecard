@@ -277,7 +277,7 @@ day-to-day running anymore.
 
 | Symptom | Likely cause |
 |---|---|
-| The workflow fails at **Configure AWS credentials** with "Not authorized to perform sts:AssumeRoleWithWebIdentity" | Either the identity provider is missing, the account number in the trust policy is wrong, or the GitHub environment isn't named exactly `vista-prod`. |
+| The workflow fails at **Configure AWS credentials** with "Not authorized to perform sts:AssumeRoleWithWebIdentity" | Either the identity provider is missing, the account number in the trust policy is wrong, the GitHub environment isn't named exactly `vista-prod`, or the token's `sub` doesn't match the trust policy. GitHub sends this repo's `sub` with immutable owner/repo IDs (`repo:gullettematt-cpu@280511037/scorecard@1306890523:environment:vista-prod`); CloudTrail's `AssumeRoleWithWebIdentity` event shows the exact value. `deploy/github-oidc-trust.json` accepts both forms. |
 | `sam deploy` fails with an IAM "not authorized" error on `role/...` | The stack name isn't `vista`, so the `role/vista-*` rule doesn't match. |
 | The health check at the end of the workflow fails | A secret is missing or in the wrong region. Rerun the check in step 3 in the same region. CloudWatch log group `vista-ApiLogs-*` will say `missing secret …`. |
 | Texts to the Vista number get no reply | Either the webhook address or method is wrong in Twilio; or the Twilio Auth Token in Parameter Store is wrong (look for `bad signature` in `vista-ApiLogs-*`); or the campaign isn't approved yet. |
