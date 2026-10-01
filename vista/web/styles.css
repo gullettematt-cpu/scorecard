@@ -257,6 +257,7 @@ ul { list-style: none; }
 .acct-add input { flex: 1; font: inherit; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: var(--tap); background: var(--card); color: var(--text); }
 .acct-add .act { flex: none; padding: 0 16px; }
 .health h3 { font-size: 19px; }
+.health .sub, #sfResult .sub { overflow-wrap: anywhere; }
 .health.ok { border-left: 5px solid var(--ok); }
 .health.bad { border-left: 5px solid var(--bad); background: var(--bad-bg); }
 @media (max-width: 360px) { .tiles { grid-template-columns: 1fr; } }

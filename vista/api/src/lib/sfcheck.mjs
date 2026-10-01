@@ -35,7 +35,20 @@ export const FLOWS = ['Vista_Pay_Request_Submitted', 'Vista_Draw_Issued_Notice']
 export const LIST_VIEWS = ['Vista_Waiting_on_PM', 'Vista_Draws', 'Vista_Submitted_Not_Invoiced'];
 
 // "fail" = Vista will break; "warn" = a setup step still to do, or worth a look.
-const short = err => String(err?.message || err).replace(/^Salesforce [^:]+: /, '').slice(0, 300);
+// Salesforce's error, made readable: the message out of its JSON, with the usual causes named.
+const FIELD_SERVICE = ['ServiceAppointment', 'AssignedResource', 'ServiceResource', 'WorkType', 'WorkOrderLineItem', 'WorkOrder'];
+export function short(err) {
+  let s = String(err?.message || err).replace(/^Salesforce [^:]+ failed \(\d+\): /, '').replace(/^Salesforce [^:]+: /, '');
+  try { const j = JSON.parse(s); const m = Array.isArray(j) ? j[0]?.message : j?.message || j?.error_description; if (m) s = m; } catch {}
+  s = s.replace(/\s+/g, ' ').trim();
+  const obj = s.match(/sObject type '(\w+)' is not supported/)?.[1];
+  if (obj) return `the integration user can't see ${obj}${FIELD_SERVICE.includes(obj) ? ' (needs a Field Service permission set license)' : ' (object access or license)'}`;
+  const col = s.match(/No such column '(\w+)' on entity '(\w+)'/);
+  if (col) return `the integration user can't see ${col[2]}.${col[1]}${/Service_Appointment__c|ServiceAppointment/.test(col[1]) ? ' (it points to Service Appointment: needs a Field Service permission set license)' : ' (field-level security, or the field is missing)'}`;
+  const rel = s.match(/Didn't understand relationship '(\w+)'/)?.[1];
+  if (rel) return `the integration user can't follow ${rel}${FIELD_SERVICE.includes(rel) ? ' (needs a Field Service permission set license)' : ' (field-level security on the lookup)'}`;
+  return s.slice(0, 300);
+}
 const limitOne = q => q.replace(/\s+LIMIT \d+\s*$/, '') + ' LIMIT 1';
 const pool = async (items, n, fn) => { const out = []; let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k]); } })); return out; };
 
@@ -64,7 +77,7 @@ export async function checkSalesforce({ sf }) {
     for (const [need, list] of [['createable', spec.create || []], ['updateable', spec.update || []]]) {
       for (const f of list) {
         const field = byName.get(f);
-        if (!field) problems.push(`${f} missing (or not visible to this user)`);
+        if (!field) problems.push(`${f} missing (or not visible to this user${/Service_Appointment/.test(f) ? ': it points to Service Appointment, which needs a Field Service permission set license' : ''})`);
         else if (!field[need]) problems.push(`${f} not ${need === 'createable' ? 'settable on create' : 'editable'}`);
       }
     }

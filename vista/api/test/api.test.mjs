@@ -742,3 +742,12 @@ test('program owners (ADMIN_PHONES) are admins without enrolling and can grant a
   const lisa = signToken({ sub: r.json.person.id, phone: '+17065550160' }, deps.secrets.jwt);
   assert.equal((await call(h, 'POST', '/admin/people', { token: lisa, body: { phone: '706-555-0161', name: 'Y', role: 'admin' } })).statusCode, 422);
 });
+
+test('check Salesforce: Salesforce errors read as causes', async () => {
+  const { short } = await import('../src/lib/sfcheck.mjs');
+  const wrap = m => new Error(`Salesforce GET /services/data/v62.0/query failed (400): [{"message":${JSON.stringify(m)},"errorCode":"INVALID_TYPE"}]`);
+  assert.match(short(wrap("\nSELECT Id FROM AssignedResource\n ^\nERROR at Row:1:Column:34\nsObject type 'AssignedResource' is not supported.")), /can't see AssignedResource \(needs a Field Service permission set license\)/);
+  assert.match(short(wrap("No such column 'Service_Appointment__c' on entity 'SA_Expense__c'.")), /SA_Expense__c\.Service_Appointment__c .*Field Service/);
+  assert.match(short(wrap("Didn't understand relationship 'WorkType' in field path.")), /can't follow WorkType/);
+  assert.equal(short(new Error('Salesforce login failed (400): {"error":"invalid_grant","error_description":"user hasn\'t approved this consumer"}')), "user hasn't approved this consumer");
+});
