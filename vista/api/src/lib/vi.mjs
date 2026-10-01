@@ -91,6 +91,12 @@ export function createVi({ apiKey, client = new Anthropic({ apiKey }), model = V
       return { answer: String(out.answer || '').trim() || fallback(lang, 'none'), problem: out.suggest_problem_report && summary ? { summary } : null };
     },
 
+    // Diagnose: the smallest possible request, to prove the key and model work.
+    async ping() {
+      const res = await client.messages.create({ model, max_tokens: 16, messages: [{ role: 'user', content: 'Reply with the word OK.' }] }, { timeout: 15000 });
+      return { model: res.model, ok: true };
+    },
+
     // Texts: one question, one plain answer.
     async ask({ lang, viLanguage = null, job = null, checklist = null, docs = '', question }) {
       const language = languageFor(lang, viLanguage);

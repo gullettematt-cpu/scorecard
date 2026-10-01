@@ -57,6 +57,12 @@ check(/Vista is working/.test(await text('.health')), 'health shows working');
 await p.click('#runHb'); await p.waitForSelector('#runHb:not([disabled])'); check(/Last good check/.test(await text('.health')), 'health check re-run');
 await p.click('#runSf'); await p.waitForSelector('#sfResult .sfhead');
 check(/Ready: \d+ passed/.test(await text('#sfResult')), 'Check Salesforce shows Ready');
+await p.click('#runDiag'); await p.waitForSelector('#diagResult .sfhead');
+check(/1 problem/.test(await text('#diagResult .sfhead')) && (await p.$$('[data-fix="twilio.webhook"]')).length === 1, 'Diagnose finds the Twilio webhook problem, with Fix it');
+await shot('05b-diagnose');
+await p.click('[data-fix="twilio.webhook"]'); await p.waitForSelector('[data-yes]'); await p.click('[data-yes]');
+await p.waitForFunction(() => /All clear/.test(document.querySelector('#diagResult .sfhead')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
+check(/All clear/.test(await text('#diagResult .sfhead')), 'Fix it repairs it and the diagnosis re-runs clean');
 await shot('05-health');
 // A crew now sees Vista switched off
 await switchTo('crew-12');

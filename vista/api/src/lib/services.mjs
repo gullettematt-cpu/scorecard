@@ -6,6 +6,7 @@ import { createActions, ActionError } from './actions.mjs';
 import { asCrew } from './people.mjs';
 import { SOQL } from './soql.mjs';
 import { checkSalesforce } from './sfcheck.mjs';
+import { createDiagnose, explainLogin } from './diagnose.mjs';
 import { createOptIns, gatedTwilio, keywordOf, OPT_IN_PROMPT } from './optin.mjs';
 
 const fill = (lang, key, vars = {}) => {
@@ -177,8 +178,11 @@ export function createServices(deps) {
       await store.put({ pk: 'HEARTBEAT', sk: 'STATE', lastRecord: id, lastOk: new Date().toISOString(), failing: null });
       return { ok: true };
     } catch (err) {
-      if (state.failing !== step) for (const to of config.alertPhones || []) await twilio.send(to, fill('en', 'txt.notice.heartbeatFail', { step, error: String(err.message).slice(0, 120) })).catch(() => {});
-      await store.put({ ...state, pk: 'HEARTBEAT', sk: 'STATE', failing: step, failedAt: new Date().toISOString(), error: String(err.message).slice(0, 500) });
+      // Say the cause, not just the error: the alert should tell Matt what to fix.
+      const why = explainLogin(err.message);
+      const error = why ? `${why.cause} Open Vista → Health → Diagnose for the fix.` : String(err.message).slice(0, 120);
+      if (state.failing !== step) for (const to of config.alertPhones || []) await twilio.send(to, fill('en', 'txt.notice.heartbeatFail', { step, error })).catch(() => {});
+      await store.put({ ...state, pk: 'HEARTBEAT', sk: 'STATE', failing: step, failedAt: new Date().toISOString(), error: String(err.message).slice(0, 500), cause: why?.cause || null, fix: why?.fix || null });
       return { ok: false, step, error: err.message };
     }
   }
@@ -208,11 +212,13 @@ export function createServices(deps) {
   }
   async function health() {
     const s = (await store.get('HEARTBEAT', 'STATE')) || {};
-    return { lastOk: s.lastOk || null, failing: s.failing || null, failedAt: s.failedAt || null, error: s.error || null };
+    return { lastOk: s.lastOk || null, failing: s.failing || null, failedAt: s.failedAt || null, error: s.error || null, cause: s.cause || null, fix: s.fix || null };
   }
+  const diagnoser = createDiagnose({ deps, optIns, rerunHealth: () => heartbeat() });
 
   return { snapshotFor, sync, handleText, morning, pmDigest, cutoff, dispatchPoll, heartbeat, perform, getRollout, board, nudgePm, health, optIns,
     checkSalesforce: () => checkSalesforce({ sf }),
+    diagnose: () => diagnoser.run(), fix: (action, by) => diagnoser.fix(action, by),
     async setRollout(r) {
       const ok = r && typeof r === 'object' && Object.values(r.locations || {}).every(l => ['off', 'pilot', 'on'].includes(l.mode));
       if (!ok) throw Object.assign(new Error('each location needs mode off, pilot or on'), { status: 422 });

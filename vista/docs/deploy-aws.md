@@ -97,7 +97,9 @@ Matt creates the key in the Claude Console (https://console.anthropic.com):
    - URL: `https://token.actions.githubusercontent.com`
    - Audience: `sts.amazonaws.com`
 2. Create the role `vista-github-deploy`:
-   - Trust policy: [`deploy/github-oidc-trust.json`](../deploy/github-oidc-trust.json).
+   - Trust policy: [`deploy/github-oidc-trust.json`](../deploy/github-oidc-trust.json). It accepts the token subject both
+     with GitHub's immutable IDs (`repo:gullettematt-cpu@280511037/scorecard@1306890523:environment:vista-prod`, what
+     GitHub actually sends for this repo) and in the plain `repo:owner/repo:environment:vista-prod` form.
    - Permissions: [`deploy/github-deploy-policy.json`](../deploy/github-deploy-policy.json).
    - In both files, replace `ACCOUNT_ID`. If you name the stack something other than `vista`, change the
      `role/vista-*` pattern too.
