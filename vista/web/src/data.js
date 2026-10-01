@@ -131,11 +131,14 @@ export const casesFor = (cases, w) => cases.filter(c => c.Job__c && c.Job__c ===
 // What the phone shows. Salesforce statuses are unchanged from today:
 //   New (installer submitted, waiting on PM) -> Submitted (PM submitted) -> Approved -> payable invoice linked (Paid).
 // A PM send-back keeps the record at New; the decision lives in the manifest.
+// Sent back and not yet resubmitted. A resubmit can only follow the send-back it answers, so the same timestamp
+// (two steps in one millisecond) counts as resubmitted.
+export const isSentBack = m => m?.approval?.decision === 'sent_back' && !(m.resubmitted_at >= m.approval.at);
 export function drawStatus(d) {
   if (d.Payable_Invoice_New__c || d.Paycheck_Period__c) return 'Paid';
   if ((d.Status__c || 'New') === 'New') {
     const m = manifestOf(d);
-    return m?.approval?.decision === 'sent_back' && !(m.resubmitted_at > m.approval.at) ? 'SentBack' : 'WithPM';
+    return isSentBack(m) ? 'SentBack' : 'WithPM';
   }
   return d.Status__c;
 }

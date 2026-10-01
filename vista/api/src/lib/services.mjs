@@ -113,7 +113,7 @@ export function createServices(deps) {
     for (const d of pending) {
       if (!(await store.putIfAbsent({ pk: `NOTICE#${day}`, sk: d.Id, ttl: Math.floor(Date.now() / 1000) + 7 * 86400 }))) continue;
       const m = readManifest(d.Additional_Work_Performed_Description__c);
-      const sentBack = m.approval?.decision === 'sent_back' && !(m.resubmitted_at > m.approval.at);
+      const sentBack = domain.isSentBack(m);
       if (!sentBack && d.Production_Manager__c) perPm.set(d.Production_Manager__c, (perPm.get(d.Production_Manager__c) || 0) + 1);
       if (d.Service_Appointment__r?.SMS_Opt_out__c) continue;
       const ar = assigned.filter(a => a.ServiceAppointmentId === d.Service_Appointment__c).sort((a, b) => Number(b.Lead_Installer__c) - Number(a.Lead_Installer__c))[0];

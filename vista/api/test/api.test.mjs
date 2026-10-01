@@ -21,6 +21,14 @@ const call = (handler, method, path, { body, token, headers = {}, form } = {}) =
 const tokenFor = (deps, p) => signToken({ sub: p.id, phone: p.phone }, deps.secrets.jwt);
 
 // ---- building blocks ---------------------------------------------------------------------------
+test('a resubmit in the same millisecond as the send-back still counts as resubmitted', async () => {
+  const { domain } = await import('../src/lib/shared.mjs');
+  const at = '2026-10-01T16:49:00.000Z';
+  assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at } }), true);
+  assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at }, resubmitted_at: at }), false);
+  assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at: '2026-10-01T17:00:00.000Z' }, resubmitted_at: at }), true, 'sent back again later');
+});
+
 test('app tokens: sign, verify, tamper, expiry', () => {
   const t = signToken({ sub: 'x', phone: '+1' }, 's', 60);
   assert.equal(verifyToken(t, 's').sub, 'x');
