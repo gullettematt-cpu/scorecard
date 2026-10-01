@@ -28,5 +28,5 @@
         <operation>equals</operation>
         <value>0</value>
     </filters>
-    <label>Vista - Submitted, not on a payable invoice</label>
+    <label>Vista - Approved, not on payable invoice</label>
 </ListView>

@@ -10,7 +10,7 @@ The design is in `../docs/approval-flow.md`.
 | List view **Vista - Waiting on PM** | `force-app/.../SA_Expense__c/listViews/Vista_Waiting_on_PM.listView-meta.xml` |
 | Flow **Vista - Draw Issued Notice** (after create, `Type__c = Vista`, job complete = `No`): emails Mike Duncan | `force-app/main/default/flows/Vista_Draw_Issued_Notice.flow-meta.xml` |
 | List view **Vista - Draws (paid before completion)** | `force-app/.../SA_Expense__c/listViews/Vista_Draws.listView-meta.xml` |
-| List view **Vista - Submitted, not on a payable invoice** | `force-app/.../SA_Expense__c/listViews/Vista_Submitted_Not_Invoiced.listView-meta.xml` |
+| List view **Vista - Approved, not on payable invoice** | `force-app/.../SA_Expense__c/listViews/Vista_Submitted_Not_Invoiced.listView-meta.xml` |
 | Existing-automation report (read-only) | `automation-check.sh` → `../docs/describe/AUTOMATION.md` |
 | Existing SA Expense approval process (read-only) | `retrieve-approval.sh` → `reference/approvalProcesses/` + `../docs/describe/APPROVAL.md` |
 

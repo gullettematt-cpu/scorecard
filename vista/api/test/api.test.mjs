@@ -641,3 +641,19 @@ test('check Salesforce: admin token only, over the API', async () => {
   assert.equal(r.statusCode, 200); assert.equal(typeof r.json.ok, 'boolean'); assert.ok(r.json.results.length > 10);
   assert.equal(deps.sf.log.creates.length + deps.sf.log.updates.length + deps.sf.log.deletes.length, 0);
 });
+
+test('Salesforce source: list view and flow names fit Salesforce limits', async () => {
+  const fs = await import('node:fs'), path = await import('node:path');
+  const root = new URL('../../salesforce/force-app/main/default/', import.meta.url).pathname;
+  const files = fs.readdirSync(root, { recursive: true }).filter(f => /\.(listView|flow)-meta\.xml$/.test(f));
+  assert.ok(files.length >= 5);
+  for (const f of files) {
+    const x = fs.readFileSync(path.join(root, f), 'utf8');
+    const name = path.basename(f).split('.')[0];
+    if (/listView/.test(f)) {
+      const l = x.match(/<label>([^<]*)<\/label>\s*<\/ListView>/)[1];
+      assert.ok(l.length <= 40, `${f}: label "${l}" is ${l.length} chars (max 40)`);
+      assert.ok(name.length <= 40, `${f}: API name too long`);
+    } else assert.ok(name.length <= 80, `${f}: flow API name too long`);
+  }
+});
