@@ -759,6 +759,7 @@ test('diagnose: login errors and check failures come with the cause and the fix'
   assert.match(explainLogin('Salesforce login failed (400): {"error":"invalid_request","error_description":"refresh_token scope is required and the connected app should be installed and preauthorized."}').fix, /Admin approved users are pre-authorized/);
   assert.match(explainLogin("invalid_grant: user hasn't approved this consumer").cause, /pre-approved/);
   assert.match(explainLogin('invalid_client_id: client identifier invalid').fix, /SF_CLIENT_ID/);
+  assert.match(explainLogin('Salesforce login failed (400): {"error":"invalid_grant","error_description":"authentication failure"}').fix, /SF_USERNAME/);
   assert.equal(explainLogin('something else entirely'), null);
   assert.match(fixForCheck({ section: 'reads', name: 'x', detail: "the integration user can't see ServiceAppointment (needs a Field Service permission set license)" }), /--license=salesforce/);
   assert.match(fixForCheck({ section: 'writes', name: 'SA_Expense__c', detail: 'Type__c has no picklist value "Vista"' }), /add-vista-type/);
