@@ -93,7 +93,7 @@ Everyone who uses Vista, grouped by role and searchable by name, phone or compan
 Resource. Use **Add a person** only when someone's missing or their number in Salesforce is wrong. Also let Matt
 know, so Salesforce gets fixed too.
 
-Lisa can manage crews, measure techs and PMs. Only Donald can grant admin access.
+Lisa can manage crews, measure techs and PMs. Only Matt (the program owner) can grant admin access, from the same People screen.
 
 ### Rollout
 

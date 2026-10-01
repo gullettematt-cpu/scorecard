@@ -25,6 +25,7 @@ function tx(store, mode, fn) {
     const r = fn(t.objectStore(store));
     t.oncomplete = () => resolve(r && 'result' in r ? r.result : undefined);
     t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error || new Error('transaction aborted')); // never leave a screen waiting forever
   }));
 }
 export const db = {

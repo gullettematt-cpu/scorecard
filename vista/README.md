@@ -75,4 +75,5 @@ Fixture data lives in `web/fixtures/*.json` and mirrors Salesforce API field nam
 - [x] Opt-in: Vista texts only phones that texted START; branded; 10 automatic texts a day max.
 - [x] **Check Salesforce**: a read-only check of every query Vista runs, every field it writes, and the Vista flows and list views (`node scripts/check-salesforce.mjs`, or `vista-admin.sh check-salesforce` once deployed).
 - [x] Salesforce integration user script: `salesforce/integration-user.sh` creates the user, licenses and a least-access permission set generated from Vista's queries and writes.
+- [x] Program owners: phones in `ADMIN_PHONES` sign in as admins without enrolling and can grant admin access (Lisa) from People; **Check Salesforce** button on Health. Matt runs deploys from GitHub.
 - [ ] Step 3 — First AWS deploy (Donald), Twilio A2P registration, Augusta pilot

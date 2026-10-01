@@ -51,12 +51,20 @@ const demo = {
   async setRollout(r) { await db.meta('rolloutOverride', r); return r; },
   async health() { return (await db.meta('demoHealth')) || { lastOk: new Date(Date.now() - 83 * 60e3).toISOString(), failing: null }; },
   async runHeartbeat() { const h = { lastOk: new Date().toISOString(), failing: null }; await db.meta('demoHealth', h); return { ok: true }; },
+  // A sample of what the live check returns (api/src/lib/sfcheck.mjs).
+  async checkSalesforce() {
+    const ok = (section, name) => ({ section, name, status: 'ok', detail: '' });
+    const results = [ok('reads', "A crew's assigned visits (crewAssignments)"), ok('reads', 'Job details and line items (workOrders)'), ok('reads', "Payroll's pay run board (board)"),
+      ok('reads', 'Sign-in: find a person by phone (userByPhone)'), ok('writes', 'SA_Expense__c'), ok('writes', 'Case'), ok('writes', 'ServiceAppointment'), ok('writes', 'WorkOrderLineItem'),
+      ok('setup', 'Flow Vista_Pay_Request_Submitted'), ok('setup', 'Flow Vista_Draw_Issued_Notice'), ok('setup', 'List view Vista_Waiting_on_PM')];
+    return { ok: true, failed: 0, warnings: 0, passed: results.length, results, at: new Date().toISOString() };
+  },
   async languageRequests() { return (await demo.people()).filter(p => p.requested).map(p => ({ person: p.name, phone: p.phone, language: p.requested })); }
 };
 const live = {
   board: () => api.admin.board(), nudge: (id) => api.admin.nudge(id), people: async () => (await api.admin.people()).people,
   savePerson: async p => (await api.admin.savePerson(p)).person, rollout: async () => (await api.admin.rollout()).rollout,
-  setRollout: async r => (await api.admin.setRollout(r)).rollout, health: () => api.admin.health(), runHeartbeat: () => api.admin.runHeartbeat(),
+  setRollout: async r => (await api.admin.setRollout(r)).rollout, health: () => api.admin.health(), runHeartbeat: () => api.admin.runHeartbeat(), checkSalesforce: () => api.admin.checkSalesforce(),
   languageRequests: async () => (await api.admin.languageRequests()).requests
 };
 const src = () => (apiMode ? live : demo);
@@ -144,7 +152,9 @@ const LANGS = { en: 'English', es: 'Español', bi: 'English + Español' };
 async function renderPeople(root, ctx, filter = '') {
   const title = t('admin.people');
   loading(root, ctx, title);
-  let people; try { people = (await src().people()).filter(p => p.role !== 'admin' || p.phone === ctx.crew?.lead?.phone); } catch { return failed(root, ctx, title, () => renderPeople(root, ctx)); }
+  // Program owners see and manage every admin (e.g. give Lisa access); other admins see only themselves.
+  const owner = !!ctx.crew?.owner, me = ctx.crew?.lead?.phone;
+  let people; try { people = (await src().people()).filter(p => owner || p.role !== 'admin' || p.phone === me); } catch { return failed(root, ctx, title, () => renderPeople(root, ctx)); }
   const draw = () => {
     const q = filter.trim().toLowerCase();
     const shown = people.filter(p => !q || `${p.name} ${p.phone} ${p.account?.Name || ''}`.toLowerCase().includes(q));
@@ -152,11 +162,11 @@ async function renderPeople(root, ctx, filter = '') {
       <section class="sec">
         <div class="card drawform"><label>${esc(t('admin.search'))}<input id="pSearch" value="${esc(filter)}" placeholder="${esc(t('admin.searchHint'))}" autocomplete="off"></label></div>
         ${[...ROLES, 'admin'].map(role => { const rows = shown.filter(p => (p.role || 'installer') === role); return rows.length ? `<h2 style="margin-top:16px">${esc(t('admin.role.' + role))} <span>${rows.length}</span></h2>
-          <div class="card"><ul class="blist">${rows.map(p => `<li class="brow person ${p.disabled ? 'off' : ''}" ${role === 'admin' ? '' : `data-phone="${esc(p.phone)}" tabindex="0" role="button"`}>
+          <div class="card"><ul class="blist">${rows.map(p => `<li class="brow person ${p.disabled ? 'off' : ''}" ${p.phone === me || (role === 'admin' && !owner) ? '' : `data-phone="${esc(p.phone)}" tabindex="0" role="button"`}>
             <div><b>${esc(p.name)}</b>${p.disabled ? ` <span class="chip bad">${esc(t('admin.off'))}</span>` : ''}
               <div class="sub">${esc(p.phone)}${p.account?.Name ? ` · ${esc(p.account.Name)}` : ''}</div>
               <div class="sub">${esc(LANGS[p.lang] || p.lang || '')} · ${esc(t('admin.channel.' + (p.channel || 'both')))}${p.textOptIn ? ` · <span class="optin ${esc(p.textOptIn)}">${esc(t('admin.optin.' + p.textOptIn))}</span>` : ''}${p.requested ? ` · ${esc(t('admin.asked', { language: p.requested }))}` : ''}</div></div>
-            ${role === 'admin' ? `<span class="chip muted">${esc(t('admin.you'))}</span>` : '<span class="chev">›</span>'}</li>`).join('')}</ul></div>` : ''; }).join('') || `<div class="card"><p>${esc(t('admin.noMatch'))}</p></div>`}
+            ${p.phone === me ? `<span class="chip muted">${esc(t('admin.you'))}</span>` : role === 'admin' && !owner ? '' : '<span class="chev">›</span>'}</li>`).join('')}</ul></div>` : ''; }).join('') || `<div class="card"><p>${esc(t('admin.noMatch'))}</p></div>`}
         <div class="stack" style="margin:16px 0 28px"><button class="act primary" id="pAdd">${esc(t('admin.addPerson'))}</button>
           <div class="hint" style="margin-top:0">${esc(t('admin.addHint'))}</div></div>
       </section>`;
@@ -171,7 +181,7 @@ async function renderPeople(root, ctx, filter = '') {
       <section class="sec"><form class="card drawform" id="pForm">
         <label>${esc(t('admin.name'))}<input name="name" required value="${esc(p.name)}" autocomplete="off"></label>
         <label>${esc(t('admin.mobile'))}<input name="phone" type="tel" required value="${esc(p.phone)}" ${isNew ? '' : 'readonly'}></label>
-        <label>${esc(t('admin.roleLabel'))}<select name="role">${ROLES.map(r => `<option value="${r}" ${p.role === r ? 'selected' : ''}>${esc(t('admin.role.' + r))}</option>`).join('')}</select></label>
+        <label>${esc(t('admin.roleLabel'))}<select name="role">${(ctx.crew?.owner ? [...ROLES, 'admin'] : ROLES).map(r => `<option value="${r}" ${p.role === r ? 'selected' : ''}>${esc(t('admin.role.' + r))}</option>`).join('')}</select></label>
         <label>${esc(t('lang.title'))}<select name="lang">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${p.lang === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
         <label>${esc(t('admin.channelLabel'))}<select name="channel">${['both', 'app', 'text'].map(c => `<option value="${c}" ${(p.channel || 'both') === c ? 'selected' : ''}>${esc(t('admin.channel.' + c))}</option>`).join('')}</select></label>
         ${isNew ? `<label>${esc(t('admin.sfId'))}<input name="sfid" placeholder="0Hn… / 005…" autocomplete="off"><small class="hint">${esc(t('admin.sfIdHint'))}</small></label>` : ''}
@@ -243,6 +253,10 @@ async function renderHealth(root, ctx) {
       ${h.failing ? `<p class="sub">${esc(h.error || '')}</p><p class="hint">${esc(t('admin.whoToCall.' + (['login', 'read', 'write'].includes(h.failing) ? 'sf' : 'aws')))}</p>` : `<p class="hint">${esc(t('admin.healthExplain'))}</p>`}
       <div class="stack"><button class="act" id="runHb">${esc(t('admin.runNow'))}</button></div>
     </div></section>
+    <section class="sec"><h2>${esc(t('admin.sfCheck'))}</h2>
+      <div class="card"><p class="hint" style="margin-top:0">${esc(t('admin.sfCheckExplain'))}</p>
+        <div id="sfResult"></div>
+        <div class="stack"><button class="act" id="runSf">${esc(t('admin.sfCheckRun'))}</button></div></div></section>
     <section class="sec"><h2>${esc(t('admin.langRequests'))} <span>${reqs.length}</span></h2>
       <div class="card">${reqs.length ? `<ul class="blist">${reqs.map(q => `<li class="brow"><div><b>${esc(q.person)}</b><div class="sub">${esc(q.phone || '')}</div></div><span class="chip">${esc(q.language)}</span></li>`).join('')}</ul>` : `<p class="hint" style="margin:0">${esc(t('admin.none'))}</p>`}
       <div class="hint">${esc(t('admin.langHint'))}</div></div></section>
@@ -250,11 +264,29 @@ async function renderHealth(root, ctx) {
       <div class="card"><ul class="blist">${['pay', 'invoice', 'sf', 'aws', 'crew'].map(k => `<li class="brow"><div><b>${esc(t('admin.call.' + k))}</b><div class="sub">${esc(t('admin.call.' + k + '.who'))}</div></div></li>`).join('')}</ul></div>
       <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button></div></section>`;
   root.querySelector('#switchCrew').onclick = ctx.switchCrew;
+  root.querySelector('#runSf').onclick = async e => {
+    e.target.disabled = true; e.target.textContent = t('admin.running');
+    const out = root.querySelector('#sfResult');
+    try { out.innerHTML = sfReport(await src().checkSalesforce()); } catch { out.innerHTML = `<div class="blockers">${esc(t('admin.loadFailed'))}</div>`; }
+    e.target.disabled = false; e.target.textContent = t('admin.sfCheckRun');
+  };
   root.querySelector('#runHb').onclick = async e => {
     e.target.disabled = true; e.target.textContent = t('admin.running');
     try { const r = await src().runHeartbeat(); toast(r.ok ? t('admin.healthOk') : t('admin.healthBad', { step: r.step })); } catch { toast(t('admin.loadFailed')); }
     renderHealth(root, ctx);
   };
+}
+
+// Check Salesforce: what needs attention first (✗ then !), then everything that passed, folded away.
+function sfReport(r) {
+  const mark = { ok: '✓', warn: '!', fail: '✗' };
+  const row = x => `<li class="brow sf-${x.status}"><div><b>${mark[x.status]} ${esc(x.name)}</b>${x.detail ? `<div class="sub">${esc(x.detail)}</div>` : ''}</div><span class="chip">${esc(t('admin.sfSection.' + x.section))}</span></li>`;
+  const attention = r.results.filter(x => x.status !== 'ok').sort((a, b) => (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1));
+  const passed = r.results.filter(x => x.status === 'ok');
+  return `<div class="sfhead ${r.ok ? 'ok' : 'bad'}"><b>${esc(r.ok ? t('admin.sfReady', { passed: r.passed, warnings: r.warnings }) : t('admin.sfNotReady', { failed: r.failed, warnings: r.warnings, passed: r.passed }))}</b>
+    ${r.ok ? '' : `<p class="hint" style="margin:4px 0 0">${esc(t('admin.sfSendMatt'))}</p>`}</div>
+    ${attention.length ? `<ul class="blist">${attention.map(row).join('')}</ul>` : ''}
+    ${passed.length ? `<details><summary class="hint">${esc(t('admin.sfAllPassed', { n: passed.length }))}</summary><ul class="blist">${passed.map(row).join('')}</ul></details>` : ''}`;
 }
 
 export const ADMIN_NAV = [

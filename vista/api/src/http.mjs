@@ -23,6 +23,14 @@ export function createHandler(getDeps) {
     const header = n => event.headers?.[n] ?? event.headers?.[n.toLowerCase()];
     const body = () => { try { return raw ? JSON.parse(raw) : {}; } catch { return {}; } };
     const auth = createAuth({ store: deps.store, secret: deps.secrets.jwt, sendText: (to, t) => deps.twilio.send(to, t) });
+    // Program owners (ADMIN_PHONES, set in GitHub): always admins, and the only people besides the admin token who
+    // can grant or remove admin access (e.g. Lisa). They need no enrolling and no AWS access.
+    const owners = new Set((deps.config.adminPhones || []).map(normalizePhone).filter(Boolean));
+    const personFor = async phone => {
+      const p = await deps.people.byPhone(phone).catch(() => null);
+      if (!owners.has(phone)) return p;
+      return { ...(p || { id: `owner:${phone}`, name: 'Program owner', lang: 'en', channel: 'both', serviceResourceIds: [], account: null }), phone, role: 'admin', owner: true, disabled: false };
+    };
 
     try {
       if (method === 'GET' && path === '/health') return json(200, { ok: true }, origin);
@@ -30,13 +38,13 @@ export function createHandler(getDeps) {
       // ---- Sign-in by text code ------------------------------------------------------------
       if (method === 'POST' && path === '/auth/start') {
         const phone = normalizePhone(body().phone);
-        if (phone) await auth.start(phone, await deps.people.byPhone(phone).catch(() => null), body().lang);
+        if (phone) await auth.start(phone, await personFor(phone), body().lang);
         return json(200, { ok: true }, origin); // same answer whether or not the number is enrolled
       }
       if (method === 'POST' && path === '/auth/verify') {
         const phone = normalizePhone(body().phone);
         if (!phone || !(await auth.verify(phone, body().code))) return json(401, { error: 'code' }, origin);
-        const person = await deps.people.byPhone(phone);
+        const person = await personFor(phone);
         if (!person || person.disabled) return json(401, { error: 'code' }, origin);
         return json(200, { token: signToken({ sub: person.id, phone }, deps.secrets.jwt), person: asCrew(person) }, origin);
       }
@@ -51,21 +59,22 @@ export function createHandler(getDeps) {
         return { statusCode: 200, headers: { 'content-type': 'text/xml' }, body: '<Response></Response>' };
       }
 
-      // ---- Admin: the admin token (Donald's scripts) or a signed-in person with the admin role (Lisa, payroll) ----
+      // ---- Admin: the admin token (scripts), a program owner, or a signed-in person with the admin role (Lisa) ----
       if (path.startsWith('/admin/')) {
         let actor = null; // null = the admin token
         if (!sameSecret(header('x-admin-token'), deps.secrets.admin)) {
           const c = verifyToken(String(header('authorization') || '').replace(/^Bearer /, ''), deps.secrets.jwt);
-          const p = c && await deps.people.byPhone(c.phone).catch(() => null);
+          const p = c && await personFor(c.phone);
           if (!p || p.disabled || p.role !== 'admin') return json(403, { error: 'forbidden' }, origin);
           actor = p;
         }
         if (method === 'POST' && path === '/admin/people') {
           const b = body(); const phone = normalizePhone(b.phone);
-          const roles = actor ? ['installer', 'measure', 'pm'] : ['installer', 'measure', 'pm', 'admin']; // only the token makes admins
+          const roles = actor && !actor.owner ? ['installer', 'measure', 'pm'] : ['installer', 'measure', 'pm', 'admin']; // only the token and owners make admins
           if (!phone || !roles.includes(b.role) || !b.name) return json(422, { error: `phone, name and role (${roles.join('|')}) are required` }, origin);
           const existing = await deps.people.byPhone(phone).catch(() => null);
-          if (actor && existing?.role === 'admin') return json(403, { error: 'admins are managed by the IT admin' }, origin);
+          if (actor && !actor.owner && existing?.role === 'admin') return json(403, { error: 'admins are managed by the program owner' }, origin);
+          if (owners.has(phone) && actor) return json(422, { error: 'program owners are set in ADMIN_PHONES' }, origin);
           if (actor && existing?.id === actor.id) return json(422, { error: "you can't change your own access" }, origin);
           const p = await deps.people.save({ ...(existing || {}), id: b.id || existing?.id || `${b.role}:${phone}`, phone, name: b.name, role: b.role,
             userId: b.userId ?? existing?.userId, serviceResourceIds: b.serviceResourceIds ?? existing?.serviceResourceIds ?? [], account: b.account ?? existing?.account ?? null,
@@ -86,7 +95,7 @@ export function createHandler(getDeps) {
         }
         if (method === 'GET' && path === '/admin/health') return json(200, await svc.health(), origin);
         if (method === 'POST' && path === '/admin/run') {
-          const jobs = actor ? ['heartbeat'] : ADMIN_JOBS; // people can re-run the health check; mass texts stay on the schedule
+          const jobs = actor ? ['heartbeat', 'checkSalesforce'] : ADMIN_JOBS; // people can re-run the checks (both safe); mass texts stay on the schedule
           return jobs.includes(body().job) ? json(200, (await svc[body().job]()) ?? { ok: true }, origin) : json(422, { error: `job must be one of ${jobs.join(', ')}` }, origin);
         }
         return json(404, { error: 'not found' }, origin);
@@ -94,7 +103,7 @@ export function createHandler(getDeps) {
 
       // ---- Everything below needs a signed-in person ------------------------------------------
       const claims = verifyToken(String(header('authorization') || '').replace(/^Bearer /, ''), deps.secrets.jwt);
-      const person = claims && await deps.people.byPhone(claims.phone);
+      const person = claims && await personFor(claims.phone);
       if (!person || person.disabled) return json(401, { error: 'sign in' }, origin);
 
       if (method === 'GET' && path === '/me') return json(200, { person: asCrew(person) }, origin);

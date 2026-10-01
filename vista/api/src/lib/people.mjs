@@ -51,5 +51,5 @@ export function createPeople({ store, sf }) {
 }
 
 // Shape the engine and the app use for a person (same as the fixture crews).
-export const asCrew = p => p && ({ id: p.id, name: p.name, role: p.role, lang: p.lang || 'en', channel: p.channel || 'both', requested: p.requested || null,
+export const asCrew = p => p && ({ id: p.id, name: p.name, role: p.role, ...(p.owner ? { owner: true } : {}), lang: p.lang || 'en', channel: p.channel || 'both', requested: p.requested || null,
   lead: { name: p.name, phone: p.phone }, account: p.account || null, members: [p.name], branch: '' });

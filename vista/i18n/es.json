@@ -518,5 +518,16 @@
   "admin.nudgeNotOptedIn": "{pm} no se ha inscrito a los textos de Vista (mandar START al (706) 955-2075). Llame: {phone}",
   "admin.optin.in": "Textos activos",
   "admin.optin.none": "No ha mandado START",
-  "admin.optin.out": "Mandó STOP"
+  "admin.optin.out": "Mandó STOP",
+  "admin.sfCheck": "Revisión de Salesforce",
+  "admin.sfCheckExplain": "Solo lectura: ejecuta cada consulta que usa Vista y revisa cada campo que escribe, como el usuario de integración de Vista. Úsela después de cualquier cambio en Salesforce. Nunca cambia un registro.",
+  "admin.sfCheckRun": "Revisar Salesforce",
+  "admin.sfReady": "Listo: {passed} correctos, {warnings} por revisar",
+  "admin.sfNotReady": "No está listo: {failed} con error, {warnings} por revisar, {passed} correctos",
+  "admin.sfSendMatt": "Mande una captura de esto a Matt: cada ✗ indica el campo, valor o permiso de Salesforce que hay que arreglar.",
+  "admin.sfAllPassed": "{n} revisiones correctas",
+  "admin.sfSection.login": "Entrar",
+  "admin.sfSection.reads": "Lectura",
+  "admin.sfSection.writes": "Escritura",
+  "admin.sfSection.setup": "Configuración"
 }

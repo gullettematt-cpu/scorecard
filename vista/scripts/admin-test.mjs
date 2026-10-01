@@ -55,6 +55,8 @@ await p.click('.seg button[data-mode="off"]'); await p.click('#saveRoll'); await
 await p.click('#nav a[href="#/admin/health"]'); await p.waitForSelector('#runHb');
 check(/Vista is working/.test(await text('.health')), 'health shows working');
 await p.click('#runHb'); await p.waitForSelector('#runHb:not([disabled])'); check(/Last good check/.test(await text('.health')), 'health check re-run');
+await p.click('#runSf'); await p.waitForSelector('#sfResult .sfhead');
+check(/Ready: \d+ passed/.test(await text('#sfResult')), 'Check Salesforce shows Ready');
 await shot('05-health');
 // A crew now sees Vista switched off
 await switchTo('crew-12');
@@ -63,7 +65,7 @@ check(/rollout|not on Vista|isn't on Vista|Vista isn/i.test(await text('#app')) 
 await switchTo('pm-mike'); await p.goto(BASE + '/#/approve'); await p.waitForTimeout(400);
 check((await p.$$('.cutoff')).length === 1, 'PM approve list shows the cutoff countdown');
 // Spanish admin
-await switchTo('admin-lisa'); await p.click('#langBtn'); await p.waitForSelector('[data-lang]'); await p.click('[data-lang="es"]'); await p.waitForFunction(() => /Esperando/.test(document.querySelector('#app')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
+await switchTo('admin-lisa'); await p.waitForSelector('.nudge, .tile'); await p.click('#langBtn'); await p.waitForSelector('[data-lang]'); await p.click('[data-lang="es"]'); await p.waitForFunction(() => /Esperando/.test(document.querySelector('#app')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
 const es = await text('#app'), nv = await text('#nav'); check(/Esperando a los PM/.test(es) && /Pagos/.test(nv), 'Spanish admin screens'); if (!/Esperando/.test(es)) console.log('   app text:', es.slice(0, 200), '| nav:', nv);
 console.log('errors:', errors); await b.close();
 console.log('screenshots in', S);

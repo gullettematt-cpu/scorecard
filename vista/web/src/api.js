@@ -46,6 +46,7 @@ export const api = {
     setRollout: r => req('PUT', '/admin/rollout', r),
     health: () => req('GET', '/admin/health'),
     runHeartbeat: () => req('POST', '/admin/run', { job: 'heartbeat' }),
+    checkSalesforce: () => req('POST', '/admin/run', { job: 'checkSalesforce' }),
     languageRequests: () => req('GET', '/admin/language-requests')
   },
   ask: (workOrderId, question, history = []) => req('POST', '/vi/ask', { workOrderId, question, history })

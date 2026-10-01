@@ -3,7 +3,13 @@
 Donald,
 
 This one document has everything you need to get Vista running in AWS and connected to Twilio, in order, with the
-commands to paste. I'm handling all of Salesforce. Wherever it says **🏷️ Tag Matt**, add a comment on
+commands to paste. I'm handling all of Salesforce.
+
+> **Update (Oct 1):** thanks for steps 0–4; that was the heavy lifting. **I'm taking over from here:** I'll merge,
+> run the deploys from GitHub myself (I'm the approver on `vista-prod`), run the checks from Vista's own admin
+> screens, and give Lisa her access. You don't need to approve deploys. **All I still need from you is two small
+> things after my first deploy: the Twilio webhook and an AWS cost alarm (step 7, about 10 minutes).** The Salesforce
+> side is done: integration user, the Vista app with your `vista-sf.crt`, flows and list views. Wherever it says **🏷️ Tag Matt**, add a comment on
 [pull request #1](https://github.com/gullettematt-cpu/scorecard/pull/1) that mentions **@gullettematt-cpu**, so I
 get notified and the whole setup stays in one thread. Never put a key, token or password in that comment (see the
 rules below).
@@ -55,10 +61,10 @@ problem and the text line. What's left is setting it up in our accounts.
 | 2 | You | Let GitHub deploy to AWS (identity provider and deploy role) | 15 min |
 | 3 | You | Load the secrets | 10 min |
 | 4 | You | 🏷️ **Tag Matt** with five values | 2 min |
-| 5 | Me | Merge, set up the GitHub environment, 🏷️ tag you back | — |
-| 6 | You | First deploy | 15 min (about 10 of it waiting) |
-| 7 | You | Connect Twilio, run the checks, set a cost alarm | 15 min |
-| 8 | You | 🏷️ **Tag Matt**: done | 2 min |
+| 5 | Me | Merge, set up the GitHub environment | ✅ |
+| 6 | Me | First deploy; I send you the Twilio webhook address | — |
+| 7 | You | Paste the Twilio webhook; set a cost alarm | 10 min |
+| 8 | Me | Run the checks, give Lisa access, pick pilot crews | — |
 
 ---
 
@@ -212,94 +218,56 @@ None of these are secret. Post them in the comment.
 | *Vista* Messaging Service SID (`MG…`) | Twilio → Messaging → Services |
 | The Vista phone number | Twilio → Phone Numbers |
 
-## Step 5: my turn (wait for my tag)
+## Step 5: my turn ✅
 
-I'll:
-1. merge pull request #1 into `main`, since deploys run from `main`;
-2. create the `vista-prod` environment in GitHub with you as the required approver;
-3. fill in its settings with your values and my Salesforce ones.
+I've merged pull request #1 into `main` and created the `vista-prod` environment with all the settings (your step 4
+values plus the Salesforce ones). I'm the approver; deploys run from `main` only.
 
-I'll tag you on the pull request when it's ready.
+## Step 6: first deploy (me)
 
-## Step 6: first deploy
+I run it from GitHub: **Actions → Vista → Run workflow** on `main`. Tests run first, and the deploy only starts if
+they pass. The run summary lists the **App URL**, the **API URL** and the **Twilio webhook** address. I'll send you
+the Twilio webhook address, which is the only thing you need from it.
 
-1. In GitHub, open **Actions**, then **Vista**, and click **Run workflow**.
-2. Set **Use workflow from** to `main` and the environment to `vista-prod`, then run it.
-3. When it pauses on **Review deployments**, approve it.
+The workflow's last step checks the API's health, which proves all five secrets you loaded are readable.
 
-The tests run first, and the deploy only starts if they pass. The first deploy takes about 10 minutes, mostly
-while CloudFront sets up.
-
-When it finishes, the run summary lists:
-- the **App URL** (where crews will open Vista);
-- the **API URL**;
-- the **Twilio webhook**.
-
-The workflow's last step checks the API's health, which proves all five secrets load.
-
-To see everything the stack created:
-
-```bash
-aws cloudformation describe-stacks --stack-name vista --query "Stacks[0].Outputs" --output table
-```
-
-## Step 7: connect Twilio, run the checks, set a cost alarm
+## Step 7: connect Twilio and set a cost alarm (you, about 10 minutes)
 
 **Connect Twilio.**
 1. In Twilio, open **Messaging**, then **Services**, then *Vista*, then **Integration**, and choose **Send a
    webhook**.
-2. Paste the Twilio webhook address into **Request URL**, with method **HTTP POST**.
+2. Paste the Twilio webhook address I sent into **Request URL**, with method **HTTP POST**. Save.
 3. Test it from a phone that isn't in Salesforce: text `today` and you should get Vista's "reply START" message.
    Text `START` (Twilio confirms), then `today` again: you should get a bilingual reply asking you to have your PM
    add you.
-4. **Matt and Mike each text START** to the Vista number from their mobiles, or the health-check alerts won't reach
-   them.
 
-If the campaign isn't approved yet, carriers may block the reply. Test again once it's approved.
-
-**Run the health check now** rather than waiting for the 2-hour schedule:
-
-```bash
-bash scripts/vista-admin.sh run heartbeat     # expect {"ok":true}
-bash scripts/vista-admin.sh check-salesforce  # read-only; expect "Ready" (flows show "!" until I activate them)
-bash scripts/vista-admin.sh rollout           # expect Augusta "off": nobody sees Vista yet
-```
-
-`check-salesforce` runs every query Vista uses and checks every field it writes, as the integration user, without
-changing anything. 🏷️ **Tag Matt** with its output if any line has ✗; those are mine to fix in Salesforce.
-
-**Give Lisa (payroll) her admin access.** Lisa runs the program from Vista's admin screens, and only the admin token
-can grant that role. I'll send you Lisa's mobile number.
-
-```bash
-bash scripts/vista-admin.sh add '+1XXXXXXXXXX' 'Lisa Lastname' admin en
-```
-
-If the heartbeat fails, the reply names the step (`login`, `read`, `write` or `upload`) and the error.
-- **`login`, `read` or `write`:** those are Salesforce. 🏷️ **Tag Matt** with the reply.
-- **`upload`:** that's AWS. See Troubleshooting below.
+If you'd rather not be on call for Twilio changes, add me as a user on the Twilio account instead and I'll do this
+step myself.
 
 **Set a cost alarm.**
-1. In the AWS console, open **Billing and Cost Management**, then **Budgets**, and click **Create budget**.
-2. Choose a **Monthly cost budget** of about $25, with your email for alerts.
+1. In the AWS console (the Vista account), open **Billing and Cost Management**, then **Budgets**, and click
+   **Create budget**.
+2. Choose a **Monthly cost budget** of about $25, with your email and mine for alerts.
 
 Expected spend at Augusta's volume is a few dollars a month.
 
-## Step 8: 🏷️ Tag Matt: done
+🏷️ **Tag Matt** when both are done, and whether the text test got its reply.
 
-Post in the comment:
-- the **App URL** from step 6;
-- the heartbeat result;
-- whether the text test got its reply.
+## Step 8: checks, Lisa, pilot (me)
 
-From there, Mike and I pick the pilot crews and switch Augusta to `pilot`.
+I sign in to Vista with my mobile (it's in `ADMIN_PHONES`, which makes me the program owner) and, from the **Health**
+screen, run the health check and **Check Salesforce**. From **People** I give Lisa admin access. Mike and I text
+START to the Vista number for alerts, then pick the pilot crews and switch Augusta to `pilot`.
+
+The command-line tool (`scripts/vista-admin.sh`) still works for anyone with AWS access, but nobody needs it for
+day-to-day running anymore.
 
 ---
 
 ## When else to tag me
 
-- **Anything Salesforce:** a heartbeat that fails at `login`, `read` or `write`; a "Salesforce" error in the logs;
-  or questions about the integration user or connected app.
+- **Anything Salesforce:** a "Salesforce" error in the logs, or questions about the integration user or the Vista
+  app. (Health-check alerts come to me and Mike directly.)
 - **Before changing anything by hand** in the Vista stack. The next deploy would undo manual changes, so we add
   them to the template instead. That includes email alerts and a custom web address.
 - **A decision that isn't technical:** who gets alerts, turning a location on or off, or pausing scheduled texts.

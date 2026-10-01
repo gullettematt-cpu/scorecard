@@ -518,5 +518,16 @@
   "admin.nudgeNotOptedIn": "{pm} hasn't signed up for Vista texts (text START to (706) 955-2075). Call instead: {phone}",
   "admin.optin.in": "Texts on",
   "admin.optin.none": "Hasn't texted START",
-  "admin.optin.out": "Texted STOP"
+  "admin.optin.out": "Texted STOP",
+  "admin.sfCheck": "Salesforce check",
+  "admin.sfCheckExplain": "Read-only: runs every query Vista uses and checks every field it writes, as Vista's integration user. Run it after any Salesforce change. It never changes a record.",
+  "admin.sfCheckRun": "Check Salesforce",
+  "admin.sfReady": "Ready: {passed} passed, {warnings} to look at",
+  "admin.sfNotReady": "Not ready: {failed} failed, {warnings} to look at, {passed} passed",
+  "admin.sfSendMatt": "Send a screenshot of this to Matt: each ✗ names the Salesforce field, value or permission to fix.",
+  "admin.sfAllPassed": "{n} checks passed",
+  "admin.sfSection.login": "Log in",
+  "admin.sfSection.reads": "Read",
+  "admin.sfSection.writes": "Write",
+  "admin.sfSection.setup": "Setup"
 }

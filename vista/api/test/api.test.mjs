@@ -512,6 +512,8 @@ test('program admin (payroll): signs in by text, sees the pay board, nudges a PM
   assert.equal((await as('POST', '/admin/run', { job: 'heartbeat' })).json.ok, true);
   assert.ok((await as('GET', '/admin/health')).json.lastOk);
   assert.equal((await as('POST', '/admin/run', { job: 'morning' })).statusCode, 422);
+  const chk = await as('POST', '/admin/run', { job: 'checkSalesforce' }); // read-only, so payroll can run it
+  assert.equal(chk.statusCode, 200); assert.ok(Array.isArray(chk.json.results));
   // People: enroll and turn off crews and PMs, but not admins or herself.
   r = await as('POST', '/admin/people', { phone: '706-555-0177', name: 'New Installer', role: 'installer', lang: 'es' });
   assert.equal(r.statusCode, 200); assert.equal(r.json.person.source, 'admin:Lisa Payroll');
@@ -700,4 +702,27 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   const xml = permissionSetXml(plan);
   assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);
   assert.ok(xml.indexOf('<fieldPermissions>') < xml.indexOf('<label>') && xml.indexOf('<label>') < xml.indexOf('<objectPermissions>'), 'metadata element order');
+});
+
+test('program owners (ADMIN_PHONES) are admins without enrolling and can grant admin access', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps);
+  const owner = '+17065550001';
+  await deps.store.del(`PERSON#${owner}`, 'PROFILE'); // not enrolled anywhere: ADMIN_PHONES alone is enough
+  // Sign-in code goes out, and verifying it signs in as an admin.
+  await call(h, 'POST', '/auth/start', { body: { phone: '706-555-0001' } });
+  const sent = deps.twilio.sent.find(m => m.to === owner && /code is (\d{6})/.test(m.body));
+  assert.ok(sent, 'code texted to the owner');
+  const v = await call(h, 'POST', '/auth/verify', { body: { phone: '706-555-0001', code: sent.body.match(/(\d{6})/)[1] } });
+  assert.equal(v.statusCode, 200); assert.equal(v.json.person.role, 'admin');
+  const as = (m, path, body) => call(h, m, path, { token: v.json.token, body });
+  assert.equal((await as('GET', '/admin/board')).statusCode, 200);
+  // Owners can make Lisa an admin (an admin person can't), but can't edit owners through the app.
+  const r = await as('POST', '/admin/people', { phone: '706-555-0160', name: 'Lisa New', role: 'admin', lang: 'en' });
+  assert.equal(r.statusCode, 200); assert.equal(r.json.person.role, 'admin');
+  assert.equal((await as('POST', '/admin/people', { phone: owner, name: 'X', role: 'pm' })).statusCode, 422);
+  assert.equal((await as('POST', '/admin/run', { job: 'checkSalesforce' })).statusCode, 200);
+  assert.equal((await as('POST', '/admin/run', { job: 'morning' })).statusCode, 422, 'mass texts stay on the schedule');
+  // A non-owner admin still can't grant admin.
+  const lisa = signToken({ sub: r.json.person.id, phone: '+17065550160' }, deps.secrets.jwt);
+  assert.equal((await call(h, 'POST', '/admin/people', { token: lisa, body: { phone: '706-555-0161', name: 'Y', role: 'admin' } })).statusCode, 422);
 });
