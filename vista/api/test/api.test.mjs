@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { createHandler } from '../src/http.mjs';
 import { createWorker } from '../src/worker.mjs';
 import { signToken, verifyToken, normalizePhone, createAuth } from '../src/lib/auth.mjs';
-import { jwtAssertion, createSalesforce, lit, inList } from '../src/lib/salesforce.mjs';
+import { jwtAssertion, jwtAudience, createSalesforce, lit, inList } from '../src/lib/salesforce.mjs';
 import { twilioSignature, validTwilioSignature, createTwilio } from '../src/lib/twilio.mjs';
 import { createPhotos, photoKey } from '../src/lib/photos.mjs';
 import { createVi, createTranslations, VI_MODEL } from '../src/lib/vi.mjs';
@@ -27,6 +27,14 @@ test('a resubmit in the same millisecond as the send-back still counts as resubm
   assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at } }), true);
   assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at }, resubmitted_at: at }), false);
   assert.equal(domain.isSentBack({ approval: { decision: 'sent_back', at: '2026-10-01T17:00:00.000Z' }, resubmitted_at: at }), true, 'sent back again later');
+});
+
+test('Salesforce JWT audience: generic login host, also when logging in through My Domain', () => {
+  assert.equal(jwtAudience('https://login.salesforce.com'), 'https://login.salesforce.com');
+  assert.equal(jwtAudience('https://southernsiding.my.salesforce.com'), 'https://login.salesforce.com');
+  assert.equal(jwtAudience('https://test.salesforce.com'), 'https://test.salesforce.com');
+  assert.equal(jwtAudience('https://southernsiding--devsandi.sandbox.my.salesforce.com'), 'https://test.salesforce.com');
+  assert.equal(jwtAudience('https://southernsiding--devsandi.my.salesforce.com'), 'https://test.salesforce.com');
 });
 
 test('app tokens: sign, verify, tamper, expiry', () => {

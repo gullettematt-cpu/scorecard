@@ -12,6 +12,15 @@ export function jwtAssertion({ clientId, username, audience, privateKey, now = D
   return `${unsigned}.${sig}`;
 }
 
+// The JWT "aud" is Salesforce's generic login host, even when the token request goes to the org's My Domain
+// (e.g. https://southernsiding.my.salesforce.com): login.salesforce.com for production, test.salesforce.com for
+// sandboxes. So SF_LOGIN_URL can be either login.salesforce.com or the My Domain address.
+export function jwtAudience(loginUrl) {
+  const host = (() => { try { return new URL(loginUrl).hostname; } catch { return ''; } })();
+  return /(^|\.)test\.salesforce\.com$|\.sandbox\.my\.salesforce\.com$|--[a-z0-9]+\.(cs\d+\.)?my\.salesforce\.com$/i.test(host)
+    ? 'https://test.salesforce.com' : 'https://login.salesforce.com';
+}
+
 // SOQL literal (quotes and backslashes escaped) and IN lists.
 export const lit = s => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 export const inList = xs => `(${(xs.length ? xs : ['']).map(lit).join(',')})`;
@@ -24,7 +33,7 @@ export function createSalesforce({ loginUrl, clientId, username, privateKey, tok
     if (!privateKey && tok) return tok; // a session from the sf CLI
     const res = await fetchImpl(`${loginUrl}/services/oauth2/token`, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwtAssertion({ clientId, username, audience: loginUrl, privateKey }) })
+      body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwtAssertion({ clientId, username, audience: jwtAudience(loginUrl), privateKey }) })
     });
     if (!res.ok) throw new SalesforceError('login', res.status, await res.text());
     tok = await res.json();
