@@ -1,0 +1,9 @@
+node_modules/
+dist/
+docs/describe/*.json
+.env
+.env.*
+!.env.example
+.DS_Store
+.aws-sam/
+salesforce/generated/

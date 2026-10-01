@@ -1,0 +1,121 @@
+[
+  {
+    "id": "crew-12",
+    "name": "Crew 12 · Tucker",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": "windows",
+    "lead": {
+      "name": "Dwayne Tucker",
+      "phone": "+17065550112"
+    },
+    "members": [
+      "Dwayne Tucker",
+      "Marcus Bell"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "fixture": "crew-12.json",
+    "account": {
+      "Id": "0015e00000TUCK1",
+      "Name": "Tucker Installs LLC"
+    }
+  },
+  {
+    "id": "crew-7",
+    "name": "Cuadrilla 7 · Hernández",
+    "branch": "Augusta",
+    "lang": "es",
+    "trade": "siding",
+    "lead": {
+      "name": "Luis Hernández",
+      "phone": "+17065550107"
+    },
+    "members": [
+      "Luis Hernández",
+      "Javier Ortiz",
+      "Tomás Reyes"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "fixture": "crew-7.json",
+    "account": {
+      "Id": "0015e00000HERN7",
+      "Name": "Hernández Siding"
+    }
+  },
+  {
+    "id": "measure-3",
+    "name": "Measure · Ortega",
+    "role": "measure",
+    "branch": "Augusta",
+    "lang": "es",
+    "trade": null,
+    "lead": {
+      "name": "Rafael Ortega",
+      "phone": "+17065550133"
+    },
+    "members": [
+      "Rafael Ortega"
+    ],
+    "pm": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "fixture": "measure-3.json",
+    "account": {
+      "Id": "0015e00000ORTE3",
+      "Name": "Rafael Ortega"
+    }
+  },
+  {
+    "id": "pm-mike",
+    "name": "Mike · PM",
+    "role": "pm",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": null,
+    "lead": {
+      "name": "Mike",
+      "phone": "+17065550100"
+    },
+    "members": [
+      "Crew 12",
+      "Cuadrilla 7",
+      "Measure · Ortega"
+    ],
+    "pm": null,
+    "fixtures": [
+      "crew-12.json",
+      "crew-7.json",
+      "measure-3.json"
+    ],
+    "account": null
+  },
+  {
+    "id": "admin-lisa",
+    "name": "Lisa · Payroll",
+    "role": "admin",
+    "branch": "Augusta",
+    "lang": "en",
+    "trade": null,
+    "lead": {
+      "name": "Lisa",
+      "phone": "+17065550150"
+    },
+    "members": [
+      "Program admin"
+    ],
+    "pm": null,
+    "fixtures": [
+      "crew-12.json",
+      "crew-7.json",
+      "measure-3.json"
+    ],
+    "account": null
+  }
+]

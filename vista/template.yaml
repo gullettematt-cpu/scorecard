@@ -1,0 +1,384 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Vista (Todo a la vista): API, text-message channel, scheduled jobs, photo storage and the app itself.
+  Secrets are NOT in this template. They live in SSM Parameter Store (SecureString) under SecretsPath;
+  see docs/deploy-aws.md.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, sandbox]
+    Description: prod talks to production Salesforce; sandbox to a sandbox (set SfLoginUrl to match).
+  SecretsPath:
+    Type: String
+    Default: /vista/prod
+    Description: SSM path holding SF_PRIVATE_KEY, TWILIO_AUTH_TOKEN, ANTHROPIC_API_KEY, APP_JWT_SECRET, ADMIN_TOKEN.
+  SfLoginUrl:
+    Type: String
+    Default: https://login.salesforce.com
+  SfClientId:
+    Type: String
+    Description: Consumer key of the Vista connected app (not secret).
+  SfUsername:
+    Type: String
+    Description: Username of the Vista integration user.
+  TwilioAccountSid:
+    Type: String
+  TwilioFrom:
+    Type: String
+    Default: ''
+    Description: The Vista text number, E.164 (+17065550100). Leave empty when sending through a Messaging Service.
+  TwilioMessagingServiceSid:
+    Type: String
+    Default: ''
+    Description: Optional MG... Messaging Service that holds the Vista number and its A2P 10DLC campaign. Used instead of TwilioFrom when set.
+  AlertPhones:
+    Type: String
+    Description: Comma-separated E.164 numbers texted when the heartbeat fails (Matt, Mike).
+  AdminPhones:
+    Type: String
+    Default: ''
+    Description: Comma-separated E.164 numbers texted when someone requests another language.
+  SchedulesEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Turn the scheduled jobs (heartbeat, morning texts, digests, cutoff, dispatch poll) off without deleting them.
+
+Conditions:
+  Schedules: !Equals [!Ref SchedulesEnabled, 'true']
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Tracing: Active
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+        STAGE: !Ref StageName
+        TABLE: !Ref Table
+        PHOTOS_BUCKET: !Ref PhotosBucket
+        SECRETS_PATH: !Ref SecretsPath
+        SF_LOGIN_URL: !Ref SfLoginUrl
+        SF_CLIENT_ID: !Ref SfClientId
+        SF_USERNAME: !Ref SfUsername
+        TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
+        TWILIO_FROM: !Ref TwilioFrom
+        TWILIO_MESSAGING_SERVICE_SID: !Ref TwilioMessagingServiceSid
+        APP_URL: !Sub https://${AppDistribution.DomainName}
+        ALERT_PHONES: !Ref AlertPhones
+        ADMIN_PHONES: !Ref AdminPhones
+
+Resources:
+  # ---- Data ---------------------------------------------------------------------------------
+  # One table: people index, sign-in codes, text conversations, sync receipts, translation cache,
+  # rollout override, heartbeat state. Items that should expire carry `ttl`.
+  Table:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      TimeToLiveSpecification: { AttributeName: ttl, Enabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      SSESpecification: { SSEEnabled: true }
+
+  # Job photos (pay evidence). Private; the app uploads with short-lived signed URLs.
+  PhotosBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      BucketEncryption:
+        ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }]
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      VersioningConfiguration: { Status: Enabled }
+      LifecycleConfiguration:
+        Rules:
+          - Id: heartbeat-cleanup
+            Status: Enabled
+            Prefix: vista/heartbeat/
+            ExpirationInDays: 7
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+          - Id: old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: [!Sub 'https://${AppDistribution.DomainName}']
+            AllowedMethods: [PUT, GET]
+            AllowedHeaders: ['*']
+            MaxAge: 3000
+
+  PhotosBucketTls:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PhotosBucket
+      PolicyDocument:
+        Statement:
+          - Sid: TlsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt PhotosBucket.Arn, !Sub '${PhotosBucket.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+  # ---- The app (static PWA behind CloudFront) ------------------------------------------------
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      BucketEncryption:
+        ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }]
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+
+  AppOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-app'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  AppDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'Vista app (${StageName})'
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: app
+            DomainName: !GetAtt AppBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt AppOac.Id
+            S3OriginConfig: { OriginAccessIdentity: '' }
+        DefaultCacheBehavior:
+          TargetOriginId: app
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6          # Managed-CachingOptimized
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # Managed-SecurityHeadersPolicy
+        CacheBehaviors:
+          # Files that must never be stale: the shell entry, the service worker and the API address.
+          - PathPattern: /index.html
+            TargetOriginId: app
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad        # Managed-CachingDisabled
+          - PathPattern: /sw.js
+            TargetOriginId: app
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          - PathPattern: /config.js
+            TargetOriginId: app
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+
+  AppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AppBucket
+      PolicyDocument:
+        Statement:
+          - Sid: CloudFrontRead
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub '${AppBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${AppDistribution}'
+
+  # ---- API ----------------------------------------------------------------------------------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Sub 'https://${AppDistribution.DomainName}']
+        AllowHeaders: [authorization, content-type]
+        AllowMethods: [GET, POST, PUT, PATCH, OPTIONS]
+        MaxAge: 3600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        # No query strings or bodies in the access log: phone numbers and codes stay out of logs.
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod","path":"$context.path","status":"$context.status","latency":"$context.responseLatency"}'
+
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { RetentionInDays: 90 }
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [api/src/http.mjs]
+        Format: esm
+        Target: node22
+        Platform: node
+        OutExtension: [.js=.mjs]
+        Sourcemap: true
+        # The AWS SDK is bundled too, so the code runs on the exact versions it was tested with.
+        Banner:
+          - "js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+    Properties:
+      CodeUri: .
+      Handler: http.handler
+      Timeout: 29
+      Description: Vista API (sign-in, snapshot, sync, photos, Vi, Twilio webhook, admin)
+      LoggingConfig: { LogGroup: !Ref ApiLogs }
+      Environment:
+        Variables:
+          WORKER_FUNCTION: !Ref WorkerFunction
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - S3CrudPolicy: { BucketName: !Ref PhotosBucket }
+        - LambdaInvokePolicy: { FunctionName: !Ref WorkerFunction }
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParametersByPath, ssm:GetParameter]
+              Resource:
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretsPath}'
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretsPath}/*'
+      Events:
+        Any:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: '/{proxy+}', Method: ANY }
+
+  ApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { RetentionInDays: 90 }
+
+  # Incoming texts (handed off so Twilio gets an instant answer) and the scheduled jobs.
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [api/src/worker.mjs]
+        Format: esm
+        Target: node22
+        Platform: node
+        OutExtension: [.js=.mjs]
+        Sourcemap: true
+        # The AWS SDK is bundled too, so the code runs on the exact versions it was tested with.
+        Banner:
+          - "js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+    Properties:
+      CodeUri: .
+      Handler: worker.handler
+      Timeout: 300
+      Description: Vista worker (texts, heartbeat, morning texts, PM digests, 10 AM cutoff, dispatch poll)
+      LoggingConfig: { LogGroup: !Ref WorkerLogs }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - S3CrudPolicy: { BucketName: !Ref PhotosBucket }
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParametersByPath, ssm:GetParameter]
+              Resource:
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretsPath}'
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretsPath}/*'
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0   # a retried text would reply twice; jobs are idempotent and re-run on schedule
+      Events:
+        Heartbeat:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(2 hours)
+            Input: '{"job":"heartbeat"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+        Morning:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(30 6 ? * MON-SAT *)
+            ScheduleExpressionTimezone: America/New_York
+            Input: '{"job":"morning"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+        PmDigestEarly:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(30 7 ? * MON-FRI *)
+            ScheduleExpressionTimezone: America/New_York
+            Input: '{"job":"pm-digest"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+        PmDigestLate:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(30 9 ? * MON-FRI *)
+            ScheduleExpressionTimezone: America/New_York
+            Input: '{"job":"pm-digest"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+        Cutoff:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(0 10 ? * MON-FRI *)
+            ScheduleExpressionTimezone: America/New_York
+            Input: '{"job":"cutoff"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+        DispatchPoll:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Input: '{"job":"dispatch-poll"}'
+            State: !If [Schedules, ENABLED, DISABLED]
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+
+  WorkerLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { RetentionInDays: 90 }
+
+  # Backstop for the heartbeat itself: if the worker keeps erroring, CloudWatch shows it.
+  WorkerErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vista worker errors (heartbeat texts Matt and Mike; this catches the worker failing before it can)
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref WorkerFunction }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Description: Vista API base URL (the deploy writes this into the app's config.js)
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  SmsWebhookUrl:
+    Description: Twilio incoming-message webhook (HTTP POST), on the Messaging Service or on the number
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/sms/inbound'
+  AppUrl:
+    Description: Where installers, measure techs and PMs open Vista
+    Value: !Sub 'https://${AppDistribution.DomainName}'
+  AppBucketName:
+    Value: !Ref AppBucket
+  AppDistributionId:
+    Value: !Ref AppDistribution
+  PhotosBucketName:
+    Value: !Ref PhotosBucket
+  TableName:
+    Value: !Ref Table

@@ -1,0 +1,6 @@
+{
+  "_comment": "Which jobs a PM may issue a draw on. null = no restriction (PM judgment). Fill in to add a rule.",
+  "minContract": null,
+  "trades": null,
+  "requireProgressPhotos": 1
+}

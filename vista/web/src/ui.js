@@ -1,0 +1,102 @@
+export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const icons = {
+  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>',
+  toggle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/></svg>',
+  pulse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>',
+  logo: '<svg viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#F4F6F8"/><path d="M96 176 L256 384 L416 176" fill="none" stroke="#0F2A3D" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/><circle cx="256" cy="176" r="40" fill="#F28C28"/></svg>',
+  today: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 15h3"/></svg>',
+  job: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
+  draw: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  approve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  vi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10h.01M15 10h.01"/></svg>',
+  nav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>'
+};
+export const statusTone = s => ({ 'Installation Scheduled': '', 'Installation Completed': 'ok', 'Completed': 'muted', 'On Hold': 'warn', 'Canceled': 'bad' }[s] || 'muted');
+export const visitTone = s => ({ Dispatched: '', 'In Progress': 'ok', Completed: 'muted' }[s] || 'muted');
+export const drawTone = s => ({ WithPM: 'warn', SentBack: 'bad', Submitted: '', 'Auto-Approved': 'ok', Approved: 'ok', Paid: 'ok', Rejected: 'bad' }[s] || 'muted');
+export const mapsUrl = w => {
+  const q = w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`);
+  return `https://maps.apple.com/?daddr=${q}`; // Android opens Google Maps for this URL as well
+};
+export const sameDay = (a, b = new Date()) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate(); };
+let toastTimer;
+export function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2600);
+}
+
+// Confirmation sheet ("Are you sure…?"). Resolves true on confirm, false on cancel/backdrop.
+export function confirmSheet({ title, lines = [], note = '', yes, no }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-wrap';
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <h2 id="sheetTitle">${esc(title)}</h2>
+      ${lines.length ? `<dl>${lines.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+      ${note ? `<p class="hint">${esc(note)}</p>` : ''}
+      <div class="stack"><button class="act primary" data-yes>${esc(yes)}</button><button class="act" data-no>${esc(no)}</button></div>
+    </div>`;
+    const done = v => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', e => { if (e.target === wrap) done(false); });
+    wrap.querySelector('[data-yes]').onclick = () => done(true);
+    wrap.querySelector('[data-no]').onclick = () => done(false);
+    document.body.appendChild(wrap);
+    wrap.querySelector('[data-no]').focus();
+  });
+}
+
+// ---- Language -------------------------------------------------------------------------------
+export const LANG_LABEL = { en: 'EN', es: 'ES', bi: 'EN·ES' };
+
+// Language picker sheet. Labels are always native so anyone can find their language.
+// Resolves { lang } or { request: 'Portuguese' } or null.
+export function languageSheet({ current, title, bothHint, requestLabel, requestPlaceholder, requestSend, cancel }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-wrap';
+    const opt = (v, label, hint = '') => `<button class="act lang-opt ${current === v ? 'on' : ''}" data-lang="${v}" aria-pressed="${current === v}"><span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</button>`;
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="langTitle">
+      <h2 id="langTitle">${esc(title)}</h2>
+      <div class="stack">
+        ${opt('en', 'English')}${opt('es', 'Español')}${opt('bi', 'English + Español', bothHint)}
+      </div>
+      <form class="lang-req">
+        <label for="langReq">${esc(requestLabel)}</label>
+        <div class="row"><input id="langReq" name="language" placeholder="${esc(requestPlaceholder)}" autocomplete="off"><button class="act" type="submit">${esc(requestSend)}</button></div>
+      </form>
+      <button class="act" data-cancel style="width:100%;margin-top:8px">${esc(cancel)}</button>
+    </div>`;
+    const done = v => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', e => { if (e.target === wrap) done(null); });
+    wrap.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => done({ lang: b.dataset.lang }));
+    wrap.querySelector('[data-cancel]').onclick = () => done(null);
+    wrap.querySelector('.lang-req').onsubmit = e => { e.preventDefault(); const v = e.target.language.value.trim(); if (v) done({ request: v }); };
+    document.body.appendChild(wrap);
+    wrap.querySelector(`[data-lang="${current}"]`)?.focus();
+  });
+}
+
+// Free text from Salesforce or another person, translated for the reader.
+//   en/es: shows the translation; the screen's "Show original" toggle swaps every .ft back.
+//   bi:    shows the original and the translation together.
+export function freeText(tr, text, target) {
+  const r = tr(text, target);
+  if (!r.translated) return esc(text || '');
+  if (target === 'bi') return `${esc(r.original)}<span class="ft-alt">${esc(r.text)}</span>`;
+  return `<span class="ft" data-tr="${esc(r.text)}" data-orig="${esc(r.original)}">${esc(r.text)}</span>`;
+}
+export function wireOriginalToggle(root, labels) {
+  const btn = root.querySelector('.ft-toggle');
+  if (!btn) return;
+  let showingOrig = false;
+  btn.onclick = () => {
+    showingOrig = !showingOrig;
+    root.querySelectorAll('.ft').forEach(s => { s.textContent = showingOrig ? s.dataset.orig : s.dataset.tr; });
+    btn.textContent = showingOrig ? labels.showTranslation : labels.showOriginal;
+    btn.setAttribute('aria-pressed', String(showingOrig));
+  };
+}

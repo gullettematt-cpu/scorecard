@@ -1,0 +1,280 @@
+{
+  "workOrders": [
+    {
+      "Id": "0WO5e00000B2m1qEAB",
+      "WorkOrderNumber": "00041859",
+      "RecordType": {
+        "Name": "Installation"
+      },
+      "Subject": "Vinyl siding — full house",
+      "Status": "Installation Scheduled",
+      "Priority": "High",
+      "_schedule": {
+        "dayOffset": 0,
+        "startHour": 7,
+        "endHour": 17
+      },
+      "Street": "512 Lakeside Dr",
+      "City": "Martinez",
+      "State": "GA",
+      "PostalCode": "30907",
+      "Latitude": 33.522,
+      "Longitude": -82.098,
+      "Account": {
+        "Id": "001E",
+        "Name": "Robert & Denise Hall"
+      },
+      "Contact": {
+        "Id": "003E",
+        "Phone": "+17065553364"
+      },
+      "WorkType": {
+        "Name": "Siding"
+      },
+      "Work_Type_Name__c": "Siding",
+      "Description": "Tear off wood lap siding, house wrap, install D4 vinyl in Pewter, white trim. Day 3 of 4: front and left elevations. Rot found on rear sheathing day 1 — PM approved 3 sheets OSB. Dumpster on the left side of the driveway.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL7",
+          "LineItemNumber": "1",
+          "Description": "D4 vinyl siding, Pewter — 22 sq",
+          "Quantity": 22,
+          "Status": "Installation in Progress"
+        },
+        {
+          "Id": "1WL8",
+          "LineItemNumber": "2",
+          "Description": "House wrap + flashing tape",
+          "Quantity": 1,
+          "Status": "Installation Completed"
+        },
+        {
+          "Id": "1WL9",
+          "LineItemNumber": "3",
+          "Description": "Aluminum fascia + soffit, white",
+          "Quantity": 180,
+          "Status": "Installation Scheduled"
+        },
+        {
+          "Id": "1WL10",
+          "LineItemNumber": "4",
+          "Description": "OSB sheathing replacement (PM approved)",
+          "Quantity": 3,
+          "Status": "Installation Completed"
+        }
+      ],
+      "Job_Number__c": "a0J5",
+      "ServiceAppointment": {
+        "Id": "08p5e0000002bB1",
+        "AppointmentNumber": "SA-120447",
+        "Status": "In Progress",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Luis Hernández"
+      },
+      "_progressPhotos": 6
+    },
+    {
+      "Id": "0WO5e00000B2m3sEAB",
+      "WorkOrderNumber": "00041880",
+      "RecordType": {
+        "Name": "Service"
+      },
+      "Subject": "Siding repair — rear elevation",
+      "Status": "Installation Scheduled",
+      "Priority": "Medium",
+      "_schedule": {
+        "dayOffset": 0,
+        "startHour": 15,
+        "endHour": 17
+      },
+      "Street": "4478 Columbia Rd",
+      "City": "Grovetown",
+      "State": "GA",
+      "PostalCode": "30813",
+      "Account": {
+        "Id": "001F",
+        "Name": "Yolanda Pierce"
+      },
+      "Contact": {
+        "Id": "003F",
+        "Phone": "+17065557712"
+      },
+      "WorkType": {
+        "Name": "Siding"
+      },
+      "Work_Type_Name__c": "Siding",
+      "Description": "Storm damage: replace 6 courses on rear elevation, match existing Clay color. Homeowner has 1 box of leftover siding in the garage.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL11",
+          "LineItemNumber": "1",
+          "Description": "D4 vinyl, Clay — 1 sq",
+          "Quantity": 1,
+          "Status": "Installation Completed"
+        }
+      ],
+      "Job_Number__c": "a0J6",
+      "ServiceAppointment": {
+        "Id": "08p5e0000002bB2",
+        "AppointmentNumber": "SA-120455",
+        "Status": "Completed",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Luis Hernández"
+      },
+      "_progressPhotos": 0
+    },
+    {
+      "Id": "0WO5e00000B2m5uEAB",
+      "WorkOrderNumber": "00041905",
+      "RecordType": {
+        "Name": "Installation"
+      },
+      "Subject": "Vinyl siding — full house",
+      "Status": "Installation Scheduled",
+      "Priority": "High",
+      "_schedule": {
+        "dayOffset": 2,
+        "startHour": 7,
+        "endHour": 17
+      },
+      "Street": "1910 Central Ave",
+      "City": "Augusta",
+      "State": "GA",
+      "PostalCode": "30904",
+      "Account": {
+        "Id": "001G",
+        "Name": "Marcus Greene"
+      },
+      "Contact": {
+        "Id": "003G",
+        "Phone": "+17065559090"
+      },
+      "WorkType": {
+        "Name": "Siding"
+      },
+      "Work_Type_Name__c": "Siding",
+      "Description": "Full tear-off and replace, board-and-batten front, D4 sides and rear, color Harbor Blue.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL12",
+          "LineItemNumber": "1",
+          "Description": "Board & batten, Harbor Blue — front",
+          "Quantity": 6,
+          "Status": "Installation Scheduled"
+        },
+        {
+          "Id": "1WL13",
+          "LineItemNumber": "2",
+          "Description": "D4 vinyl, Harbor Blue — sides/rear",
+          "Quantity": 18,
+          "Status": "Installation Scheduled"
+        }
+      ],
+      "Job_Number__c": "a0J7",
+      "ServiceAppointment": {
+        "Id": "08p5e0000002bB3",
+        "AppointmentNumber": "SA-120470",
+        "Status": "Dispatched",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Luis Hernández"
+      },
+      "_progressPhotos": 0
+    }
+  ],
+  "jobs": [
+    {
+      "Id": "a0J5",
+      "Name": "J-24-1171",
+      "Sales_Price__c": 28400,
+      "Total_SA_Expense_Labor__c": 8000,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Siding",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    },
+    {
+      "Id": "a0J6",
+      "Name": "J-24-1210",
+      "Sales_Price__c": 1650,
+      "Total_SA_Expense_Labor__c": 0,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Siding",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    },
+    {
+      "Id": "a0J7",
+      "Name": "J-24-1215",
+      "Sales_Price__c": 31900,
+      "Total_SA_Expense_Labor__c": 0,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Siding",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    }
+  ],
+  "draws": [
+    {
+      "Id": "a0X3",
+      "Name": "SA-009130",
+      "CreatedDate_dayOffset": 0,
+      "Work_Order__c": "0WO5e00000B2m3sEAB",
+      "Job__c": "a0J6",
+      "Amount__c": 1200,
+      "Expense_Type__c": "Labour",
+      "Type__c": "Vista",
+      "Status__c": "New",
+      "Approver__c": null,
+      "TEST_SA__c": false,
+      "Paycheck_Period__c": null,
+      "Description_of_Work_Performed__c": "Cambié 6 hiladas en la fachada trasera, color Clay. Usé la caja sobrante del garaje.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"completion\",\"lang\":\"es\",\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}],\"checklist\":{\"id\":\"siding-v1\",\"done\":[\"walk\",\"before-photos\",\"protect\",\"tearoff\",\"wrap\",\"starter\",\"install\",\"penetrations\",\"clean\",\"after-photos\"]}}",
+      "Service_Appointment__c": "08p5e0000002bB2",
+      "Did_you_complete_the_job_or_service__c": "Yes",
+      "Additional_Work_Performed__c": "No",
+      "Payable_Invoice_New__c": null
+    },
+    {
+      "Id": "a0X4",
+      "Name": "SA-009102",
+      "CreatedDate_dayOffset": -2,
+      "Work_Order__c": "0WO5e00000B2m1qEAB",
+      "Job__c": "a0J5",
+      "Amount__c": 8000,
+      "Expense_Type__c": "Labour",
+      "Type__c": "Vista",
+      "Status__c": "Approved",
+      "Approver__c": "Mike",
+      "TEST_SA__c": false,
+      "Paycheck_Period__c": null,
+      "Description_of_Work_Performed__c": "Día 1: demolición completa y membrana.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"es\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Luis Hernández\"}",
+      "Service_Appointment__c": "08p5e0000002bB1",
+      "Did_you_complete_the_job_or_service__c": "No",
+      "Additional_Work_Performed__c": "No",
+      "Payable_Invoice_New__c": null
+    }
+  ],
+  "cases": []
+}

@@ -1,0 +1,367 @@
+{
+  "workOrders": [
+    {
+      "Id": "0WO5e00000A1k9pEAB",
+      "WorkOrderNumber": "00041872",
+      "RecordType": {
+        "Name": "Installation"
+      },
+      "Subject": "Window replacement — 9 units",
+      "Status": "Installation Scheduled",
+      "Priority": "High",
+      "_schedule": {
+        "dayOffset": 0,
+        "startHour": 8,
+        "endHour": 16
+      },
+      "Street": "2317 Walton Way",
+      "City": "Augusta",
+      "State": "GA",
+      "PostalCode": "30904",
+      "Latitude": 33.4712,
+      "Longitude": -82.0019,
+      "Account": {
+        "Id": "001A",
+        "Name": "Patricia Simmons"
+      },
+      "Contact": {
+        "Id": "003A",
+        "Phone": "+17065551931"
+      },
+      "WorkType": {
+        "Name": "Windows"
+      },
+      "Work_Type_Name__c": "Windows",
+      "Description": "Replace 8 double-hung and 1 picture window, white vinyl, low-E, colonial grids top sash only. Homeowner keeping the old shutters. Dog in back yard — use the front. Access: front door, knock loud.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL1",
+          "LineItemNumber": "1",
+          "Description": "Double-hung 36x60, white, colonial grids",
+          "Quantity": 8,
+          "Status": "Installation Scheduled"
+        },
+        {
+          "Id": "1WL2",
+          "LineItemNumber": "2",
+          "Description": "Picture window 72x48, white, low-E",
+          "Quantity": 1,
+          "Status": "Installation Scheduled"
+        },
+        {
+          "Id": "1WL3",
+          "LineItemNumber": "3",
+          "Description": "Exterior aluminum capping, white",
+          "Quantity": 9,
+          "Status": "Installation Scheduled"
+        }
+      ],
+      "Job_Number__c": "a0J1",
+      "ServiceAppointment": {
+        "Id": "08p5e0000001aA1",
+        "AppointmentNumber": "SA-120451",
+        "Status": "Dispatched",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Dwayne Tucker"
+      },
+      "_progressPhotos": 0
+    },
+    {
+      "Id": "0WO5e00000A1kBcEAJ",
+      "WorkOrderNumber": "00041866",
+      "RecordType": {
+        "Name": "Installation"
+      },
+      "Subject": "Entry door + storm door",
+      "Status": "Installation Scheduled",
+      "Priority": "Medium",
+      "_schedule": {
+        "dayOffset": 0,
+        "startHour": 13,
+        "endHour": 17
+      },
+      "Street": "418 Blue Ridge Dr",
+      "City": "Evans",
+      "State": "GA",
+      "PostalCode": "30809",
+      "Latitude": 33.543,
+      "Longitude": -82.1301,
+      "Account": {
+        "Id": "001B",
+        "Name": "Gerald & Tina Whitfield"
+      },
+      "Contact": {
+        "Id": "003B",
+        "Phone": "+17065554407"
+      },
+      "WorkType": {
+        "Name": "Doors"
+      },
+      "Work_Type_Name__c": "Doors",
+      "Description": "Fiberglass entry door, 36x80, left-hand inswing, oil-rubbed bronze hardware. Full-view storm door. Day 2: hardware and storm door. Gate code 4471.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL4",
+          "LineItemNumber": "1",
+          "Description": "Fiberglass entry door 36x80 LH inswing",
+          "Quantity": 1,
+          "Status": "Installation Completed"
+        },
+        {
+          "Id": "1WL5",
+          "LineItemNumber": "2",
+          "Description": "Full-view storm door, bronze",
+          "Quantity": 1,
+          "Status": "Installation Completed"
+        }
+      ],
+      "Job_Number__c": "a0J2",
+      "ServiceAppointment": {
+        "Id": "08p5e0000001aA2",
+        "AppointmentNumber": "SA-120452",
+        "Status": "In Progress",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Dwayne Tucker"
+      },
+      "_progressPhotos": 3
+    },
+    {
+      "Id": "0WO5e00000A1kD4EAJ",
+      "WorkOrderNumber": "00041901",
+      "RecordType": {
+        "Name": "Installation"
+      },
+      "Subject": "Window replacement — 4 units",
+      "Status": "Installation Scheduled",
+      "Priority": "Medium",
+      "_schedule": {
+        "dayOffset": 1,
+        "startHour": 8,
+        "endHour": 13
+      },
+      "Street": "3609 Wheeler Rd",
+      "City": "Augusta",
+      "State": "GA",
+      "PostalCode": "30909",
+      "Account": {
+        "Id": "001C",
+        "Name": "Andre Bolton"
+      },
+      "Contact": {
+        "Id": "003C",
+        "Phone": "+17065558820"
+      },
+      "WorkType": {
+        "Name": "Windows"
+      },
+      "Work_Type_Name__c": "Windows",
+      "Description": "4 sliders on the back of the house, bronze exterior / white interior.",
+      "WorkOrderLineItems": [
+        {
+          "Id": "1WL6",
+          "LineItemNumber": "1",
+          "Description": "Slider 72x48, bronze/white",
+          "Quantity": 4,
+          "Status": "Installation Scheduled"
+        }
+      ],
+      "Job_Number__c": "a0J3",
+      "ServiceAppointment": {
+        "Id": "08p5e0000001aA3",
+        "AppointmentNumber": "SA-120460",
+        "Status": "Scheduled",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": false,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Dwayne Tucker"
+      },
+      "_progressPhotos": 0
+    },
+    {
+      "Id": "0WO5e00000A1kF7EAJ",
+      "WorkOrderNumber": "00041833",
+      "RecordType": {
+        "Name": "Service"
+      },
+      "Subject": "Service: fogged IGU swap",
+      "Status": "Installation Scheduled",
+      "Priority": "Low",
+      "_schedule": {
+        "dayOffset": 3,
+        "startHour": 9,
+        "endHour": 11
+      },
+      "Street": "1204 Georgia Ave",
+      "City": "North Augusta",
+      "State": "SC",
+      "PostalCode": "29841",
+      "Account": {
+        "Id": "001D",
+        "Name": "Carol Mendenhall"
+      },
+      "Contact": {
+        "Id": "003D",
+        "Phone": "+18035552109"
+      },
+      "WorkType": {
+        "Name": "Windows"
+      },
+      "Work_Type_Name__c": "Windows",
+      "CaseId": "500W1",
+      "Description": "Warranty: replace fogged glass unit in kitchen double-hung, lower sash.",
+      "WorkOrderLineItems": [],
+      "Job_Number__c": "a0J4",
+      "ServiceAppointment": {
+        "Id": "08p5e0000001aA4",
+        "AppointmentNumber": "SA-120466",
+        "Status": "Dispatched",
+        "SS_Service_Appointment_Type__c": "Installation",
+        "PulseM_Bio_Sent__c": true,
+        "SMS_Opt_out__c": false,
+        "Lead_Installer": "Dwayne Tucker"
+      },
+      "_progressPhotos": 0
+    }
+  ],
+  "jobs": [
+    {
+      "Id": "a0J1",
+      "Name": "J-24-1187",
+      "Sales_Price__c": 14850,
+      "Total_SA_Expense_Labor__c": 0,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    },
+    {
+      "Id": "a0J2",
+      "Name": "J-24-1164",
+      "Sales_Price__c": 6200,
+      "Total_SA_Expense_Labor__c": 4200,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Doors",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    },
+    {
+      "Id": "a0J3",
+      "Name": "J-24-1203",
+      "Sales_Price__c": 7900,
+      "Total_SA_Expense_Labor__c": 0,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    },
+    {
+      "Id": "a0J4",
+      "Name": "J-23-0876",
+      "Sales_Price__c": 0,
+      "Total_SA_Expense_Labor__c": 0,
+      "Production_Manager__r": {
+        "Name": "Mike",
+        "MobilePhone": "+17065550100"
+      },
+      "Product_type__c": "Windows",
+      "Office__r": {
+        "Id": "1315e000000AUG1",
+        "Name": "Augusta"
+      }
+    }
+  ],
+  "draws": [
+    {
+      "Id": "a0X5",
+      "Name": "SA-009141",
+      "CreatedDate_dayOffset": 0,
+      "Work_Order__c": "0WO5e00000A1kBcEAJ",
+      "Job__c": "a0J2",
+      "Service_Appointment__c": "08p5e0000001aA2",
+      "Amount__c": 1400,
+      "Expense_Type__c": "Labour",
+      "Type__c": "Vista",
+      "Status__c": "New",
+      "Approver__c": null,
+      "TEST_SA__c": false,
+      "Paycheck_Period__c": null,
+      "Did_you_complete_the_job_or_service__c": "Yes",
+      "Additional_Work_Performed__c": "No",
+      "Description_of_Work_Performed__c": "Storm door installed, hardware on entry door, final caulk and cleanup. Homeowner walked it and signed off.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"completion\",\"lang\":\"en\",\"checklist\":{\"id\":\"windows-v1\",\"done\":[\"walk\",\"protect\",\"before-photos\",\"remove\",\"flash\",\"set\",\"foam\",\"trim\",\"serials\",\"clean\",\"after-photos\"]},\"photos\":[{\"kind\":\"before\"},{\"kind\":\"before\"},{\"kind\":\"flashing\"},{\"kind\":\"serial\"},{\"kind\":\"serial\"},{\"kind\":\"after\"},{\"kind\":\"after\"},{\"kind\":\"after\"}]}",
+      "Payable_Invoice_New__c": null
+    },
+    {
+      "Id": "a0X1",
+      "Name": "SA-009121",
+      "CreatedDate_dayOffset": -1,
+      "Work_Order__c": "0WO5e00000A1kBcEAJ",
+      "Job__c": "a0J2",
+      "Amount__c": 2400,
+      "Expense_Type__c": "Labour",
+      "Type__c": "Vista",
+      "Status__c": "Approved",
+      "Approver__c": "Mike",
+      "TEST_SA__c": false,
+      "Paycheck_Period__c": null,
+      "Description_of_Work_Performed__c": "Entry door set, shimmed, foamed. Storm door tomorrow.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"en\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Dwayne Tucker\"}",
+      "Payable_Invoice_New__c": null,
+      "Did_you_complete_the_job_or_service__c": "No"
+    },
+    {
+      "Id": "a0X2",
+      "Name": "SA-009087",
+      "CreatedDate_dayOffset": -9,
+      "Work_Order__c": "0WO5e00000A1kBcEAJ",
+      "Job__c": "a0J2",
+      "Amount__c": 1800,
+      "Expense_Type__c": "Labour",
+      "Type__c": "Jotform",
+      "Status__c": "Approved",
+      "Approver__c": "Mike",
+      "TEST_SA__c": false,
+      "Paycheck_Period__c": null,
+      "Description_of_Work_Performed__c": "Demo and prep, day 1.",
+      "Additional_Work_Performed_Description__c": "<!--vista-manifest-->{\"v\":1,\"app\":\"vista\",\"kind\":\"draw\",\"lang\":\"en\",\"photos\":[{\"kind\":\"progress\"},{\"kind\":\"progress\"}],\"issued_by\":\"Mike\",\"requested_by\":\"Dwayne Tucker\"}",
+      "Payable_Invoice_New__c": "a1P5e000000PIN1",
+      "Did_you_complete_the_job_or_service__c": "No"
+    }
+  ],
+  "cases": [
+    {
+      "Id": "500W2",
+      "CaseNumber": "00318841",
+      "Subject": "[Vista] Rot in sill at picture window opening",
+      "Status": "New",
+      "CreatedDate_dayOffset": 0,
+      "Job__c": "a0J1",
+      "RecordType": {
+        "Name": "Service"
+      },
+      "Work_Type__c": "Window",
+      "Service_Type__c": "Paid Service",
+      "Warranty_Type__c": "Customer Accommodation",
+      "Language": "en_US"
+    }
+  ]
+}
