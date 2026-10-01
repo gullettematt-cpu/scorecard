@@ -72,10 +72,19 @@ let user = await one(`SELECT Id, IsActive, Profile.Name, Profile.UserLicense.Nam
 // A user can't move to a different user license, so one on the wrong license is renamed and deactivated (kept, not
 // deleted: Salesforce keeps its history) and a new user takes over the same username. GitHub needs no change.
 const replace = user && user.Profile?.UserLicense?.Name !== MODE.license;
-const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ''); // to the minute, so a second attempt can't collide
 const retiredName = username.replace('@', `.retired${stamp}@`);
 
+// What the user holds today (so a half-finished manual setup shows plainly, and gets finished).
+const held = user ? {
+  psls: (await sf.query(`SELECT PermissionSetLicense.MasterLabel FROM PermissionSetLicenseAssign WHERE AssigneeId = ${lit(user.Id)}`)).map(r => r.PermissionSetLicense?.MasterLabel),
+  sets: (await sf.query(`SELECT PermissionSet.Name FROM PermissionSetAssignment WHERE AssigneeId = ${lit(user.Id)} AND PermissionSet.IsOwnedByProfile = false`)).map(r => r.PermissionSet?.Name)
+} : null;
+const others = await sf.query(`SELECT Username, IsActive, Profile.UserLicense.Name FROM User WHERE (Username LIKE 'vista%' OR LastName = 'Integration') AND Username != ${lit(username)} AND FirstName = 'Vista'`);
 console.log(`2. User ${username}`);
+if (user) console.log(`  · Today: ${user.IsActive ? 'active' : 'INACTIVE'} · license ${user.Profile?.UserLicense?.Name} · profile ${user.Profile?.Name} · licenses: ${held.psls.join(', ') || 'none'} · permission sets: ${held.sets.join(', ') || 'none'}`);
+else console.log('  · Today: no user has this username');
+for (const o of others) console.log(`  · Also found: ${o.Username} (${o.IsActive ? 'active' : 'inactive'}, ${o.Profile?.UserLicense?.Name}) — left as is`);
 console.log(`  · License "${MODE.license}": ${lic ? `${lic.UsedLicenses} of ${lic.TotalLicenses} used` : 'NOT FOUND in this org'}`);
 console.log(`  · Profile: ${profile ? profile.Name : `NOT FOUND (${MODE.profiles.join(' or ')})`}${FULL ? ' + "API Only User" in the permission set, so nobody can log in to Salesforce as it' : ''}`);
 console.log(`  · ${replace ? `Exists on the "${user.Profile?.UserLicense?.Name}" license: it will be renamed ${retiredName} and deactivated, and a new user created on "${MODE.license}" with the same username`
@@ -108,6 +117,7 @@ if (replace) await step(`Old user renamed ${retiredName} and deactivated`, async
   await sf.update('User', user.Id, { Username: retiredName, IsActive: false }); user = null;
 });
 await step('User', async () => {
+  if (user && !user.IsActive) { await sf.update('User', user.Id, { IsActive: true }); return '(reactivated)'; }
   if (user) return '(already there)';
   const id = await sf.create('User', { Username: username, FirstName: 'Vista', LastName: 'Integration', Alias: 'vista', Email: me?.Email,
     ProfileId: profile.Id, TimeZoneSidKey: 'America/New_York', LocaleSidKey: 'en_US', EmailEncodingKey: 'UTF-8', LanguageLocaleKey: 'en_US' });
