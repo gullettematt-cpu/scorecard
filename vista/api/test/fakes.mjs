@@ -105,13 +105,28 @@ export function fakeSalesforce(world = salesforceWorld()) {
   return sf;
 }
 
-export function fakeTwilio() { const sent = [], deleted = []; return { sent, deleted, async send(to, body) { sent.push({ to, body }); return 'SM' + sent.length; }, async fetchMedia(url) { return { body: Buffer.from('jpeg:' + url), contentType: 'image/jpeg' }; }, async deleteMedia(url) { deleted.push(url); return true; } }; }
+export function fakeTwilio() {
+  const sent = [], deleted = [];
+  // The Twilio setup Diagnose reads and repairs: starts healthy; tests bend it.
+  const svc = { sid: 'MGtest', friendly_name: 'Vista', inbound_request_url: 'https://api.test/sms/inbound', inbound_method: 'POST', use_inbound_webhook_on_number: false,
+    numbers: ['+17069552075'], campaigns: [{ campaign_id: 'CMtest', campaign_status: 'VERIFIED' }] };
+  return { sent, deleted, svc, info: { accountSid: 'ACtest', from: '+17069552075', messagingServiceSid: 'MGtest' },
+    async send(to, body) { sent.push({ to, body }); return 'SM' + sent.length; },
+    async fetchMedia(url) { return { body: Buffer.from('jpeg:' + url), contentType: 'image/jpeg' }; },
+    async deleteMedia(url) { deleted.push(url); return true; },
+    async service() { return svc; },
+    async serviceNumbers() { return svc.numbers.map(phone_number => ({ phone_number })); },
+    async campaigns() { return svc.campaigns; },
+    async setInbound(url) { Object.assign(svc, { inbound_request_url: url, inbound_method: 'POST', use_inbound_webhook_on_number: false }); },
+    async addNumber(n) { svc.numbers.push(n); } };
+}
 export function fakePhotos() { const objects = new Map(); return { objects, bucket: 'test', async signPut(key) { return `https://s3.test/${key}?sig`; }, async signGet(key) { return `https://s3.test/${key}?get`; }, async put(key, body) { objects.set(key, body); }, async head(key) { if (!objects.has(key)) throw new Error('404'); } }; }
 export function fakeVi() {
   const calls = { ask: [], translate: [] };
   const pairs = new Map(J('web/fixtures/translations.json').pairs.flatMap(p => [[p.en, p], [p.es, p]]));
   return { calls,
     async ask(a) { calls.ask.push(a); return a.viLanguage ? `(Vi in ${a.viLanguage})` : a.lang === 'es' ? '(respuesta de Vi)' : '(Vi answer)'; },
+    async ping() { return { ok: true, model: 'claude-sonnet-5' }; },
     async chat(a) { (calls.chat ||= []).push(a); return { answer: a.lang === 'es' ? '(respuesta de Vi)' : '(Vi answer)', problem: /rot|podrid/i.test(a.question) ? { summary: 'Rot in the sill' } : null }; },
     async translate(texts) { calls.translate.push(texts); return texts.map(t => pairs.get(t) || { en: t, es: `[es] ${t}`, src: 'en' }); } };
 }

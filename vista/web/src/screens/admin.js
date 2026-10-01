@@ -59,12 +59,31 @@ const demo = {
       ok('setup', 'Flow Vista_Pay_Request_Submitted'), ok('setup', 'Flow Vista_Draw_Issued_Notice'), ok('setup', 'List view Vista_Waiting_on_PM')];
     return { ok: true, failed: 0, warnings: 0, passed: results.length, results, at: new Date().toISOString() };
   },
+  // Demo: a sample diagnosis with one problem Vista can fix itself (the Twilio webhook) and one it can't.
+  async diagnose() {
+    const fixed = !!(await db.meta('demoFixed'));
+    const i = (name, status, detail, fix = '', action = null) => ({ name, status, detail, fix, action });
+    const areas = [
+      { area: 'salesforce', items: [i('Salesforce login', 'ok', 'Vista signs in as its integration user.'), i('Queries and fields', 'ok', '25 of 25 checks passed.')] },
+      { area: 'twilio', items: [i('Messaging Service', 'ok', '"Vista" is reachable.'), fixed ? i('Incoming texts reach Vista', 'ok', 'https://api.example/sms/inbound')
+        : i('Incoming texts reach Vista', 'fail', 'The service sends incoming texts to https://old.example/sms (POST), not https://api.example/sms/inbound.', "Fix it: Vista points the Messaging Service's incoming-text webhook at itself (POST).", 'twilio.webhook'),
+        i('Vista number in the service', 'ok', '+17069552075'), i('Texting campaign (A2P 10DLC)', 'ok', 'Campaign CM… is VERIFIED.')] },
+      { area: 'aws', items: [i('Secrets', 'ok', 'All secrets load from Parameter Store.'), i('Photo storage', 'ok', 'Vista can store and read photos.')] },
+      { area: 'vi', items: [i('Claude (Vi)', 'ok', 'Vi answers (claude-sonnet-5).')] },
+      { area: 'optin', items: [i('Alert phone +17065550100', 'warn', "hasn't texted START: Vista won't text this phone (alerts, notices).", 'From +17065550100, text START to the Vista number +17069552075.'), i('Phones signed up for texts', 'ok', '6 texted START, 0 texted STOP.')] },
+      { area: 'health', items: [i('2-hour health check', 'ok', 'Last good check today.')] }];
+    const all = areas.flatMap(a => a.items), report = { at: new Date().toISOString(), ok: !all.some(x => x.status === 'fail'), failed: all.filter(x => x.status === 'fail').length, warnings: all.filter(x => x.status === 'warn').length, areas };
+    await db.meta('demoDiagnosis', report); return report;
+  },
+  async lastDiagnosis() { return (await db.meta('demoDiagnosis')) || null; },
+  async fix(action) { if (action === 'twilio.webhook') await db.meta('demoFixed', true); return { ok: true, action, result: 'Incoming texts now go to https://api.example/sms/inbound.' }; },
   async languageRequests() { return (await demo.people()).filter(p => p.requested).map(p => ({ person: p.name, phone: p.phone, language: p.requested })); }
 };
 const live = {
   board: () => api.admin.board(), nudge: (id) => api.admin.nudge(id), people: async () => (await api.admin.people()).people,
   savePerson: async p => (await api.admin.savePerson(p)).person, rollout: async () => (await api.admin.rollout()).rollout,
   setRollout: async r => (await api.admin.setRollout(r)).rollout, health: () => api.admin.health(), runHeartbeat: () => api.admin.runHeartbeat(), checkSalesforce: () => api.admin.checkSalesforce(),
+  diagnose: () => api.admin.diagnose(), lastDiagnosis: async () => (await api.admin.lastDiagnosis()).report, fix: action => api.admin.fix(action),
   languageRequests: async () => (await api.admin.languageRequests()).requests
 };
 const src = () => (apiMode ? live : demo);
@@ -250,9 +269,13 @@ async function renderHealth(root, ctx) {
     <section class="sec"><div class="card health ${ok ? 'ok' : 'bad'}">
       <h3>${esc(t(ok ? 'admin.healthOk' : 'admin.healthBad', { step: h.failing || '' }))}</h3>
       <p class="sub">${h.lastOk ? esc(t('admin.lastOk', { when: `${fmtDate(h.lastOk, { month: 'short', day: 'numeric' })} ${fmtTime(h.lastOk)}` })) : esc(t('admin.neverOk'))}</p>
-      ${h.failing ? `<p class="sub">${esc(h.error || '')}</p><p class="hint">${esc(t('admin.whoToCall.' + (['login', 'read', 'write'].includes(h.failing) ? 'sf' : 'aws')))}</p>` : `<p class="hint">${esc(t('admin.healthExplain'))}</p>`}
+      ${h.failing ? `<p class="sub">${esc(h.cause || h.error || '')}</p>${h.fix ? `<div class="fixline"><b>${esc(t('admin.fixHow'))}</b> ${esc(h.fix)}</div>` : ''}<p class="hint">${esc(t('admin.whoToCall.' + (['login', 'read', 'write'].includes(h.failing) ? 'sf' : 'aws')))}</p>` : `<p class="hint">${esc(t('admin.healthExplain'))}</p>`}
       <div class="stack"><button class="act" id="runHb">${esc(t('admin.runNow'))}</button></div>
     </div></section>
+    <section class="sec"><h2>${esc(t('admin.diag'))}</h2>
+      <div class="card"><p class="hint" style="margin-top:0">${esc(t('admin.diagExplain'))}</p>
+        <div id="diagResult"></div>
+        <div class="stack"><button class="act primary" id="runDiag">${esc(t('admin.diagRun'))}</button></div></div></section>
     <section class="sec"><h2>${esc(t('admin.sfCheck'))}</h2>
       <div class="card"><p class="hint" style="margin-top:0">${esc(t('admin.sfCheckExplain'))}</p>
         <div id="sfResult"></div>
@@ -264,6 +287,25 @@ async function renderHealth(root, ctx) {
       <div class="card"><ul class="blist">${['pay', 'invoice', 'sf', 'aws', 'crew'].map(k => `<li class="brow"><div><b>${esc(t('admin.call.' + k))}</b><div class="sub">${esc(t('admin.call.' + k + '.who'))}</div></div></li>`).join('')}</ul></div>
       <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button></div></section>`;
   root.querySelector('#switchCrew').onclick = ctx.switchCrew;
+  // Diagnose: show the last report straight away; owners can apply the one-click fixes.
+  const canFix = apiMode ? !!ctx.crew?.owner : true;
+  const diagOut = root.querySelector('#diagResult');
+  const showDiag = r => { diagOut.innerHTML = r ? diagReport(r, canFix) : ''; wireFixes(); };
+  const runDiag = async btn => {
+    btn.disabled = true; btn.textContent = t('admin.diagRunning');
+    try { showDiag(await src().diagnose()); } catch { diagOut.innerHTML = `<div class="blockers">${esc(t('admin.loadFailed'))}</div>`; }
+    btn.disabled = false; btn.textContent = t('admin.diagRun');
+  };
+  function wireFixes() {
+    diagOut.querySelectorAll('[data-fix]').forEach(b => b.onclick = async () => {
+      if (!(await confirmSheet({ title: t('admin.fixConfirm'), lines: [[t('admin.fixWhat'), b.dataset.what]], note: t('admin.fixNote'), yes: t('admin.fixIt'), no: t('confirm.no') }))) return;
+      b.disabled = true;
+      try { const r = await src().fix(b.dataset.fix); toast(r.result || t('admin.fixed')); } catch (e) { toast(t('admin.fixFailed')); }
+      runDiag(root.querySelector('#runDiag'));
+    });
+  }
+  root.querySelector('#runDiag').onclick = e => runDiag(e.target);
+  src().lastDiagnosis?.().then(showDiag).catch(() => {});
   root.querySelector('#runSf').onclick = async e => {
     e.target.disabled = true; e.target.textContent = t('admin.running');
     const out = root.querySelector('#sfResult');
@@ -275,6 +317,23 @@ async function renderHealth(root, ctx) {
     try { const r = await src().runHeartbeat(); toast(r.ok ? t('admin.healthOk') : t('admin.healthBad', { step: r.step })); } catch { toast(t('admin.loadFailed')); }
     renderHealth(root, ctx);
   };
+}
+
+// Diagnose report: per area, problems first with their fix (and a Fix it button where Vista can repair it).
+function diagReport(r, canFix) {
+  const mark = { ok: '✓', warn: '!', fail: '✗' };
+  const when = `${fmtDate(r.at, { month: 'short', day: 'numeric' })} ${fmtTime(r.at)}`;
+  const area = a => {
+    const bad = a.items.filter(x => x.status !== 'ok'), good = a.items.filter(x => x.status === 'ok');
+    const row = x => `<li class="brow sf-${x.status}"><div><b>${mark[x.status]} ${esc(x.name)}</b>${x.detail ? `<div class="sub">${esc(x.detail)}</div>` : ''}
+      ${x.status !== 'ok' && x.fix ? `<div class="fixline"><b>${esc(t('admin.fixHow'))}</b> ${esc(x.fix)}</div>` : ''}
+      ${x.status !== 'ok' && x.action ? (canFix ? `<button class="act small" data-fix="${esc(x.action)}" data-what="${esc(x.name)}">${esc(t('admin.fixIt'))}</button>` : `<div class="hint">${esc(t('admin.fixOwnerOnly'))}</div>`) : ''}</div></li>`;
+    return `<h3 class="diag-area">${bad.some(x => x.status === 'fail') ? '✗' : bad.length ? '!' : '✓'} ${esc(t('admin.diagArea.' + a.area))}</h3>
+      ${bad.length ? `<ul class="blist">${bad.map(row).join('')}</ul>` : ''}
+      ${good.length ? `<details><summary class="hint">${esc(t('admin.sfAllPassed', { n: good.length }))}</summary><ul class="blist">${good.map(row).join('')}</ul></details>` : ''}`;
+  };
+  return `<div class="sfhead ${r.ok ? 'ok' : 'bad'}"><b>${esc(r.ok ? t('admin.diagOk', { warnings: r.warnings }) : t('admin.diagBad', { failed: r.failed, warnings: r.warnings }))}</b>
+    <div class="hint" style="margin:2px 0 0">${esc(t('admin.diagWhen', { when }))}</div></div>${r.areas.map(area).join('')}`;
 }
 
 // Check Salesforce: what needs attention first (✗ then !), then everything that passed, folded away.

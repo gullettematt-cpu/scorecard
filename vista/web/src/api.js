@@ -47,6 +47,9 @@ export const api = {
     health: () => req('GET', '/admin/health'),
     runHeartbeat: () => req('POST', '/admin/run', { job: 'heartbeat' }),
     checkSalesforce: () => req('POST', '/admin/run', { job: 'checkSalesforce' }),
+    diagnose: () => req('POST', '/admin/run', { job: 'diagnose' }),
+    lastDiagnosis: () => req('GET', '/admin/diagnose'),
+    fix: action => req('POST', '/admin/fix', { action }),
     languageRequests: () => req('GET', '/admin/language-requests')
   },
   ask: (workOrderId, question, history = []) => req('POST', '/vi/ask', { workOrderId, question, history })

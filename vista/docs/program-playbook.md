@@ -149,7 +149,7 @@ there. Nothing already in Salesforce changes.
 | "They don't get any texts" | **People**: does it say *Hasn't texted START*? | Vista only texts phones that have texted **START** to (706) 955-2075. Ask them to text START. The app works either way. |
 | "They texted STOP" | **People** shows *Texted STOP* | Vista stops all texts to that phone. They text START to get texts again. The app still works. |
 | "Someone left the company" | **People** | Turn Vista off for them, and deactivate them in Salesforce (Matt). |
-| The Health screen shows a failure | **Health** | It names who to contact. Mike and Matt also get a text when it happens. |
+| The Health screen shows a failure | **Health** → **Run full diagnosis** | Each problem shows its cause and fix. Problems Vista can repair itself (texts not reaching Vista, the Vista number missing from Twilio, a stale health check) have a **Fix it** button for Matt. Send Matt a screenshot of anything else. Mike and Matt also get a text when the health check fails, with the cause. |
 
 ---
 

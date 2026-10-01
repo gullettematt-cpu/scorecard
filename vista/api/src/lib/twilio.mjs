@@ -14,6 +14,13 @@ export function validTwilioSignature({ authToken, url, params, signature }) {
 // number pool), otherwise from the single number in `from`.
 export function createTwilio({ accountSid, authToken, from, messagingServiceSid, fetchImpl = fetch }) {
   const auth = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+  const call = async (url, form) => {
+    const res = await fetchImpl(url, form ? { method: 'POST', headers: { authorization: auth, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(form) } : { headers: { authorization: auth } });
+    if (!res.ok) throw new Error(`Twilio ${form ? 'update' : 'read'} failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+    return res.json();
+  };
+  const messaging = (path, form) => call(`https://messaging.twilio.com/v1${path}`, form);
+  const rest = (path, form) => call(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}${path}`, form);
   return {
     async send(to, body) {
       const res = await fetchImpl(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
@@ -27,6 +34,22 @@ export function createTwilio({ accountSid, authToken, from, messagingServiceSid,
       const res = await fetchImpl(url, { headers: { authorization: auth }, redirect: 'follow' });
       if (!res.ok) throw new Error(`Twilio media fetch failed (${res.status})`);
       return { body: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get('content-type') || 'image/jpeg' };
+    },
+    // ---- Read-only checks and the two self-repairs Diagnose may make (lib/diagnose.mjs) -----------------
+    info: { accountSid, from, messagingServiceSid },
+    async service() { return messaging(`/Services/${messagingServiceSid}`); },
+    async serviceNumbers() { return (await messaging(`/Services/${messagingServiceSid}/PhoneNumbers?PageSize=50`)).phone_numbers || []; },
+    async campaigns() { return (await messaging(`/Services/${messagingServiceSid}/Compliance/Usa2p?PageSize=20`)).compliance || []; },
+    // Point the Messaging Service's incoming texts at Vista (and stop numbers overriding it with their own webhook).
+    async setInbound(url) {
+      return messaging(`/Services/${messagingServiceSid}`, { InboundRequestUrl: url, InboundMethod: 'POST', UseInboundWebhookOnNumber: 'false' });
+    },
+    // Put the Vista number into the Messaging Service's sender pool.
+    async addNumber(e164) {
+      const r = await rest(`/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(e164)}`);
+      const pn = r.incoming_phone_numbers?.[0];
+      if (!pn) throw new Error(`${e164} isn't a number on this Twilio account`);
+      return messaging(`/Services/${messagingServiceSid}/PhoneNumbers`, { PhoneNumberSid: pn.sid });
     },
     // Only Twilio media URLs on this account are ever deleted.
     async deleteMedia(url) {

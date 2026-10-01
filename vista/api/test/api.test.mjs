@@ -751,3 +751,82 @@ test('check Salesforce: Salesforce errors read as causes', async () => {
   assert.match(short(wrap("Didn't understand relationship 'WorkType' in field path.")), /can't follow WorkType/);
   assert.equal(short(new Error('Salesforce login failed (400): {"error":"invalid_grant","error_description":"user hasn\'t approved this consumer"}')), "user hasn't approved this consumer");
 });
+
+// ---- Diagnose -------------------------------------------------------------------------------------
+import { explainLogin, fixForCheck } from '../src/lib/diagnose.mjs';
+
+test('diagnose: login errors and check failures come with the cause and the fix', () => {
+  assert.match(explainLogin('Salesforce login failed (400): {"error":"invalid_request","error_description":"refresh_token scope is required and the connected app should be installed and preauthorized."}').fix, /Admin approved users are pre-authorized/);
+  assert.match(explainLogin("invalid_grant: user hasn't approved this consumer").cause, /pre-approved/);
+  assert.match(explainLogin('invalid_client_id: client identifier invalid').fix, /SF_CLIENT_ID/);
+  assert.equal(explainLogin('something else entirely'), null);
+  assert.match(fixForCheck({ section: 'reads', name: 'x', detail: "the integration user can't see ServiceAppointment (needs a Field Service permission set license)" }), /--license=salesforce/);
+  assert.match(fixForCheck({ section: 'writes', name: 'SA_Expense__c', detail: 'Type__c has no picklist value "Vista"' }), /add-vista-type/);
+  assert.match(fixForCheck({ section: 'setup', name: 'Flow Vista_Draw_Issued_Notice', detail: 'deployed but not active' }), /Activate/);
+});
+
+test('diagnose: finds a misrouted Twilio webhook and a number outside the pool; owners fix them in one click', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps);
+  deps.sf.describe = async o => fakeDescribes()[o];
+  deps.twilio.svc.inbound_request_url = 'https://old.example/sms'; deps.twilio.svc.numbers = [];
+  const owner = signToken({ sub: 'owner', phone: '+17065550001' }, deps.secrets.jwt);
+  const run = async () => (await call(h, 'POST', '/admin/run', { token: owner, body: { job: 'diagnose' } })).json;
+  let r = await run();
+  const find = (rep, name) => rep.areas.flatMap(a => a.items).find(i => i.name === name);
+  assert.equal(find(r, 'Salesforce login').status, 'ok');
+  assert.equal(find(r, 'Incoming texts reach Vista').status, 'fail'); assert.equal(find(r, 'Incoming texts reach Vista').action, 'twilio.webhook');
+  assert.equal(find(r, 'Vista number in the service').action, 'twilio.addNumber');
+  assert.equal(find(r, 'Claude (Vi)').status, 'ok'); assert.equal(find(r, 'Photo storage').status, 'ok');
+  assert.equal(find(r, 'Texting campaign (A2P 10DLC)').status, 'ok');
+  assert.equal(r.ok, false);
+  // The last report is kept for the Health screen.
+  assert.equal((await call(h, 'GET', '/admin/diagnose', { token: owner })).json.report.at, r.at);
+  // An admin who isn't an owner (Lisa) sees it but can't apply fixes.
+  await deps.people.save({ id: 'admin:lisa', phone: '+17065550150', name: 'Lisa Payroll', role: 'admin', lang: 'en' });
+  const lisa = signToken({ sub: 'admin:lisa', phone: '+17065550150' }, deps.secrets.jwt);
+  assert.equal((await call(h, 'POST', '/admin/run', { token: lisa, body: { job: 'diagnose' } })).statusCode, 200);
+  assert.equal((await call(h, 'POST', '/admin/fix', { token: lisa, body: { action: 'twilio.webhook' } })).statusCode, 403);
+  // The owner fixes both; the next run is clean there. Nothing was written to Salesforce.
+  assert.match((await call(h, 'POST', '/admin/fix', { token: owner, body: { action: 'twilio.webhook' } })).json.result, /api\.test\/sms\/inbound/);
+  assert.equal((await call(h, 'POST', '/admin/fix', { token: owner, body: { action: 'twilio.addNumber' } })).statusCode, 200);
+  assert.equal((await call(h, 'POST', '/admin/fix', { token: owner, body: { action: 'sf.anything' } })).statusCode, 422);
+  r = await run();
+  assert.equal(find(r, 'Incoming texts reach Vista').status, 'ok'); assert.equal(find(r, 'Vista number in the service').status, 'ok');
+  assert.equal(deps.sf.log.creates.length + deps.sf.log.updates.length + deps.sf.log.deletes.length, 0);
+  assert.equal((await deps.store.query('FIXLOG')).length, 2, 'fixes are logged');
+});
+
+test('diagnose: a Salesforce login failure names the cause, in the alert text too', async () => {
+  const deps = await testDeps(), w = createWorker(async () => deps);
+  deps.sf.failAuth(true); deps.sf.auth = async () => { throw new Error('Salesforce login failed (400): {"error":"invalid_grant","error_description":"user hasn\'t approved this consumer"}'); };
+  await w({ job: 'heartbeat' });
+  const alert = deps.twilio.sent.find(m => /heartbeat failed/.test(m.body));
+  assert.match(alert.body, /pre-approved/); assert.match(alert.body, /Diagnose/);
+  const h = createHandler(async () => deps), owner = signToken({ sub: 'owner', phone: '+17065550001' }, deps.secrets.jwt);
+  const r = (await call(h, 'POST', '/admin/run', { token: owner, body: { job: 'diagnose' } })).json;
+  const login = r.areas[0].items[0];
+  assert.equal(login.status, 'fail'); assert.match(login.fix, /Admin approved users are pre-authorized/);
+  const hc = r.areas.find(a => a.area === 'health').items[0];
+  assert.equal(hc.action, 'health.rerun'); assert.match(hc.fix, /Admin approved/);
+});
+
+test('Twilio client: Diagnose reads the Messaging Service and repairs only its own webhook and pool', async () => {
+  const reqs = [];
+  const fetchImpl = async (url, opts = {}) => {
+    reqs.push({ url, method: opts.method || 'GET', body: opts.body ? String(opts.body) : '' });
+    const j = url.includes('IncomingPhoneNumbers') ? { incoming_phone_numbers: [{ sid: 'PN1' }] } : url.endsWith('/PhoneNumbers?PageSize=50') ? { phone_numbers: [{ phone_number: '+17069552075' }] } : url.includes('Usa2p') ? { compliance: [{ campaign_status: 'VERIFIED' }] } : { sid: 'MG1' };
+    return { ok: true, json: async () => j, text: async () => '' };
+  };
+  const t = createTwilio({ accountSid: 'AC1', authToken: 'tok', from: '+17069552075', messagingServiceSid: 'MG1', fetchImpl });
+  assert.equal((await t.service()).sid, 'MG1');
+  assert.equal((await t.serviceNumbers())[0].phone_number, '+17069552075');
+  assert.equal((await t.campaigns())[0].campaign_status, 'VERIFIED');
+  await t.setInbound('https://api.test/sms/inbound');
+  await t.addNumber('+17069552075');
+  const posts = reqs.filter(r => r.method === 'POST');
+  assert.equal(posts.length, 2);
+  assert.equal(posts[0].url, 'https://messaging.twilio.com/v1/Services/MG1');
+  assert.match(posts[0].body, /InboundRequestUrl=https%3A%2F%2Fapi.test%2Fsms%2Finbound&InboundMethod=POST&UseInboundWebhookOnNumber=false/);
+  assert.equal(posts[1].url, 'https://messaging.twilio.com/v1/Services/MG1/PhoneNumbers'); assert.equal(posts[1].body, 'PhoneNumberSid=PN1');
+  assert.ok(reqs.some(r => r.url === 'https://api.twilio.com/2010-04-01/Accounts/AC1/IncomingPhoneNumbers.json?PhoneNumber=%2B17069552075'));
+});

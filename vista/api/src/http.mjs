@@ -8,7 +8,7 @@ import { photoKey } from './lib/photos.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
 const sameSecret = (a, b) => { const h = x => createHash('sha256').update(String(x ?? '')).digest(); return !!a && !!b && timingSafeEqual(h(a), h(b)); };
-const ADMIN_JOBS = ['heartbeat', 'morning', 'pmDigest', 'cutoff', 'dispatchPoll', 'checkSalesforce'];
+const ADMIN_JOBS = ['heartbeat', 'morning', 'pmDigest', 'cutoff', 'dispatchPoll', 'checkSalesforce', 'diagnose'];
 const VI_DAILY_LIMIT = 60;
 const json = (status, body, origin) => ({ statusCode: status, headers: { 'content-type': 'application/json', ...(origin ? { 'access-control-allow-origin': origin, vary: 'origin' } : {}) }, body: JSON.stringify(body) });
 
@@ -94,8 +94,15 @@ export function createHandler(getDeps) {
           return json(200, await svc.nudgePm({ pmUserId: String(b.pmUserId), from: actor?.name || 'Payroll' }), origin);
         }
         if (method === 'GET' && path === '/admin/health') return json(200, await svc.health(), origin);
+        if (method === 'GET' && path === '/admin/diagnose') return json(200, { report: (await deps.store.get('DIAGNOSE', 'LAST'))?.report || null }, origin);
+        // Diagnose's one-click repairs: program owners (ADMIN_PHONES) and the admin token only.
+        if (method === 'POST' && path === '/admin/fix') {
+          if (actor && !actor.owner) return json(403, { error: 'only the program owner can apply fixes' }, origin);
+          try { return json(200, await svc.fix(String(body().action || ''), actor?.name || 'admin token'), origin); }
+          catch (err) { return json(err.status || 502, { error: String(err.message).slice(0, 300) }, origin); }
+        }
         if (method === 'POST' && path === '/admin/run') {
-          const jobs = actor ? ['heartbeat', 'checkSalesforce'] : ADMIN_JOBS; // people can re-run the checks (both safe); mass texts stay on the schedule
+          const jobs = actor ? ['heartbeat', 'checkSalesforce', 'diagnose'] : ADMIN_JOBS; // people can re-run the checks (all safe); mass texts stay on the schedule
           return jobs.includes(body().job) ? json(200, (await svc[body().job]()) ?? { ok: true }, origin) : json(422, { error: `job must be one of ${jobs.join(', ')}` }, origin);
         }
         return json(404, { error: 'not found' }, origin);
