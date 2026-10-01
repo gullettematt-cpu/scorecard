@@ -690,6 +690,10 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   assert.equal(op('ServiceAppointment').modifyAllRecords, false, 'public read/write: no Modify All');
   assert.equal(op('WorkOrder').modifyAllRecords, true, 'private work orders: line item edits need Modify All');
   assert.ok(plan.notes.some(n => /WorkOrder: Modify All/.test(n)));
+  // Job__c is a detail of Opportunity: Read Opportunity (View All when private), and no Opportunity fields.
+  assert.deepEqual(op('Opportunity'), { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, modifyAllRecords: false, viewAllRecords: true });
+  assert.ok(![...plan.fieldPerms.keys()].some(k => k.startsWith('Opportunity.')));
+  assert.equal((await planAccess({ describe, sharing: { ...sharing, Opportunity: 'ReadWrite' } })).objectPerms.get('Opportunity').viewAllRecords, false);
   assert.deepEqual(plan.unresolved, []);
   const xml = permissionSetXml(plan);
   assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);

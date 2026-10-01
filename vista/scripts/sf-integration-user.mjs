@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSalesforce, lit } from '../api/src/lib/salesforce.mjs';
-import { planAccess, permissionSetXml, summarize, OBJECTS, PERMSET } from '../api/src/lib/sfaccess.mjs';
+import { planAccess, permissionSetXml, summarize, masterOf, OBJECTS, PERMSET } from '../api/src/lib/sfaccess.mjs';
 
 const args = process.argv.slice(2);
 const opt = k => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
@@ -31,8 +31,9 @@ console.log(`Vista integration user · ${org} (${isSandbox ? 'sandbox' : 'PRODUC
 const cache = new Map();
 const describe = obj => cache.get(obj) || cache.set(obj, sf.describe(obj)).get(obj);
 let sharing = null;
+const masters = (await Promise.all(OBJECTS.map(o => describe(o).then(masterOf, () => null)))).filter(Boolean);
 try {
-  const rows = await sf.query(`SELECT QualifiedApiName, InternalSharingModel FROM EntityDefinition WHERE QualifiedApiName IN ('${OBJECTS.join("','")}')`);
+  const rows = await sf.query(`SELECT QualifiedApiName, InternalSharingModel FROM EntityDefinition WHERE QualifiedApiName IN ('${[...new Set([...OBJECTS, ...masters])].join("','")}')`);
   sharing = Object.fromEntries(rows.map(r => [r.QualifiedApiName, r.InternalSharingModel]));
 } catch (err) { console.log(`(Couldn't read sharing settings, so View All goes on every object: ${String(err.message).slice(0, 120)})`); }
 const plan = await planAccess({ describe, sharing });

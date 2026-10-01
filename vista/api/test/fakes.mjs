@@ -157,8 +157,8 @@ export function fakeDescribes() {
       ref('CaseId', 'Case', 'Case'), ref('AccountId', 'Account', 'Account'), ref('ContactId', 'Contact', 'Contact'), ref('RecordTypeId', 'RecordType', 'RecordType'),
       ref('WorkTypeId', 'WorkType', 'WorkType'), ref('Job_Number__c', 'Job_Number__r', 'Job__c')], [{ relationshipName: 'WorkOrderLineItems', childSObject: 'WorkOrderLineItem' }]),
     WorkOrderLineItem: obj([sys('Id'), sys('LineItemNumber'), sys('Status'), ...plain('Description Quantity')]),
-    Job__c: obj([sys('Id'), sys('Name'), ...plain('Sales_Price__c Total_SA_Expense_Labor__c Product_type__c Is_Open__c'), ref('Office__c', 'Office__r', 'Location'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
+    Job__c: obj([sys('Id'), sys('Name'), { ...ref('Opportunity__c', 'Opportunity__r', 'Opportunity'), permissionable: false, relationshipOrder: 0 }, ...plain('Sales_Price__c Total_SA_Expense_Labor__c Product_type__c Is_Open__c'), ref('Office__c', 'Office__r', 'Location'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
     Account: obj([sys('Id'), sys('Name')]), Contact: obj([sys('Id'), ...plain('Phone MobilePhone')]), Location: obj([sys('Id'), sys('Name')]), WorkType: obj([sys('Id'), sys('Name')]),
-    User: obj([sys('Id'), sys('Name'), sys('IsActive'), ...plain('MobilePhone LanguageLocaleKey')]), RecordType: obj([sys('Id'), sys('Name')])
+    User: obj([sys('Id'), sys('Name'), sys('IsActive'), ...plain('MobilePhone LanguageLocaleKey')]), RecordType: obj([sys('Id'), sys('Name')]), Opportunity: obj([sys('Id'), sys('Name')])
   };
 }

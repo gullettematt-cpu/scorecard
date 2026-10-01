@@ -11,6 +11,10 @@ export const OBJECTS = ['SA_Expense__c', 'Case', 'ServiceAppointment', 'WorkOrde
   'ServiceResource', 'Job__c', 'Account', 'Contact', 'Location', 'WorkType'];
 export const PERMSET = { name: 'Vista_Integration', label: 'Vista Integration' };
 
+// The master object of a detail object (master-detail field), e.g. Job__c -> Opportunity. Salesforce requires Read on
+// the master to read the detail, and the detail's visibility follows the master's sharing.
+export const masterOf = desc => desc?.fields.find(f => f.type === 'reference' && f.relationshipOrder != null)?.referenceTo?.[0] || null;
+
 const KEYWORDS = new Set(('SELECT FROM WHERE AND OR NOT IN LIMIT ORDER BY ASC DESC NULLS FIRST LAST TRUE FALSE NULL LIKE ' +
   'YESTERDAY TODAY TOMORROW NEXT_N_DAYS LAST_N_DAYS FIND RETURNING PHONE FIELDS ALL').split(' '));
 
@@ -77,6 +81,10 @@ export async function planAccess({ describe, sharing = null }) {
     }
   }
 
+  // Masters of detail objects Vista uses: Read (and View All when private), no fields.
+  const masters = new Map();
+  for (const obj of [...OBJECTS]) { const m = masterOf(await d(obj)); if (m && !OBJECTS.includes(m) && (objects.has(obj) || WRITES[obj])) masters.set(m, obj); }
+
   const fieldPerms = new Map(); // "Obj.Field" -> { readable, editable }
   const objectPerms = new Map();
   const notes = [];
@@ -98,6 +106,13 @@ export async function planAccess({ describe, sharing = null }) {
       const editable = writes.has(name) && !f.calculated && !f.autoNumber && (f.createable || f.updateable);
       fieldPerms.set(`${obj}.${name}`, { readable: true, editable: !!editable });
     }
+  }
+
+  for (const [m, detail] of masters) {
+    const model = sharing?.[m] ?? null;
+    objectPerms.set(m, { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, modifyAllRecords: false,
+      viewAllRecords: model !== 'ControlledByParent' && (model == null || /Private|None/i.test(model)) });
+    notes.push(`${m}: Read${objectPerms.get(m).viewAllRecords ? ' + View All' : ''}, because ${detail} is its detail record (no ${m} fields)`);
   }
 
   // Vista edits records it didn't create: visits (start, complete) and line items (their access follows the work
