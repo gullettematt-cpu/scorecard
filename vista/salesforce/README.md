@@ -11,6 +11,7 @@ The design is in `../docs/approval-flow.md`.
 | Flow **Vista - Draw Issued Notice** (after create, `Type__c = Vista`, job complete = `No`): emails Mike Duncan | `force-app/main/default/flows/Vista_Draw_Issued_Notice.flow-meta.xml` |
 | List view **Vista - Draws (paid before completion)** | `force-app/.../SA_Expense__c/listViews/Vista_Draws.listView-meta.xml` |
 | List view **Vista - Approved, not on payable invoice** | `force-app/.../SA_Expense__c/listViews/Vista_Submitted_Not_Invoiced.listView-meta.xml` |
+| Integration user **Vista Integration**, its licenses and permission set **Vista Integration** (generated from what Vista reads and writes, against the org's own fields and sharing) | `integration-user.sh` |
 | Existing-automation report (read-only) | `automation-check.sh` → `../docs/describe/AUTOMATION.md` |
 | Existing SA Expense approval process (read-only) | `retrieve-approval.sh` → `reference/approvalProcesses/` + `../docs/describe/APPROVAL.md` |
 
@@ -25,6 +26,10 @@ The design is in `../docs/approval-flow.md`.
 ORG=myorg bash salesforce/automation-check.sh
 ORG=myorg bash salesforce/retrieve-approval.sh
 node scripts/check-salesforce.mjs --org myorg     # every query Vista runs + every field it writes; rerun after each step below
+
+# Integration user + permission set (dry run shows the plan and validates; --go creates; safe to re-run)
+bash salesforce/integration-user.sh --prod
+bash salesforce/integration-user.sh --prod --go
 
 # 2. Sandbox: add the picklist value (dry run, then real)
 bash salesforce/add-vista-type.sh

@@ -37,7 +37,8 @@ separately by those providers.
      repo.
    - He sends Matt `vista-sf.crt`, the public certificate. Email is fine for that.
    - The certificate lasts 2 years. To renew, repeat this step, load the new key, and upload the new certificate.
-2. Create an **integration user** (license *Salesforce Integration*, permission set license *Salesforce API
+2. Create an **integration user**. `bash salesforce/integration-user.sh --prod` (then `--prod --go`) does all of this
+   from the sf CLI and builds the permission set from Vista's own queries; by hand: (license *Salesforce Integration*, permission set license *Salesforce API
    Integration*, plus *Field Service Integration* for the FSL objects). Username, for example,
    `vista@southernindustries.com.prod`. Give it a permission set with:
    - **Read:** WorkOrder, WorkOrderLineItem, ServiceAppointment, AssignedResource, ServiceResource, User, Account,

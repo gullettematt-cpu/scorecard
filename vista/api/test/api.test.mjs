@@ -657,3 +657,41 @@ test('Salesforce source: list view and flow names fit Salesforce limits', async 
     } else assert.ok(name.length <= 80, `${f}: flow API name too long`);
   }
 });
+
+// ---- Integration user permission set --------------------------------------------------------------
+import { planAccess, permissionSetXml, soqlRefs } from '../src/lib/sfaccess.mjs';
+import { fakeDescribes } from './fakes.mjs';
+
+test('permission set: read what Vista reads, edit what it writes, nothing more', async () => {
+  const D = fakeDescribes(), describe = async o => { if (!D[o]) throw new Error('no ' + o); return D[o]; };
+  assert.deepEqual(soqlRefs("SELECT Id, (SELECT Id FROM Kids) FROM P WHERE X__c = 'a b' AND T > 2026-10-01T10:00:00Z").map(r => r.from), ['P', 'Kids']);
+  const sharing = { WorkOrder: 'Private', ServiceAppointment: 'ReadWrite', WorkOrderLineItem: 'ControlledByParent', AssignedResource: 'ControlledByParent', SA_Expense__c: 'Private', Case: 'Private', Account: 'Read' };
+  const plan = await planAccess({ describe, sharing });
+  const fp = k => plan.fieldPerms.get(k), op = k => plan.objectPerms.get(k);
+  // Reads, including through relationships and subqueries
+  assert.deepEqual(fp('Job__c.Office__c'), { readable: true, editable: false }, 'Work_Order__r.Job_Number__r.Office__r.Name');
+  assert.ok(fp('AssignedResource.Lead_Installer__c'), 'ServiceResources subquery');
+  assert.ok(fp('WorkOrderLineItem.Quantity'), 'WorkOrderLineItems subquery');
+  assert.ok(fp('Contact.MobilePhone'));
+  // Writes
+  assert.equal(fp('SA_Expense__c.Approver__c').editable, true);
+  assert.equal(fp('Case.Service_Issue__c').editable, true);
+  assert.equal(fp('ServiceAppointment.ActualEndTime').editable, true);
+  assert.equal(fp('SA_Expense__c.Payable_Invoice_New__c').editable, false, 'formula stays read-only');
+  assert.equal(fp('WorkOrder.Subject').editable, false, 'read-only where Vista only reads');
+  // Never system/required fields, never objects Vista doesn't touch
+  assert.equal(fp('SA_Expense__c.Name'), undefined); assert.equal(fp('Case.Status'), undefined);
+  assert.equal(op('User'), undefined); assert.equal(op('RecordType'), undefined);
+  // Object access and sharing
+  assert.deepEqual(op('SA_Expense__c'), { allowRead: true, allowCreate: true, allowEdit: true, allowDelete: true, viewAllRecords: true, modifyAllRecords: false });
+  assert.equal(op('Case').allowCreate, true); assert.equal(op('Case').allowEdit, false);
+  assert.equal(op('Account').viewAllRecords, false, 'public read needs no View All');
+  assert.equal(op('AssignedResource').viewAllRecords, false, 'follows its parent');
+  assert.equal(op('ServiceAppointment').modifyAllRecords, false, 'public read/write: no Modify All');
+  assert.equal(op('WorkOrder').modifyAllRecords, true, 'private work orders: line item edits need Modify All');
+  assert.ok(plan.notes.some(n => /WorkOrder: Modify All/.test(n)));
+  assert.deepEqual(plan.unresolved, []);
+  const xml = permissionSetXml(plan);
+  assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);
+  assert.ok(xml.indexOf('<fieldPermissions>') < xml.indexOf('<label>') && xml.indexOf('<label>') < xml.indexOf('<objectPermissions>'), 'metadata element order');
+});

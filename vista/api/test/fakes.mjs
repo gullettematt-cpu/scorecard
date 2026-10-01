@@ -131,3 +131,34 @@ export async function testDeps({ now, optedIn = true } = {}) {
     secrets: { jwt: 'test-jwt-secret', admin: 'test-admin', twilioAuthToken: 'twilio-token' },
     config: { appUrl: 'https://vista.test', publicApiUrl: 'https://api.test', alertPhones: ['+17065550001', '+17065550100'], adminPhones: ['+17065550001'] } };
 }
+
+// Describes for the objects Vista touches, shaped like Salesforce's (enough for lib/sfaccess.mjs and sfcheck).
+// Required/system fields (Id, Name, Status on Case, ...) aren't permissionable, as in a real org.
+export function fakeDescribes() {
+  const F = (name, o = {}) => ({ name, permissionable: true, createable: true, updateable: true, calculated: false, type: 'string', ...o });
+  const sys = n => F(n, { permissionable: false, createable: false, updateable: false });
+  const ref = (name, relationshipName, to) => F(name, { type: 'reference', relationshipName, referenceTo: [to] });
+  const obj = (fields, childRelationships = []) => ({ createable: true, updateable: true, deletable: true, fields, childRelationships,
+    recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', available: true }] });
+  const plain = s => s.split(' ').map(n => F(n));
+  return {
+    SA_Expense__c: obj([sys('Id'), sys('Name'), sys('CreatedDate'), ...plain('Date__c Type__c Status__c Amount__c Expense_Type__c Work_Performed_Date__c Did_you_complete_the_job_or_service__c Additional_Work_Performed__c Description_of_Work_Performed__c Additional_Work_Performed_Description__c Approver__c TEST_SA__c Paycheck_Period__c'),
+      F('Payable_Invoice_New__c', { calculated: true, createable: false, updateable: false }),
+      ref('Work_Order__c', 'Work_Order__r', 'WorkOrder'), ref('Job__c', 'Job__r', 'Job__c'), ref('Service_Appointment__c', 'Service_Appointment__r', 'ServiceAppointment'),
+      ref('Account__c', 'Account__r', 'Account'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
+    Case: obj([sys('Id'), sys('CaseNumber'), sys('Status'), sys('CreatedDate'), sys('IsClosed'), sys('RecordTypeId'), ...plain('Subject Priority Origin Description Service_Issue__c Work_Type__c Service_Type__c Warranty_Type__c Language Test_record__c'),
+      ref('Job__c', 'Job__r', 'Job__c'), ref('Service_Appointment__c', 'Service_Appointment__r', 'ServiceAppointment'), ref('AccountId', 'Account', 'Account'),
+      ref('ContactId', 'Contact', 'Contact'), ref('Original_Installer__c', 'Original_Installer__r', 'Account')]),
+    ServiceAppointment: obj([sys('Id'), sys('AppointmentNumber'), sys('Status'), sys('LastModifiedDate'), ...plain('SchedStartTime SchedEndTime ActualStartTime ActualEndTime SS_Service_Appointment_Type__c PulseM_Bio_Sent__c SMS_Opt_out__c Test_SA__c'),
+      ref('Work_Order__c', 'Work_Order__r', 'WorkOrder'), ref('Job__c', 'Job__r', 'Job__c')], [{ relationshipName: 'ServiceResources', childSObject: 'AssignedResource' }]),
+    AssignedResource: obj([sys('Id'), ref('ServiceAppointmentId', 'ServiceAppointment', 'ServiceAppointment'), ref('ServiceResourceId', 'ServiceResource', 'ServiceResource'), F('Lead_Installer__c')]),
+    ServiceResource: obj([sys('Id'), sys('Name'), sys('IsActive'), ref('AccountId', 'Account', 'Account'), ref('RelatedRecordId', 'RelatedRecord', 'User')]),
+    WorkOrder: obj([sys('Id'), sys('WorkOrderNumber'), sys('Status'), sys('LastModifiedDate'), ...plain('Subject Priority Street City State PostalCode Latitude Longitude Description Work_Type_Name__c Test_WO__c'),
+      ref('CaseId', 'Case', 'Case'), ref('AccountId', 'Account', 'Account'), ref('ContactId', 'Contact', 'Contact'), ref('RecordTypeId', 'RecordType', 'RecordType'),
+      ref('WorkTypeId', 'WorkType', 'WorkType'), ref('Job_Number__c', 'Job_Number__r', 'Job__c')], [{ relationshipName: 'WorkOrderLineItems', childSObject: 'WorkOrderLineItem' }]),
+    WorkOrderLineItem: obj([sys('Id'), sys('LineItemNumber'), sys('Status'), ...plain('Description Quantity')]),
+    Job__c: obj([sys('Id'), sys('Name'), ...plain('Sales_Price__c Total_SA_Expense_Labor__c Product_type__c Is_Open__c'), ref('Office__c', 'Office__r', 'Location'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
+    Account: obj([sys('Id'), sys('Name')]), Contact: obj([sys('Id'), ...plain('Phone MobilePhone')]), Location: obj([sys('Id'), sys('Name')]), WorkType: obj([sys('Id'), sys('Name')]),
+    User: obj([sys('Id'), sys('Name'), sys('IsActive'), ...plain('MobilePhone LanguageLocaleKey')]), RecordType: obj([sys('Id'), sys('Name')])
+  };
+}

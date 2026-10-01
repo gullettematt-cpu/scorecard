@@ -6,3 +6,4 @@ docs/describe/*.json
 !.env.example
 .DS_Store
 .aws-sam/
+salesforce/generated/
