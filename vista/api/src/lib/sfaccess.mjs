@@ -131,7 +131,8 @@ export async function planAccess({ describe, sharing = null }) {
 }
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-export function permissionSetXml({ objectPerms, fieldPerms }) {
+// apiOnly: for a user on a full Salesforce license, block Salesforce logins (the integration profile already does).
+export function permissionSetXml({ objectPerms, fieldPerms }, { apiOnly = false } = {}) {
   const fields = [...fieldPerms].sort(([a], [b]) => a.localeCompare(b)).map(([field, p]) =>
     `    <fieldPermissions>\n        <editable>${p.editable}</editable>\n        <field>${x(field)}</field>\n        <readable>${p.readable}</readable>\n    </fieldPermissions>`);
   const objs = [...objectPerms].sort(([a], [b]) => a.localeCompare(b)).map(([obj, p]) =>
@@ -143,7 +144,7 @@ ${fields.join('\n')}
     <hasActivationRequired>false</hasActivationRequired>
     <label>${PERMSET.label}</label>
 ${objs.join('\n')}
-</PermissionSet>
+${apiOnly ? ['ApiEnabled', 'ApiUserOnly'].map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
 `;
 }
 

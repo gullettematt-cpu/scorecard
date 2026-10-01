@@ -30,6 +30,9 @@ node scripts/check-salesforce.mjs --org myorg     # every query Vista runs + eve
 # Integration user + permission set (dry run shows the plan and validates; --go creates; safe to re-run)
 bash salesforce/integration-user.sh --prod
 bash salesforce/integration-user.sh --prod --go
+# Org without the "Field Service Integration" license: full Salesforce license (API only) + "Field Service Standard"
+bash salesforce/integration-user.sh --prod --license=salesforce
+bash salesforce/integration-user.sh --prod --license=salesforce --go
 
 # 2. Sandbox: add the picklist value (dry run, then real)
 bash salesforce/add-vista-type.sh

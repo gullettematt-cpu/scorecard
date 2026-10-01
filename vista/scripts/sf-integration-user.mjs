@@ -14,6 +14,13 @@ import { planAccess, permissionSetXml, summarize, masterOf, OBJECTS, PERMSET } f
 const args = process.argv.slice(2);
 const opt = k => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
 const org = opt('--org') || 'DevSandi', GO = args.includes('--go');
+// --license salesforce: a full Salesforce user license (API only) plus "Field Service Standard", for orgs without the
+// "Field Service Integration" license. The Salesforce Integration license can't carry Field Service Standard, and
+// without a Field Service license the user can't see Service Appointments, Assigned Resources or Work Types.
+const FULL = opt('--license') === 'salesforce';
+const MODE = FULL
+  ? { license: 'Salesforce', profiles: ['Minimum Access - Salesforce'], psls: ['Field Service Standard'] }
+  : { license: 'Salesforce Integration', profiles: ['Salesforce API Only System Integrations'], psls: ['Salesforce API Integration', 'Field Service Integration'] };
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sfcli = (a, inherit = false) => execFileSync('sf', a, { encoding: 'utf8', stdio: inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
 
@@ -37,7 +44,7 @@ try {
   sharing = Object.fromEntries(rows.map(r => [r.QualifiedApiName, r.InternalSharingModel]));
 } catch (err) { console.log(`(Couldn't read sharing settings, so View All goes on every object: ${String(err.message).slice(0, 120)})`); }
 const plan = await planAccess({ describe, sharing });
-const xml = permissionSetXml(plan);
+const xml = permissionSetXml(plan, { apiOnly: FULL });
 
 console.log(`1. Permission set "${PERMSET.label}" (${PERMSET.name})`);
 console.log(summarize(plan));
@@ -56,25 +63,34 @@ fs.writeFileSync(path.join(keep, `${PERMSET.name}.permissionset-meta.xml`), xml)
 console.log(`  · Full permission set: salesforce/generated/${PERMSET.name}.permissionset-meta.xml\n`);
 
 // ---- 2. Licenses, profile, user --------------------------------------------------------------------------
-const lic = await one(`SELECT Name, TotalLicenses, UsedLicenses FROM UserLicense WHERE Name = 'Salesforce Integration'`);
-const profiles = await sf.query(`SELECT Id, Name FROM Profile WHERE UserLicense.Name = 'Salesforce Integration'`);
-const profile = profiles.find(p => p.Name === 'Salesforce API Only System Integrations') || profiles[0];
-const psls = await sf.query(`SELECT Id, MasterLabel, TotalLicenses, UsedLicenses FROM PermissionSetLicense WHERE MasterLabel IN ('Salesforce API Integration', 'Field Service Integration')`);
+const lic = await one(`SELECT Name, TotalLicenses, UsedLicenses FROM UserLicense WHERE Name = ${lit(MODE.license)}`);
+const profiles = await sf.query(`SELECT Id, Name FROM Profile WHERE UserLicense.Name = ${lit(MODE.license)}`);
+const profile = profiles.find(p => MODE.profiles.includes(p.Name)) || (FULL ? null : profiles[0]);
+const psls = await sf.query(`SELECT Id, MasterLabel, TotalLicenses, UsedLicenses FROM PermissionSetLicense WHERE MasterLabel IN (${MODE.psls.map(lit).join(',')})`);
 const me = await one(`SELECT Email FROM User WHERE Username = ${lit(info.username)}`);
-let user = await one(`SELECT Id, IsActive, Profile.Name FROM User WHERE Username = ${lit(username)}`);
+let user = await one(`SELECT Id, IsActive, Profile.Name, Profile.UserLicense.Name FROM User WHERE Username = ${lit(username)}`);
+// A user can't move to a different user license, so one on the wrong license is renamed and deactivated (kept, not
+// deleted: Salesforce keeps its history) and a new user takes over the same username. GitHub needs no change.
+const replace = user && user.Profile?.UserLicense?.Name !== MODE.license;
+const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const retiredName = username.replace('@', `.retired${stamp}@`);
 
 console.log(`2. User ${username}`);
-console.log(`  · License "Salesforce Integration": ${lic ? `${lic.UsedLicenses} of ${lic.TotalLicenses} used` : 'NOT FOUND in this org'}`);
-console.log(`  · Profile: ${profile ? profile.Name : 'NOT FOUND (needs the Salesforce Integration license)'}`);
-console.log(`  · ${user ? `Already exists (${user.Profile?.Name}${user.IsActive ? '' : ', inactive'}), will be reused` : `Will be created: Vista Integration, email ${me?.Email}, Eastern time`}`);
+console.log(`  · License "${MODE.license}": ${lic ? `${lic.UsedLicenses} of ${lic.TotalLicenses} used` : 'NOT FOUND in this org'}`);
+console.log(`  · Profile: ${profile ? profile.Name : `NOT FOUND (${MODE.profiles.join(' or ')})`}${FULL ? ' + "API Only User" in the permission set, so nobody can log in to Salesforce as it' : ''}`);
+console.log(`  · ${replace ? `Exists on the "${user.Profile?.UserLicense?.Name}" license: it will be renamed ${retiredName} and deactivated, and a new user created on "${MODE.license}" with the same username`
+  : user ? `Already exists (${user.Profile?.Name}${user.IsActive ? '' : ', inactive'}), will be reused` : `Will be created: Vista Integration, email ${me?.Email}, Eastern time`}`);
 console.log(`3. Permission set licenses: ${psls.map(p => `${p.MasterLabel} (${p.UsedLicenses}/${p.TotalLicenses} used)`).join(', ') || 'none found'}`);
-if (!psls.some(p => p.MasterLabel === 'Field Service Integration')) console.log('  · No "Field Service Integration" license: if the permission set assignment fails on Work Order or Service Appointment, that is why.');
+const fieldService = psls.some(p => /Field Service/.test(p.MasterLabel));
+if (!fieldService) console.log('  · No Field Service license for this user: it won\'t see Service Appointments, Assigned Resources or Work Types.' + (FULL ? '' : '\n    Re-run with --license salesforce to use a full Salesforce license + "Field Service Standard" instead.'));
 console.log('');
 
 const problems = [];
-if (!lic) problems.push('no Salesforce Integration user license');
-else if (!user && lic.UsedLicenses >= lic.TotalLicenses) problems.push('no free Salesforce Integration license');
-if (!profile) problems.push('no integration profile');
+if (!lic) problems.push(`no ${MODE.license} user license`);
+else if ((!user || replace) && lic.UsedLicenses >= lic.TotalLicenses) problems.push(`no free ${MODE.license} license`);
+if (!profile) problems.push(`no "${MODE.profiles[0]}" profile`);
+for (const p of psls) if (p.UsedLicenses >= p.TotalLicenses) problems.push(`no free "${p.MasterLabel}" license`);
+if (FULL && !psls.some(p => p.MasterLabel === 'Field Service Standard')) problems.push('no "Field Service Standard" license');
 
 // ---- Validate or apply -----------------------------------------------------------------------------------
 console.log(GO ? 'Deploying the permission set…' : 'Validating the permission set (dry run)…');
@@ -88,6 +104,9 @@ if (!GO) {
 if (problems.length) { console.error(`\nStopped after the permission set: ${problems.join('; ')}.`); process.exit(1); }
 
 const step = async (label, fn) => { try { const r = await fn(); console.log(`✓ ${label}${r ? ` ${r}` : ''}`); } catch (err) { console.error(`✗ ${label}: ${String(err.message).slice(0, 400)}`); process.exit(1); } };
+if (replace) await step(`Old user renamed ${retiredName} and deactivated`, async () => {
+  await sf.update('User', user.Id, { Username: retiredName, IsActive: false }); user = null;
+});
 await step('User', async () => {
   if (user) return '(already there)';
   const id = await sf.create('User', { Username: username, FirstName: 'Vista', LastName: 'Integration', Alias: 'vista', Email: me?.Email,
@@ -102,7 +121,10 @@ await step(`Permission set ${PERMSET.label}`, async () => {
   if (await one(`SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = ${lit(user.Id)} AND PermissionSetId = ${lit(ps.Id)}`)) return '(already assigned)';
   await sf.create('PermissionSetAssignment', { AssigneeId: user.Id, PermissionSetId: ps.Id }); return 'assigned';
 });
-console.log(`
+if (replace || FULL) console.log(`
+Done. The Vista app's pre-authorization follows the "${PERMSET.label}" permission set, so it covers the new user
+with no Setup change. Wait a few minutes, then in Vista: Health → Run the health check now, then Check Salesforce.`);
+else console.log(`
 Done. Next (Setup, about 5 minutes): the Vista External Client App. Upload vista-sf.crt, pre-authorize the
 "${PERMSET.label}" permission set, and copy the Consumer Key. GitHub variables:
   SF_USERNAME = ${username}
