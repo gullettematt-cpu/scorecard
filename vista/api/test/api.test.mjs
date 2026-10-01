@@ -673,6 +673,8 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   assert.ok(fp('AssignedResource.Lead_Installer__c'), 'ServiceResources subquery');
   assert.ok(fp('WorkOrderLineItem.Quantity'), 'WorkOrderLineItems subquery');
   assert.ok(fp('Contact.MobilePhone'));
+  assert.ok(fp('WorkOrder.Address'), 'address parts use the compound field');
+  assert.equal(fp('WorkOrder.State'), undefined); assert.equal(fp('WorkOrder.Street'), undefined);
   // Writes
   assert.equal(fp('SA_Expense__c.Approver__c').editable, true);
   assert.equal(fp('Case.Service_Issue__c').editable, true);

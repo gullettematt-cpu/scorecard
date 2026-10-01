@@ -101,10 +101,12 @@ export async function planAccess({ describe, sharing = null }) {
     const byName = new Map(desc.fields.map(f => [f.name, f]));
     const writes = new Set([...(spec.create || []), ...(spec.update || [])]);
     for (const name of new Set([...(read.get(obj) || []), ...writes])) {
-      const f = byName.get(name);
+      // Parts of a compound field (Street, City, ... of Address) take their access from the compound field.
+      const part = byName.get(name), f = part?.compoundFieldName ? byName.get(part.compoundFieldName) : part;
       if (!f || f.permissionable === false) continue;
       const editable = writes.has(name) && !f.calculated && !f.autoNumber && (f.createable || f.updateable);
-      fieldPerms.set(`${obj}.${name}`, { readable: true, editable: !!editable });
+      const key = `${obj}.${f.name}`, prev = fieldPerms.get(key);
+      fieldPerms.set(key, { readable: true, editable: !!editable || !!prev?.editable });
     }
   }
 
