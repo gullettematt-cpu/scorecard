@@ -7,10 +7,12 @@ import { memoryStore } from '../src/lib/store.mjs';
 import { createPeople } from '../src/lib/people.mjs';
 import { WRITES } from '../src/lib/sfcheck.mjs';
 import { createTranslations } from '../src/lib/vi.mjs';
+import { easternAt } from '../src/lib/demotext.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const J = f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8'));
-const at = (day, hour) => { const d = new Date(); d.setHours(hour, 0, 0, 0); d.setDate(d.getDate() + day); return d.toISOString(); };
+// Salesforce times are absolute; Vista reads them in Eastern, so the sample visits sit on Eastern hours.
+const at = (day, hour) => easternAt(day, hour);
 
 export const PEOPLE = {
   tucker: { id: 'res:0HnTUCK', phone: '+17065550112', name: 'Dwayne Tucker', role: 'installer', userId: '005TUCK', serviceResourceIds: ['0HnTUCK'], account: { Id: '0015e00000TUCK1', Name: 'Tucker Installs LLC' }, lang: 'en', channel: 'both' },

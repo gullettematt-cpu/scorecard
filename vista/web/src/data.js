@@ -17,8 +17,40 @@ import { apiMode, api, deviceId } from './api.js';
 export const MANIFEST_FIELD = 'Additional_Work_Performed_Description__c';
 export const MANIFEST_MARK = '<!--vista-manifest-->';
 
-const dayAt = (offset, hour) => { const d = new Date(); d.setHours(hour, 0, 0, 0); d.setDate(d.getDate() + offset); return d.toISOString(); };
+// Southern Industries works in Eastern time; the API runs in UTC, so days are counted in Eastern everywhere.
+export const TIME_ZONE = 'America/New_York';
+export const easternDay = d => new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE }).format(new Date(d)); // YYYY-MM-DD
+// `dayOffset` days from today at an Eastern wall-clock hour, as an ISO string (sample jobs, on a phone or the API).
+export function easternAt(dayOffset, hour, now = new Date()) {
+  const ymd = easternDay(new Date(now.getTime() + dayOffset * 864e5));
+  const guess = new Date(`${ymd}T${String(hour).padStart(2, '0')}:00:00Z`);
+  const shown = Number(new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, hour: 'numeric', hourCycle: 'h23' }).format(guess));
+  let diff = shown - hour; if (diff > 12) diff -= 24; if (diff < -12) diff += 24;
+  return new Date(guess.getTime() - diff * 3600e3).toISOString();
+}
+
+const dayAt = (offset, hour) => easternAt(offset, hour);
 const dayOff = offset => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString(); };
+
+// Fixture files -> the jobs, pay requests and problems the screens use. Also the API's demo text line,
+// which passes its own clock (`at`, `dayOff`) so the sample jobs fall on today's Eastern hours.
+export function fixtureWorld(crews, crew, files, { at = dayAt, off = dayOff } = {}) {
+  const out = { jobs: [], draws: [], cases: [] };
+  for (const [file, fx] of Object.entries(files)) {
+    const owner = crews.find(c => c.fixture === file) || crew;
+    out.jobs.push(...fx.workOrders.map(w => ({
+      ...w,
+      StartDate: at(w._schedule.dayOffset, w._schedule.startHour),
+      EndDate: at(w._schedule.dayOffset, w._schedule.endHour),
+      LastModifiedDate: new Date().toISOString(),
+      _crew: owner.id, _crewName: owner.name, _trade: owner.trade, _lang: owner.lang, _account: owner.account || null,
+      Job_Number__r: fx.jobs.find(j => j.Id === w.Job_Number__c) || null
+    })));
+    out.draws.push(...fx.draws.map(d => ({ ...d, CreatedDate: off(d.CreatedDate_dayOffset || 0), Date__c: off(d.CreatedDate_dayOffset || 0).slice(0, 10), _crew: owner.id, _lang: owner.lang })));
+    out.cases.push(...fx.cases.map(c => ({ ...c, CreatedDate: off(c.CreatedDate_dayOffset || 0), _crew: owner.id })));
+  }
+  return out;
+}
 
 const fixtureAdapter = {
   name: 'fixture',
@@ -28,23 +60,9 @@ const fixtureAdapter = {
   async translations() { return (await fetch('./fixtures/translations.json')).json(); },
   async load(crew) {
     const crews = await this.crews();
-    const files = crew.fixtures || [crew.fixture];
-    const out = { jobs: [], draws: [], cases: [] };
-    for (const file of files) {
-      const owner = crews.find(c => c.fixture === file) || crew;
-      const fx = await (await fetch(`./fixtures/${file}`)).json();
-      out.jobs.push(...fx.workOrders.map(w => ({
-        ...w,
-        StartDate: dayAt(w._schedule.dayOffset, w._schedule.startHour),
-        EndDate: dayAt(w._schedule.dayOffset, w._schedule.endHour),
-        LastModifiedDate: new Date().toISOString(),
-        _crew: owner.id, _crewName: owner.name, _trade: owner.trade, _lang: owner.lang, _account: owner.account || null,
-        Job_Number__r: fx.jobs.find(j => j.Id === w.Job_Number__c) || null
-      })));
-      out.draws.push(...fx.draws.map(d => ({ ...d, CreatedDate: dayOff(d.CreatedDate_dayOffset || 0), Date__c: dayOff(d.CreatedDate_dayOffset || 0).slice(0, 10), _crew: owner.id, _lang: owner.lang })));
-      out.cases.push(...fx.cases.map(c => ({ ...c, CreatedDate: dayOff(c.CreatedDate_dayOffset || 0), _crew: owner.id })));
-    }
-    return out;
+    const files = {};
+    for (const file of crew.fixtures || [crew.fixture]) files[file] = await (await fetch(`./fixtures/${file}`)).json();
+    return fixtureWorld(crews, crew, files);
   },
   // Outbox entries are just logged in fixture mode. Step 2 posts them to /sf/*.
   async push(entry) { console.info('[vista:fixture] would sync', entry); return { ok: true }; }
@@ -233,7 +251,7 @@ export const onVista = (ctx, w) => vistaOn(ctx.rollout, officeOf(w), ctx.role ==
 export const assignedTo = (ctx, w) => ctx.role === 'pm' || !ctx.crewId || w._crew === ctx.crewId;
 export const visibleFor = ctx => w => isVisible(w) && assignedTo(ctx, w) && onVista(ctx, w) &&
   (ctx.role === 'pm' || (ctx.role === 'measure') === isMeasurementVisit(w));
-const sameLocalDay = iso => new Date(iso).toDateString() === new Date().toDateString();
+const sameLocalDay = iso => easternDay(iso) === easternDay(new Date());
 
 // --- PM review: the deliverables checklist -------------------------------------------------
 // Every required line must be ticked to approve. Unticked lines are "what was missed".
