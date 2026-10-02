@@ -714,6 +714,9 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   assert.deepEqual(op('Opportunity'), { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, modifyAllRecords: false, viewAllRecords: true });
   assert.ok(![...plan.fieldPerms.keys()].some(k => k.startsWith('Opportunity.')));
   assert.equal((await planAccess({ describe, sharing: { ...sharing, Opportunity: 'ReadWrite' } })).objectPerms.get('Opportunity').viewAllRecords, false);
+  // A lookup Vista reads points to a custom object: Read on that object, so the field isn't hidden.
+  assert.deepEqual(op('Paycheck_Period__c'), { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, viewAllRecords: false, modifyAllRecords: false });
+  assert.ok(fp('SA_Expense__c.Paycheck_Period__c'));
   assert.deepEqual(plan.unresolved, []);
   const xml = permissionSetXml(plan);
   assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);

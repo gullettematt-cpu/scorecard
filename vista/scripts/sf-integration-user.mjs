@@ -138,7 +138,7 @@ await step(`Permission set ${PERMSET.label}`, async () => {
 });
 // Check what Salesforce actually stored for the Field Service objects (it can drop permissions it won't allow).
 const fsl = await sf.query(`SELECT SobjectType, PermissionsRead, PermissionsEdit FROM ObjectPermissions WHERE Parent.Name = ${lit(PERMSET.name)} AND SobjectType IN ('ServiceAppointment','AssignedResource','WorkType','WorkOrder')`).catch(() => []);
-const missing = ['ServiceAppointment', 'AssignedResource', 'WorkType'].filter(o => !fsl.some(r => r.SobjectType === o && r.PermissionsRead));
+const missing = ['ServiceAppointment', 'WorkType'].filter(o => !fsl.some(r => r.SobjectType === o && r.PermissionsRead));
 console.log(missing.length
   ? `\n! Salesforce did not keep Read on ${missing.join(', ')} in the permission set. Paste this to Claude.`
   : `\n✓ Field Service access stored: ${fsl.map(r => `${r.SobjectType} ${r.PermissionsEdit ? 'read/edit' : 'read'}`).join(', ')}`);

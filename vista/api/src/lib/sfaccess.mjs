@@ -117,6 +117,18 @@ export async function planAccess({ describe, sharing = null }) {
     notes.push(`${m}: Read${objectPerms.get(m).viewAllRecords ? ' + View All' : ''}, because ${detail} is its detail record (no ${m} fields)`);
   }
 
+  // A lookup field is hidden from a user who can't read the object it points to (e.g. SA_Expense__c.Paycheck_Period__c).
+  // Read (no fields) on each custom object a field Vista reads or writes points to.
+  for (const key of fieldPerms.keys()) {
+    const [obj, name] = key.split('.');
+    const f = (await d(obj))?.fields.find(x => x.name === name);
+    for (const target of f?.type === 'reference' ? f.referenceTo || [] : []) {
+      if (objectPerms.has(target) || !/__c$/.test(target) || !(await d(target))) continue;
+      objectPerms.set(target, { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, viewAllRecords: false, modifyAllRecords: false });
+      notes.push(`${target}: Read, because ${key} points to it (no ${target} fields)`);
+    }
+  }
+
   // Vista edits records it didn't create: visits (start, complete) and line items (their access follows the work
   // order). If sharing doesn't already allow that, Modify All is the only permission-set way to grant it.
   const needsEditAll = { ServiceAppointment: 'ServiceAppointment', WorkOrderLineItem: 'WorkOrder' };
