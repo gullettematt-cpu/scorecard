@@ -717,6 +717,9 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   assert.deepEqual(plan.unresolved, []);
   const xml = permissionSetXml(plan);
   assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);
+  assert.deepEqual(plan.recordTypes, ['Case.Service']);
+  assert.match(xml, /<recordTypeVisibilities>\s*<recordType>Case\.Service<\/recordType>\s*<visible>true<\/visible>/);
+  assert.ok(xml.indexOf('<objectPermissions>') < xml.indexOf('<recordTypeVisibilities>'), 'metadata order');
   assert.ok(xml.indexOf('<fieldPermissions>') < xml.indexOf('<label>') && xml.indexOf('<label>') < xml.indexOf('<objectPermissions>'), 'metadata element order');
 });
 

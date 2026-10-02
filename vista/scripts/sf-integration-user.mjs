@@ -49,6 +49,7 @@ const xml = permissionSetXml(plan, { apiOnly: FULL });
 console.log(`1. Permission set "${PERMSET.label}" (${PERMSET.name})`);
 console.log(summarize(plan));
 for (const n of plan.notes) console.log(`  · ${n}`);
+if (plan.recordTypes?.length) console.log(`  · Record types: ${plan.recordTypes.join(', ')}`);
 if (plan.unresolved.length) console.log(`  · Not found in this org (left out): ${plan.unresolved.join(', ')}`);
 if (sharing) console.log(`  · Sharing: ${Object.entries(sharing).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
 
@@ -131,6 +132,12 @@ await step(`Permission set ${PERMSET.label}`, async () => {
   if (await one(`SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = ${lit(user.Id)} AND PermissionSetId = ${lit(ps.Id)}`)) return '(already assigned)';
   await sf.create('PermissionSetAssignment', { AssigneeId: user.Id, PermissionSetId: ps.Id }); return 'assigned';
 });
+// Check what Salesforce actually stored for the Field Service objects (it can drop permissions it won't allow).
+const fsl = await sf.query(`SELECT SobjectType, PermissionsRead, PermissionsEdit FROM ObjectPermissions WHERE Parent.Name = ${lit(PERMSET.name)} AND SobjectType IN ('ServiceAppointment','AssignedResource','WorkType','WorkOrder')`).catch(() => []);
+const missing = ['ServiceAppointment', 'AssignedResource', 'WorkType'].filter(o => !fsl.some(r => r.SobjectType === o && r.PermissionsRead));
+console.log(missing.length
+  ? `\n! Salesforce did not keep Read on ${missing.join(', ')} in the permission set. Paste this to Claude.`
+  : `\n✓ Field Service access stored: ${fsl.map(r => `${r.SobjectType} ${r.PermissionsEdit ? 'read/edit' : 'read'}`).join(', ')}`);
 if (replace || FULL) console.log(`
 Done. The Vista app's pre-authorization follows the "${PERMSET.label}" permission set, so it covers the new user
 with no Setup change. Wait a few minutes, then in Vista: Health → Run the health check now, then Check Salesforce.`);

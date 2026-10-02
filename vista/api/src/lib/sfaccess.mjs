@@ -127,12 +127,21 @@ export async function planAccess({ describe, sharing = null }) {
     Object.assign(p, { allowRead: true, allowEdit: true, allowDelete: true, viewAllRecords: true, modifyAllRecords: true });
     notes.push(`${holder}: Modify All, because ${model ? `its sharing is "${model}"` : 'its sharing setting could not be read'} and Vista updates ${edited === holder ? 'visits' : 'line items'} other users own`);
   }
-  return { objectPerms, fieldPerms, notes, unresolved: [...new Set(unresolved)] };
+  // Record types Vista creates records with (Case: Service). A full-license user on a minimal profile only gets
+  // them through the permission set.
+  const recordTypes = [];
+  for (const [obj, spec] of Object.entries(WRITES)) {
+    if (!spec.recordType) continue;
+    const rt = (await d(obj))?.recordTypeInfos?.find(r => String(r.recordTypeId).slice(0, 15) === spec.recordType.slice(0, 15));
+    if (rt?.developerName) recordTypes.push(`${obj}.${rt.developerName}`);
+    else notes.push(`${obj}: record type ${spec.recordType} not found, so it isn't added`);
+  }
+  return { objectPerms, fieldPerms, recordTypes, notes, unresolved: [...new Set(unresolved)] };
 }
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // apiOnly: for a user on a full Salesforce license, block Salesforce logins (the integration profile already does).
-export function permissionSetXml({ objectPerms, fieldPerms }, { apiOnly = false } = {}) {
+export function permissionSetXml({ objectPerms, fieldPerms, recordTypes = [] }, { apiOnly = false } = {}) {
   const fields = [...fieldPerms].sort(([a], [b]) => a.localeCompare(b)).map(([field, p]) =>
     `    <fieldPermissions>\n        <editable>${p.editable}</editable>\n        <field>${x(field)}</field>\n        <readable>${p.readable}</readable>\n    </fieldPermissions>`);
   const objs = [...objectPerms].sort(([a], [b]) => a.localeCompare(b)).map(([obj, p]) =>
@@ -144,7 +153,7 @@ ${fields.join('\n')}
     <hasActivationRequired>false</hasActivationRequired>
     <label>${PERMSET.label}</label>
 ${objs.join('\n')}
-${apiOnly ? ['ApiEnabled', 'ApiUserOnly'].map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
+${recordTypes.map(rt => `    <recordTypeVisibilities>\n        <recordType>${x(rt)}</recordType>\n        <visible>true</visible>\n    </recordTypeVisibilities>`).join('\n')}${recordTypes.length ? '\n' : ''}${apiOnly ? ['ApiEnabled', 'ApiUserOnly'].map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
 `;
 }
 

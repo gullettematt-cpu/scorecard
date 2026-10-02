@@ -154,7 +154,7 @@ export function fakeDescribes() {
   const sys = n => F(n, { permissionable: false, createable: false, updateable: false });
   const ref = (name, relationshipName, to) => F(name, { type: 'reference', relationshipName, referenceTo: [to] });
   const obj = (fields, childRelationships = []) => ({ createable: true, updateable: true, deletable: true, fields, childRelationships,
-    recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', available: true }] });
+    recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', developerName: 'Service', available: true }] });
   const plain = s => s.split(' ').map(n => F(n));
   return {
     SA_Expense__c: obj([sys('Id'), sys('Name'), sys('CreatedDate'), ...plain('Date__c Type__c Status__c Amount__c Expense_Type__c Work_Performed_Date__c Did_you_complete_the_job_or_service__c Additional_Work_Performed__c Description_of_Work_Performed__c Additional_Work_Performed_Description__c Approver__c TEST_SA__c Paycheck_Period__c'),
