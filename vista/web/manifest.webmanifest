@@ -7,8 +7,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0F2A3D",
-  "theme_color": "#0F2A3D",
+  "background_color": "#1F3A7A",
+  "theme_color": "#1F3A7A",
   "lang": "en",
   "icons": [
     { "src": "./icons/vista.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
