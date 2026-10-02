@@ -834,3 +834,13 @@ test('Twilio client: Diagnose reads the Messaging Service and repairs only its o
   assert.equal(posts[1].url, 'https://messaging.twilio.com/v1/Services/MG1/PhoneNumbers'); assert.equal(posts[1].body, 'PhoneNumberSid=PN1');
   assert.ok(reqs.some(r => r.url === 'https://api.twilio.com/2010-04-01/Accounts/AC1/IncomingPhoneNumbers.json?PhoneNumber=%2B17069552075'));
 });
+
+test('diagnose: knows its own address when PUBLIC_API_URL is not set (no false webhook alarm)', async () => {
+  const deps = await testDeps(); deps.config.publicApiUrl = null; deps.sf.describe = async o => fakeDescribes()[o];
+  deps.twilio.svc.inbound_request_url = 'https://abc123.execute-api.us-east-1.amazonaws.com/sms/inbound';
+  const h = createHandler(async () => deps), owner = signToken({ sub: 'owner', phone: '+17065550001' }, deps.secrets.jwt);
+  const r = await h({ requestContext: { http: { method: 'POST' }, domainName: 'abc123.execute-api.us-east-1.amazonaws.com' }, rawPath: '/admin/run',
+    headers: { authorization: `Bearer ${owner}` }, body: JSON.stringify({ job: 'diagnose' }), isBase64Encoded: false });
+  const hook = JSON.parse(r.body).areas.flatMap(a => a.items).find(i => i.name === 'Incoming texts reach Vista');
+  assert.equal(hook.status, 'ok', hook.detail);
+});
