@@ -141,7 +141,9 @@ export async function planAccess({ describe, sharing = null }) {
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // apiOnly: for a user on a full Salesforce license, block Salesforce logins (the integration profile already does).
-export function permissionSetXml({ objectPerms, fieldPerms, recordTypes = [] }, { apiOnly = false } = {}) {
+// userPerms: extra system permissions, e.g. FieldServiceAccess (Field Service objects stay hidden without it, even with
+// object access and a Field Service permission set license).
+export function permissionSetXml({ objectPerms, fieldPerms, recordTypes = [] }, { apiOnly = false, userPerms = [] } = {}) {
   const fields = [...fieldPerms].sort(([a], [b]) => a.localeCompare(b)).map(([field, p]) =>
     `    <fieldPermissions>\n        <editable>${p.editable}</editable>\n        <field>${x(field)}</field>\n        <readable>${p.readable}</readable>\n    </fieldPermissions>`);
   const objs = [...objectPerms].sort(([a], [b]) => a.localeCompare(b)).map(([obj, p]) =>
@@ -153,7 +155,7 @@ ${fields.join('\n')}
     <hasActivationRequired>false</hasActivationRequired>
     <label>${PERMSET.label}</label>
 ${objs.join('\n')}
-${recordTypes.map(rt => `    <recordTypeVisibilities>\n        <recordType>${x(rt)}</recordType>\n        <visible>true</visible>\n    </recordTypeVisibilities>`).join('\n')}${recordTypes.length ? '\n' : ''}${apiOnly ? ['ApiEnabled', 'ApiUserOnly'].map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
+${recordTypes.map(rt => `    <recordTypeVisibilities>\n        <recordType>${x(rt)}</recordType>\n        <visible>true</visible>\n    </recordTypeVisibilities>`).join('\n')}${recordTypes.length ? '\n' : ''}${(apiOnly || userPerms.length) ? [...(apiOnly ? ['ApiEnabled', 'ApiUserOnly'] : []), ...userPerms].sort().map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
 `;
 }
 

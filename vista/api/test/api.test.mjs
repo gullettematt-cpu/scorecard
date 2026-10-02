@@ -844,3 +844,11 @@ test('diagnose: knows its own address when PUBLIC_API_URL is not set (no false w
   const hook = JSON.parse(r.body).areas.flatMap(a => a.items).find(i => i.name === 'Incoming texts reach Vista');
   assert.equal(hook.status, 'ok', hook.detail);
 });
+
+test('permission set: adds Field Service Access when asked, sorted with the API permissions', async () => {
+  const D = fakeDescribes(), plan = await planAccess({ describe: async o => D[o] });
+  const xml = permissionSetXml(plan, { apiOnly: true, userPerms: ['FieldServiceAccess'] });
+  const names = [...xml.matchAll(/<userPermissions>\s*<enabled>true<\/enabled>\s*<name>(\w+)<\/name>/g)].map(m => m[1]);
+  assert.deepEqual(names, ['ApiEnabled', 'ApiUserOnly', 'FieldServiceAccess']);
+  assert.doesNotMatch(permissionSetXml(plan), /userPermissions/);
+});

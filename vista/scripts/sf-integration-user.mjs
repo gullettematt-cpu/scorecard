@@ -44,12 +44,16 @@ try {
   sharing = Object.fromEntries(rows.map(r => [r.QualifiedApiName, r.InternalSharingModel]));
 } catch (err) { console.log(`(Couldn't read sharing settings, so View All goes on every object: ${String(err.message).slice(0, 120)})`); }
 const plan = await planAccess({ describe, sharing });
-const xml = permissionSetXml(plan, { apiOnly: FULL });
+// Field Service objects also need the "Field Service Access" system permission, where the org has it.
+const psFields = new Set(((await describe('PermissionSet').catch(() => null))?.fields || []).map(f => f.name));
+const userPerms = ['FieldServiceAccess'].filter(p => psFields.has(`Permissions${p}`));
+const xml = permissionSetXml(plan, { apiOnly: FULL, userPerms });
 
 console.log(`1. Permission set "${PERMSET.label}" (${PERMSET.name})`);
 console.log(summarize(plan));
 for (const n of plan.notes) console.log(`  · ${n}`);
 if (plan.recordTypes?.length) console.log(`  · Record types: ${plan.recordTypes.join(', ')}`);
+console.log(`  · System permissions: ${[...(FULL ? ['API Enabled', 'API Only User'] : []), ...(userPerms.includes('FieldServiceAccess') ? ['Field Service Access'] : [])].join(', ') || 'none'}${psFields.size && !userPerms.length ? ' (this org has no "Field Service Access" permission)' : ''}`);
 if (plan.unresolved.length) console.log(`  · Not found in this org (left out): ${plan.unresolved.join(', ')}`);
 if (sharing) console.log(`  · Sharing: ${Object.entries(sharing).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
 
