@@ -27,8 +27,10 @@ export function pick(obj) {
 }
 export const locale = () => (current === 'es' ? 'es-US' : 'en-US');
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-export const fmtDate = (d, opts = { weekday: 'long', month: 'long', day: 'numeric' }) => cap(new Intl.DateTimeFormat(locale(), opts).format(new Date(d)));
-export const fmtTime = d => new Intl.DateTimeFormat(locale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(d));
+// Dates and times are Eastern (Southern Industries' time), the same as the texts, whatever the phone is set to.
+const TZ = 'America/New_York';
+export const fmtDate = (d, opts = { weekday: 'long', month: 'long', day: 'numeric' }) => cap(new Intl.DateTimeFormat(locale(), { timeZone: TZ, ...opts }).format(new Date(d)));
+export const fmtTime = d => new Intl.DateTimeFormat(locale(), { timeZone: TZ, hour: 'numeric', minute: '2-digit' }).format(new Date(d));
 export const fmtMoney = n => new Intl.NumberFormat(locale(), { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
 
 // Strings in a language other than the UI's (e.g. a PM composing the installer's message).

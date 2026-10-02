@@ -6,9 +6,12 @@ This playbook explains how Vista runs day to day and who does what. It's written
 - **PMs**, who handle their crews and decide on pay. See [For PMs](#for-pms).
 - **Crews**, who do the work and get paid. See [For crews](#for-crews-para-las-cuadrillas); that section is in English and Spanish.
 
-To practice without touching Salesforce, open the demo on the
-[walkthrough page](https://claude.ai/artifact/1p9mbThVcv2rNVm1XXzGJa) and sign in as **Lisa · Payroll**. The screens
-there are the real ones, running on sample jobs.
+To practice without touching Salesforce, use Vista's **demo mode**: tap **Try the demo** on the sign-in screen and
+pick **Lisa · Payroll**. The screens are the real ones, running on sample jobs; a green bar at the top says you're in
+the demo, and **Leave demo** goes back. Nothing in the demo reaches Salesforce or anyone's phone, and your own
+sign-in stays as it is. Admins also find links on **Health** to open the demo as an installer, a Spanish crew, a
+measure tech, a PM or payroll. Links work too: add `?demo=installer`, `?demo=es`, `?demo=measure`, `?demo=pm` or
+`?demo=admin` to the app's address.
 
 ---
 

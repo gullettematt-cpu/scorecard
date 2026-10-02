@@ -18,10 +18,15 @@ import { apiMode, api, session, SignInNeeded } from './api.js';
 const root = document.getElementById('app');
 const nav = document.getElementById('nav');
 const ctx = { crew: null, role: 'installer', pending: 0, switchCrew };
+// Demo mode on the live app (demo.js): sample jobs, no sign-in. A bar on every screen says so and leads back out.
+const liveDemo = !!globalThis.VISTA_DEMO;
+const demoBar = () => liveDemo ? `<div class="demo-bar"><span>${esc(t('demo.banner'))}</span><button type="button" data-leave-demo>${esc(t('demo.leave'))}</button></div>` : '';
+function leaveDemo() { localStorage.removeItem('vista.demoMode'); localStorage.removeItem('vista.crew'); location.replace('./'); }
+document.addEventListener('click', e => { if (e.target.closest('[data-leave-demo]')) leaveDemo(); });
 
 // Shared header. Screens pass their own body (greeting, job title...).
 export function header(ctx, body) {
-  return `<header class="hdr">
+  return `<header class="hdr">${demoBar()}
     <div class="hdr-row">
       <div class="brand">${icons.logo}<div><b>${esc(t('app.name'))}</b><small>${esc(t('app.tagline'))}</small></div></div>
       <div class="hdr-meta">
@@ -77,8 +82,9 @@ async function pickCrew() {
   root.innerHTML = `<div class="picker">
     <div class="hdr-row"><div class="brand" style="color:var(--ink)">${icons.logo}<div><b>${esc(t('app.name'))}</b><small style="color:var(--muted)">${esc(t('app.tagline'))}</small></div></div>
       <button class="act" id="pickLang" style="flex:none;min-height:40px;padding:0 12px" aria-label="${esc(t('lang.title'))}">🌐 ${esc(LANG_LABEL[lang()])}</button></div>
-    <h1>${esc(t('app.pickCrew'))}</h1><p>${esc(t('app.pickCrewHint'))}</p>
+    <h1>${esc(t('app.pickCrew'))}</h1><p>${esc(t(liveDemo ? 'demo.pickHint' : 'app.pickCrewHint'))}</p>
     ${crews.map(c => `<button class="card" data-crew="${esc(c.id)}"><h3>${esc(c.name)}</h3><div class="sub">${esc(c.branch)} · ${c.role === 'pm' ? esc(t('app.pmRole')) + ' · ' : c.role === 'measure' ? esc(t('app.measureRole')) + ' · ' : c.role === 'admin' ? esc(t('app.adminRole')) + ' · ' : ''}${esc(c.members.join(', '))} · ${esc(LANG_NAME[getPrefs(c.id).lang || c.lang])}</div></button>`).join('')}
+    ${liveDemo ? `<div class="stack" style="margin-top:16px"><button class="act" data-leave-demo>${esc(t('demo.leave'))}</button></div>` : ''}
   </div>`;
   nav.innerHTML = '';
   return new Promise(resolve => {
@@ -102,7 +108,8 @@ async function signIn() {
           : `<label>${esc(t('signin.code'))}<input name="v" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required style="width:100%;font-size:24px;letter-spacing:6px;padding:10px"></label>
              <button class="act primary">${esc(t('signin.verify'))}</button>
              <button type="button" class="act" id="again">${esc(t('signin.resend'))}</button>`}
-      </form></div>`;
+      </form>
+      <div class="stack" style="margin-top:16px"><a class="act" href="./?demo">${esc(t('signin.demo'))}</a><p class="hint" style="text-align:center">${esc(t('signin.demoHint'))}</p></div></div>`;
     nav.innerHTML = '';
   };
   return new Promise(resolve => {

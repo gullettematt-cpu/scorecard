@@ -550,5 +550,17 @@
   "admin.diagArea.aws": "AWS",
   "admin.diagArea.vi": "Claude (Vi)",
   "admin.diagArea.optin": "Text sign-ups",
-  "admin.diagArea.health": "Health check"
+  "admin.diagArea.health": "Health check",
+  "signin.demo": "Try the demo",
+  "signin.demoHint": "Sample jobs to look around. Nothing reaches Salesforce or anyone's phone.",
+  "demo.banner": "Demo · sample jobs",
+  "demo.leave": "Leave demo",
+  "demo.pickHint": "Demo with sample jobs. Pick who you want to be. Nothing here reaches Salesforce or anyone's phone.",
+  "admin.demo": "Demo mode",
+  "admin.demoExplain": "Show Vista on sample jobs. Your sign-in and the real data stay as they are; leave the demo from the bar at the top.",
+  "admin.demoAs.installer": "Demo as an installer (Dwayne)",
+  "admin.demoAs.es": "Demo as a Spanish crew (Luis)",
+  "admin.demoAs.measure": "Demo as a measure tech (Rafael)",
+  "admin.demoAs.pm": "Demo as a PM (Mike)",
+  "admin.demoAs.admin": "Demo as payroll (Lisa)"
 }

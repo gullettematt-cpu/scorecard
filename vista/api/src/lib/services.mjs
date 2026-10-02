@@ -56,7 +56,7 @@ export function createServices(deps) {
 
   const owners = new Set((config.adminPhones || []).map(normalizePhone).filter(Boolean));
   const canDemo = async phone => owners.has(phone) || (await people.byPhone(phone).catch(() => null))?.role === 'admin';
-  const demoText = createDemoText({ store, now: deps.now, send: (to, text) => twilio.send(to, text, { reply: true }),
+  const demoText = createDemoText({ store, now: deps.now, appUrl: config.appUrl, send: (to, text) => twilio.send(to, text, { reply: true }),
     askVi: vi ? args => vi.ask(args) : null });
 
   // One incoming text: run the conversation engine, perform what it decided, send the replies.

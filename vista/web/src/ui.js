@@ -21,7 +21,8 @@ export const mapsUrl = w => {
   const q = w.Latitude && w.Longitude ? `${w.Latitude},${w.Longitude}` : encodeURIComponent(`${w.Street}, ${w.City}, ${w.State} ${w.PostalCode}`);
   return `https://maps.apple.com/?daddr=${q}`; // Android opens Google Maps for this URL as well
 };
-export const sameDay = (a, b = new Date()) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate(); };
+const easternDay = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(d)); // YYYY-MM-DD
+export const sameDay = (a, b = new Date()) => easternDay(a) === easternDay(b); // Eastern days, like the texts
 let toastTimer;
 export function toast(msg) {
   document.querySelector('.toast')?.remove();

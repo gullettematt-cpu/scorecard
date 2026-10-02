@@ -550,5 +550,17 @@
   "admin.diagArea.aws": "AWS",
   "admin.diagArea.vi": "Claude (Vi)",
   "admin.diagArea.optin": "Inscripción a textos",
-  "admin.diagArea.health": "Prueba automática"
+  "admin.diagArea.health": "Prueba automática",
+  "signin.demo": "Probar la demostración",
+  "signin.demoHint": "Trabajos de ejemplo para explorar. Nada llega a Salesforce ni al teléfono de nadie.",
+  "demo.banner": "Demostración · trabajos de ejemplo",
+  "demo.leave": "Salir de la demostración",
+  "demo.pickHint": "Demostración con trabajos de ejemplo. Escoja quién quiere ser. Nada de aquí llega a Salesforce ni al teléfono de nadie.",
+  "admin.demo": "Modo de demostración",
+  "admin.demoExplain": "Muestre Vista con trabajos de ejemplo. Su sesión y los datos reales no cambian; salga de la demostración con la barra de arriba.",
+  "admin.demoAs.installer": "Demostración como instalador (Dwayne)",
+  "admin.demoAs.es": "Demostración como cuadrilla en español (Luis)",
+  "admin.demoAs.measure": "Demostración como técnico de medición (Rafael)",
+  "admin.demoAs.pm": "Demostración como PM (Mike)",
+  "admin.demoAs.admin": "Demostración como nómina (Lisa)"
 }

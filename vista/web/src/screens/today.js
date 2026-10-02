@@ -5,7 +5,7 @@ import { drawsFor, drawStatus, tradeKey, visibleFor, visit, pendingReview, onVis
 import { esc, icons, visitTone, drawTone, mapsUrl, sameDay } from '../ui.js';
 import { header } from '../app.js';
 
-function greetingKey() { const h = new Date().getHours(); return h < 12 ? 'today.greeting.morning' : h < 17 ? 'today.greeting.afternoon' : 'today.greeting.evening'; }
+function greetingKey() { const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' }).format(new Date())); return h < 12 ? 'today.greeting.morning' : h < 17 ? 'today.greeting.afternoon' : 'today.greeting.evening'; }
 
 function card(w, draws, ctx) {
   const ds = drawsFor(draws, w.Id);
