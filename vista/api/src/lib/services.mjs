@@ -8,6 +8,8 @@ import { SOQL } from './soql.mjs';
 import { checkSalesforce } from './sfcheck.mjs';
 import { createDiagnose, explainLogin } from './diagnose.mjs';
 import { createOptIns, gatedTwilio, keywordOf, OPT_IN_PROMPT } from './optin.mjs';
+import { createDemoText, demoCommand } from './demotext.mjs';
+import { normalizePhone } from './auth.mjs';
 
 const fill = (lang, key, vars = {}) => {
   const one = l => Object.entries(vars).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), strings[l]?.[key] ?? strings.en[key] ?? key);
@@ -52,6 +54,11 @@ export function createServices(deps) {
     return results;
   }
 
+  const owners = new Set((config.adminPhones || []).map(normalizePhone).filter(Boolean));
+  const canDemo = async phone => owners.has(phone) || (await people.byPhone(phone).catch(() => null))?.role === 'admin';
+  const demoText = createDemoText({ store, now: deps.now, send: (to, text) => twilio.send(to, text, { reply: true }),
+    askVi: vi ? args => vi.ask(args) : null });
+
   // One incoming text: run the conversation engine, perform what it decided, send the replies.
   async function handleText({ from, body = '', media = [], messageId = null, optOutType = null }) {
     if (messageId && !(await store.putIfAbsent({ pk: `SMSMSG#${messageId}`, sk: 'SEEN', ttl: Math.floor(Date.now() / 1000) + 86400 }))) return { duplicate: true };
@@ -65,6 +72,12 @@ export function createServices(deps) {
       // Not opted in: at most one reply a day, saying how to opt in. Nothing else happens.
       if (await store.putIfAbsent({ pk: `OPTINPROMPT#${from}`, sk: new Date().toISOString().slice(0, 10), ttl: Math.floor(Date.now() / 1000) + 2 * 86400 })) await deps.twilio.send(from, OPT_IN_PROMPT);
       return { notOptedIn: true };
+    }
+    // The demo text line (lib/demotext.mjs): program owners and admins can play a sample person on sample jobs.
+    const demoCmd = demoCommand(body);
+    if ((demoCmd || await demoText.active(from)) && await canDemo(from)) {
+      const r = await demoText.handle({ from, body, media, cmd: demoCmd });
+      if (r) return r;
     }
     const person = await people.byPhone(from);
     const snap = person ? await snapshotFor(person) : { jobs: [], draws: [], cases: [], people: [], translations: { pairs: [] } };

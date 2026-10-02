@@ -14,7 +14,7 @@
 // See docs/sms.md.
 import {
   visibleFor, visit, drawsFor, drawStatus, drawAmount, remaining, contractAmount, reviewLines, pendingReview,
-  tradeKey, WOLI_DONE, visitKind, isDraw, drawEligible, manifestOf, MANIFEST_FIELD, MANIFEST_MARK, pmOf, onVista, assignedTo
+  tradeKey, WOLI_DONE, visitKind, isDraw, drawEligible, manifestOf, MANIFEST_FIELD, MANIFEST_MARK, pmOf, onVista, assignedTo, TIME_ZONE, easternDay
 } from '../data.js';
 
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -64,9 +64,10 @@ export function createEngine({ store, strings, links = {}, askVi = null, tr = nu
     return { text: lang === 'bi' ? `${r.original} / ${r.text}` : r.text, translated: true };
   };
   const money = (lang, n) => new Intl.NumberFormat(lang === 'es' ? 'es-US' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
-  const time = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-  const day = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { weekday: 'short', day: 'numeric' }).format(new Date(iso));
-  const sameDay = iso => new Date(iso).toDateString() === now().toDateString();
+  // Times and days are Eastern wherever this runs (the phone, or the API in UTC).
+  const time = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  const day = (lang, iso) => new Intl.DateTimeFormat(lang === 'es' ? 'es-US' : 'en-US', { timeZone: TIME_ZONE, weekday: 'short', day: 'numeric' }).format(new Date(iso));
+  const sameDay = iso => easternDay(iso) === easternDay(now());
   const pick = (lang, o) => (lang === 'bi' ? both(o?.en ?? '', o?.es ?? '') : o?.[lang] ?? o?.en ?? '');
 
   const personByPhone = p => store.people.find(x => x.lead?.phone === p);

@@ -55,6 +55,22 @@ Jobs can be referenced by list number or by the last digits of the WO number.
 | `START` / `UNSTOP` | Sign up for Vista texts (the only opt-in words; YES is not one). Twilio confirms. |
 | `STOP` | Stop all Vista texts until you text START again. The app keeps working. |
 
+## Demo text line
+
+Program owners (`ADMIN_PHONES`) and program admins can show people what the text line is like from their own phone,
+without touching Salesforce (`api/src/lib/demotext.mjs`):
+
+| Text | What happens |
+| --- | --- |
+| `DEMO` | Your phone becomes Dwayne Tucker (Crew 12) on the demo app's sample jobs |
+| `DEMO PM` / `DEMO ES` / `DEMO MEASURE` | Become Mike the PM, Luis (Spanish crew) or Rafael (measure tech) |
+| `DEMO RESET` | Start the sample jobs over |
+| `DEMO OFF` | Back to the real line (a demo also ends 12 hours after the last text) |
+
+Everything else works like the real line (TODAY, START 1, PAY 1, REVIEW 1, FIX 1 2, questions for Vi). Salesforce
+actions are dropped, and a text the engine would send someone else (the crew after a send-back, the PM after a
+submit) comes back to your phone, labelled with who would get it. Crews and PMs who text DEMO get the normal line.
+
 ## Who gets texts (opt-in)
 
 Vista texts only phones that have texted **START** (or UNSTOP) to the Vista number, **(706) 955-2075**. Being in

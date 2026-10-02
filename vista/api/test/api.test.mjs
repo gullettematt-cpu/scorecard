@@ -855,3 +855,50 @@ test('permission set: adds Field Service Access when asked, sorted with the API 
   assert.deepEqual(names, ['ApiEnabled', 'ApiUserOnly', 'FieldServiceAccess']);
   assert.doesNotMatch(permissionSetXml(plan), /userPermissions/);
 });
+
+test('demo text line: an owner plays a sample crew or PM on sample jobs; nothing reaches Salesforce; others are refused', async () => {
+  const deps = await testDeps(), h = createHandler(async () => deps);
+  let n = 0;
+  const text = (from, body) => {
+    const form = { From: from, Body: body, MessageSid: `SMD${++n}`, NumMedia: '0' };
+    return call(h, 'POST', '/sms/inbound', { form, headers: { 'x-twilio-signature': twilioSignature('twilio-token', 'https://api.test/sms/inbound', form) } });
+  };
+  const owner = '+17065550001', last = () => deps.twilio.sent.filter(m => m.to === owner).at(-1).body;
+  await text(owner, 'START');
+  const writes = () => deps.sf.log.creates.length + deps.sf.log.updates.length;
+  const before = writes();
+  await text(owner, 'demo');
+  assert.match(last(), /you're now Dwayne Tucker/);
+  await text(owner, 'today');
+  assert.match(last(), /Patricia Simmons/);
+  assert.match(last(), /8:00\s?AM/, 'sample jobs fall on Eastern hours even though the API runs in UTC');
+  await text(owner, 'start 1');
+  await text(owner, 'pay 1');
+  assert.equal(writes(), before, 'demo never writes to Salesforce');
+  await text(owner, 'demo pm');
+  assert.match(last(), /you're now Mike/);
+  await text(owner, 'today');
+  assert.match(last(), /Gerald & Tina Whitfield|Yolanda Pierce/, 'the PM sees pay waiting for review');
+  await text(owner, 'demo es');
+  await text(owner, 'hoy');
+  assert.match(last(), /Tus trabajos/);
+  // Texts meant for someone else come back to the demo phone, labelled; nobody else gets a text.
+  const others = deps.twilio.sent.filter(m => m.to !== owner).length;
+  await text(owner, 'demo off');
+  assert.match(last(), /demo ended/);
+  await text(owner, 'today');
+  assert.doesNotMatch(last(), /Patricia Simmons/, 'back on the real line');
+  assert.equal(deps.twilio.sent.filter(m => m.to !== owner).length, others);
+  // A crew member texting DEMO gets the normal line, not a demo.
+  await text(PEOPLE.tucker.phone, 'demo');
+  assert.doesNotMatch(deps.twilio.sent.filter(m => m.to === PEOPLE.tucker.phone).at(-1)?.body || '', /you're now/);
+});
+
+test('text engine shows Eastern times wherever it runs', async () => {
+  const { createEngine, strings } = await import('../src/lib/shared.mjs');
+  const { demoWorld } = await import('../src/lib/demotext.mjs');
+  const w = demoWorld('crew-12', '+15555550000', new Date());
+  const e = createEngine({ store: { ...w, rollout: { defaultMode: 'on' }, drawRules: {}, checklists: {} }, strings });
+  const { replies } = await e.handle('+15555550000', 'today');
+  assert.match(replies[0].text, /8:00\s?AM/);
+});
