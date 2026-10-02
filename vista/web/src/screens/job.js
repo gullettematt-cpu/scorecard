@@ -49,7 +49,7 @@ export async function renderJob(root, ctx, id) {
       <div class="jobhead">
         <h1>${ft(w.Subject)}</h1>
         <div class="sub">WO ${esc(w.WorkOrderNumber)}${w.Job_Number__r ? ` · ${esc(w.Job_Number__r.Name)}` : ''} · ${esc(fmtDate(w.StartDate, { weekday: 'short', month: 'short', day: 'numeric' }))} ${esc(fmtTime(w.StartDate))}–${esc(fmtTime(w.EndDate))}</div>
-        <div class="chips"><span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('sa.' + sa.Status))}</span>${w.RecordType?.Name === 'Service' ? `<span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('wo.service'))}</span>` : ''}<span class="chip" style="background:rgba(255,255,255,.14);color:#fff">${esc(t('trade.' + trade))}</span></div>
+        <div class="chips"><span class="chip on-hdr">${esc(t('sa.' + sa.Status))}</span>${w.RecordType?.Name === 'Service' ? `<span class="chip on-hdr">${esc(t('wo.service'))}</span>` : ''}<span class="chip on-hdr">${esc(t('trade.' + trade))}</span></div>
       </div>`)}
 
     <section class="sec">
