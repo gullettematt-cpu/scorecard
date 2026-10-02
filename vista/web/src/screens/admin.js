@@ -70,7 +70,7 @@ const demo = {
         i('Vista number in the service', 'ok', '+17069552075'), i('Texting campaign (A2P 10DLC)', 'ok', 'Campaign CM… is VERIFIED.')] },
       { area: 'aws', items: [i('Secrets', 'ok', 'All secrets load from Parameter Store.'), i('Photo storage', 'ok', 'Vista can store and read photos.')] },
       { area: 'vi', items: [i('Claude (Vi)', 'ok', 'Vi answers (claude-sonnet-5).')] },
-      { area: 'optin', items: [i('Alert phone +17065550100', 'warn', "hasn't texted START: Vista won't text this phone (alerts, notices).", 'From +17065550100, text START to the Vista number +17069552075.'), i('Phones signed up for texts', 'ok', '6 texted START, 0 texted STOP.')] },
+      { area: 'optin', items: [i('Alert phone +17065550100', 'warn', "hasn't texted START: Vista won't text this phone (alerts, notices).", 'From +17065550100, text START to the Vista number +17069552075.'), i('Phones signed up for texts', 'ok', '5 texted START, 0 texted STOP.')] },
       { area: 'health', items: [i('2-hour health check', 'ok', 'Last good check today.')] }];
     const all = areas.flatMap(a => a.items), report = { at: new Date().toISOString(), ok: !all.some(x => x.status === 'fail'), failed: all.filter(x => x.status === 'fail').length, warnings: all.filter(x => x.status === 'warn').length, areas };
     await db.meta('demoDiagnosis', report); return report;
@@ -285,7 +285,10 @@ async function renderHealth(root, ctx) {
       <div class="hint">${esc(t('admin.langHint'))}</div></div></section>
     <section class="sec" style="padding-bottom:28px"><h2>${esc(t('admin.whoToCallTitle'))}</h2>
       <div class="card"><ul class="blist">${['pay', 'invoice', 'sf', 'aws', 'crew'].map(k => `<li class="brow"><div><b>${esc(t('admin.call.' + k))}</b><div class="sub">${esc(t('admin.call.' + k + '.who'))}</div></div></li>`).join('')}</ul></div>
-      <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button></div></section>`;
+      <div class="stack" style="margin-top:24px"><button class="act" id="switchCrew">${esc(t(apiMode ? 'app.signOut' : 'app.switchCrew'))}</button></div></section>
+    ${apiMode ? `<section class="sec" style="padding-bottom:28px"><h2>${esc(t('admin.demo'))}</h2>
+      <div class="card"><p class="hint" style="margin-top:0">${esc(t('admin.demoExplain'))}</p>
+        <div class="stack">${['installer', 'es', 'measure', 'pm', 'admin'].map(r => `<a class="act" href="./?demo=${r}">${esc(t('admin.demoAs.' + r))}</a>`).join('')}</div></div></section>` : ''}`;
   root.querySelector('#switchCrew').onclick = ctx.switchCrew;
   // Diagnose: show the last report straight away; owners can apply the one-click fixes.
   const canFix = apiMode ? !!ctx.crew?.owner : true;
@@ -326,7 +329,7 @@ function diagReport(r, canFix) {
   const area = a => {
     const bad = a.items.filter(x => x.status !== 'ok'), good = a.items.filter(x => x.status === 'ok');
     const row = x => `<li class="brow sf-${x.status}"><div><b>${mark[x.status]} ${esc(x.name)}</b>${x.detail ? `<div class="sub">${esc(x.detail)}</div>` : ''}
-      ${x.status !== 'ok' && x.fix ? `<div class="fixline"><b>${esc(t('admin.fixHow'))}</b> ${esc(x.fix)}</div>` : ''}
+      ${x.status !== 'ok' && x.fix ? `<div class="fixline"><b>${esc(t('admin.fixHow'))}</b> ${esc(x.fix.replace(/^Fix it:\s*/, ''))}</div>` : ''}
       ${x.status !== 'ok' && x.action ? (canFix ? `<button class="act small" data-fix="${esc(x.action)}" data-what="${esc(x.name)}">${esc(t('admin.fixIt'))}</button>` : `<div class="hint">${esc(t('admin.fixOwnerOnly'))}</div>`) : ''}</div></li>`;
     return `<h3 class="diag-area">${bad.some(x => x.status === 'fail') ? '✗' : bad.length ? '!' : '✓'} ${esc(t('admin.diagArea.' + a.area))}</h3>
       ${bad.length ? `<ul class="blist">${bad.map(row).join('')}</ul>` : ''}

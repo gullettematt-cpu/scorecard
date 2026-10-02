@@ -49,7 +49,7 @@ const intro = me => [
 ].join('\n');
 const MENU = 'Vista demo: DEMO (installer), DEMO PM, DEMO ES (Spanish crew), DEMO MEASURE, DEMO RESET, DEMO OFF.';
 
-export function createDemoText({ store, send, askVi = null, now = () => new Date() }) {
+export function createDemoText({ store, send, askVi = null, appUrl = '', now = () => new Date() }) {
   const key = phone => ({ pk: `DEMOTEXT#${phone}`, sk: 'STATE' });
   const ttl = () => Math.floor(now().getTime() / 1000) + HOURS * 3600;
   async function load(phone) {
@@ -83,7 +83,7 @@ export function createDemoText({ store, send, askVi = null, now = () => new Date
       const engine = createEngine({
         store: { people: state.people, jobs: state.jobs, draws: state.draws, rollout: demoRollout, drawRules, checklists },
         strings, tr: makeTranslator(demoTranslations), now,
-        links: { photos: () => '(link to the photos in the app)' },
+        links: { photos: () => `${appUrl || ''}/?demo=pm` }, // the photos are in the app's demo mode, as Mike
         askVi: askVi ? ({ lang, viLanguage, job, question }) => askVi({ lang, viLanguage, job, question, checklist: job ? checklists[domain.tradeKey(job)] : null }) : null
       });
       if (state.session) engine.sessions.set(me.id, state.session);

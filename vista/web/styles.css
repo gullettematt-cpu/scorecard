@@ -308,3 +308,7 @@ details summary { cursor: pointer; margin: 8px 0; }
 .diag-area { font-size: 15px; margin: 14px 0 4px; }
 .fixline { margin-top: 6px; font-size: 14px; overflow-wrap: anywhere; }
 .act.small { padding: 8px 14px; font-size: 14px; margin-top: 8px; width: auto; }
+
+/* Demo mode on the live app (demo.js): a bar on every screen, with the way back out. */
+.demo-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 6px 6px 6px 12px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 13px; }
+.demo-bar button { font: inherit; border: 0; border-radius: 8px; padding: 6px 10px; min-height: 36px; cursor: pointer; background: rgba(20, 36, 10, .12); color: inherit; text-decoration: underline; }

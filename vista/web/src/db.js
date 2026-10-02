@@ -1,5 +1,6 @@
 // IndexedDB wrapper. Offline-first: the phone always reads from here.
-const NAME = 'vista', VER = 2;
+// Demo mode on the live app (demo.js) keeps its sample jobs in a separate database, so live data is never touched.
+const NAME = globalThis.VISTA_DEMO ? 'vista-demo' : 'vista', VER = 2;
 // photos: job photos taken in the app, kept on the phone until uploaded (Id = storage key).
 const STORES = ['jobs', 'draws', 'cases', 'checklist', 'outbox', 'meta', 'photos'];
 let dbp;
