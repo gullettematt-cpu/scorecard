@@ -44,11 +44,16 @@ try {
   sharing = Object.fromEntries(rows.map(r => [r.QualifiedApiName, r.InternalSharingModel]));
 } catch (err) { console.log(`(Couldn't read sharing settings, so View All goes on every object: ${String(err.message).slice(0, 120)})`); }
 const plan = await planAccess({ describe, sharing });
-const xml = permissionSetXml(plan, { apiOnly: FULL });
+// Field Service objects also need the "Field Service Access" system permission, where the org has it.
+const psFields = new Set(((await describe('PermissionSet').catch(() => null))?.fields || []).map(f => f.name));
+const userPerms = ['FieldServiceAccess'].filter(p => psFields.has(`Permissions${p}`));
+const xml = permissionSetXml(plan, { apiOnly: FULL, userPerms });
 
 console.log(`1. Permission set "${PERMSET.label}" (${PERMSET.name})`);
 console.log(summarize(plan));
 for (const n of plan.notes) console.log(`  · ${n}`);
+if (plan.recordTypes?.length) console.log(`  · Record types: ${plan.recordTypes.join(', ')}`);
+console.log(`  · System permissions: ${[...(FULL ? ['API Enabled', 'API Only User'] : []), ...(userPerms.includes('FieldServiceAccess') ? ['Field Service Access'] : [])].join(', ') || 'none'}${psFields.size && !userPerms.length ? ' (this org has no "Field Service Access" permission)' : ''}`);
 if (plan.unresolved.length) console.log(`  · Not found in this org (left out): ${plan.unresolved.join(', ')}`);
 if (sharing) console.log(`  · Sharing: ${Object.entries(sharing).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
 
@@ -72,10 +77,19 @@ let user = await one(`SELECT Id, IsActive, Profile.Name, Profile.UserLicense.Nam
 // A user can't move to a different user license, so one on the wrong license is renamed and deactivated (kept, not
 // deleted: Salesforce keeps its history) and a new user takes over the same username. GitHub needs no change.
 const replace = user && user.Profile?.UserLicense?.Name !== MODE.license;
-const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ''); // to the minute, so a second attempt can't collide
 const retiredName = username.replace('@', `.retired${stamp}@`);
 
+// What the user holds today (so a half-finished manual setup shows plainly, and gets finished).
+const held = user ? {
+  psls: (await sf.query(`SELECT PermissionSetLicense.MasterLabel FROM PermissionSetLicenseAssign WHERE AssigneeId = ${lit(user.Id)}`)).map(r => r.PermissionSetLicense?.MasterLabel),
+  sets: (await sf.query(`SELECT PermissionSet.Name FROM PermissionSetAssignment WHERE AssigneeId = ${lit(user.Id)} AND PermissionSet.IsOwnedByProfile = false`)).map(r => r.PermissionSet?.Name)
+} : null;
+const others = await sf.query(`SELECT Username, IsActive, Profile.UserLicense.Name FROM User WHERE (Username LIKE 'vista%' OR LastName = 'Integration') AND Username != ${lit(username)} AND FirstName = 'Vista'`);
 console.log(`2. User ${username}`);
+if (user) console.log(`  · Today: ${user.IsActive ? 'active' : 'INACTIVE'} · license ${user.Profile?.UserLicense?.Name} · profile ${user.Profile?.Name} · licenses: ${held.psls.join(', ') || 'none'} · permission sets: ${held.sets.join(', ') || 'none'}`);
+else console.log('  · Today: no user has this username');
+for (const o of others) console.log(`  · Also found: ${o.Username} (${o.IsActive ? 'active' : 'inactive'}, ${o.Profile?.UserLicense?.Name}) — left as is`);
 console.log(`  · License "${MODE.license}": ${lic ? `${lic.UsedLicenses} of ${lic.TotalLicenses} used` : 'NOT FOUND in this org'}`);
 console.log(`  · Profile: ${profile ? profile.Name : `NOT FOUND (${MODE.profiles.join(' or ')})`}${FULL ? ' + "API Only User" in the permission set, so nobody can log in to Salesforce as it' : ''}`);
 console.log(`  · ${replace ? `Exists on the "${user.Profile?.UserLicense?.Name}" license: it will be renamed ${retiredName} and deactivated, and a new user created on "${MODE.license}" with the same username`
@@ -108,6 +122,7 @@ if (replace) await step(`Old user renamed ${retiredName} and deactivated`, async
   await sf.update('User', user.Id, { Username: retiredName, IsActive: false }); user = null;
 });
 await step('User', async () => {
+  if (user && !user.IsActive) { await sf.update('User', user.Id, { IsActive: true }); return '(reactivated)'; }
   if (user) return '(already there)';
   const id = await sf.create('User', { Username: username, FirstName: 'Vista', LastName: 'Integration', Alias: 'vista', Email: me?.Email,
     ProfileId: profile.Id, TimeZoneSidKey: 'America/New_York', LocaleSidKey: 'en_US', EmailEncodingKey: 'UTF-8', LanguageLocaleKey: 'en_US' });
@@ -121,6 +136,12 @@ await step(`Permission set ${PERMSET.label}`, async () => {
   if (await one(`SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = ${lit(user.Id)} AND PermissionSetId = ${lit(ps.Id)}`)) return '(already assigned)';
   await sf.create('PermissionSetAssignment', { AssigneeId: user.Id, PermissionSetId: ps.Id }); return 'assigned';
 });
+// Check what Salesforce actually stored for the Field Service objects (it can drop permissions it won't allow).
+const fsl = await sf.query(`SELECT SobjectType, PermissionsRead, PermissionsEdit FROM ObjectPermissions WHERE Parent.Name = ${lit(PERMSET.name)} AND SobjectType IN ('ServiceAppointment','AssignedResource','WorkType','WorkOrder')`).catch(() => []);
+const missing = ['ServiceAppointment', 'WorkType'].filter(o => !fsl.some(r => r.SobjectType === o && r.PermissionsRead));
+console.log(missing.length
+  ? `\n! Salesforce did not keep Read on ${missing.join(', ')} in the permission set. Paste this to Claude.`
+  : `\n✓ Field Service access stored: ${fsl.map(r => `${r.SobjectType} ${r.PermissionsEdit ? 'read/edit' : 'read'}`).join(', ')}`);
 if (replace || FULL) console.log(`
 Done. The Vista app's pre-authorization follows the "${PERMSET.label}" permission set, so it covers the new user
 with no Setup change. Wait a few minutes, then in Vista: Health → Run the health check now, then Check Salesforce.`);

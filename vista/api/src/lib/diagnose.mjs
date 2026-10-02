@@ -18,6 +18,9 @@ export const LOGIN_CAUSES = [
   { re: /audience|invalid.?aud/i,
     cause: 'The login address and the Salesforce login host disagree.',
     fix: 'Set the GitHub variable SF_LOGIN_URL to https://login.salesforce.com (or your My Domain address), then re-run the deploy.' },
+  { re: /authentication failure/i,
+    cause: "Salesforce couldn't log in the user named in SF_USERNAME: it doesn't exist under that username, is inactive, isn't API-enabled, or doesn't have the Vista Integration permission set (which is what pre-authorizes it for the Vista app).",
+    fix: 'Setup → Users: the user whose username equals SF_USERNAME (GitHub → vista-prod) must be Active, have the Vista Integration permission set and, on a Salesforce license, the Field Service Standard permission set license. If the user has a different username, change SF_USERNAME and re-run the deploy.' },
   { re: /inactive|user.*(frozen|not active|deactivated)|account.*locked/i,
     cause: 'The Vista integration user is inactive, frozen or locked.',
     fix: 'Setup → Users → Vista Integration: make sure Active is ticked and the user isn\'t frozen.' },
@@ -43,6 +46,7 @@ export function fixForCheck(row) {
   if (/Field Service permission set license/.test(d)) return `${MAC} bash salesforce/integration-user.sh --prod --license=salesforce, then the same with --go.`;
   if (/picklist value "Vista"/.test(d)) return `${MAC} bash salesforce/add-vista-type.sh --prod --go`;
   if (/picklist value/.test(d)) return 'Add the missing picklist value to that field in Setup → Object Manager, or ask Matt.';
+  if (/couldn't read flows|couldn't read list views/.test(d)) return 'Nothing to fix if both Vista flows show Active in Setup → Flows: Vista\'s user can\'t read Setup lists, so it can\'t check them itself.';
   if (/Flow .*deployed but not active/.test(d)) return 'Setup → Flows → open the flow → Activate.';
   if (/Flow .*not deployed|List view .*not deployed/.test(d)) return `${MAC} bash salesforce/deploy.sh --prod --go`;
   if (/record type/.test(d)) return 'Give the Vista Integration permission set the Service record type on Case (Setup → Permission Sets → Vista Integration → Object Settings → Cases).';
@@ -72,7 +76,7 @@ export function createDiagnose({ deps, optIns, rerunHealth }) {
     const r = await safe(() => checkSalesforce({ sf }), err => ({ ok: false, results: [{ section: 'login', name: 'Check', status: 'fail', detail: msg(err) }] }));
     const bad = r.results.filter(x => x.status !== 'ok');
     // One license problem shows up on every query: say it once.
-    const license = bad.filter(x => /Field Service permission set license/.test(x.detail));
+    const license = bad.filter(x => /Field Service permission set license/.test(x.detail) || (/^(ServiceAppointment|AssignedResource|WorkType)$/.test(x.name) && /can't describe/.test(x.detail)));
     const rest = bad.filter(x => !license.includes(x));
     if (license.length) items.push(item(`Field Service access (${license.length} checks)`, 'fail',
       "The integration user can't see Service Appointments, Assigned Resources or Work Types, so nobody would see their visits.", fixForCheck(license[0])));
@@ -80,6 +84,24 @@ export function createDiagnose({ deps, optIns, rerunHealth }) {
     const passed = r.results.filter(x => x.status === 'ok').length;
     items.push(item('Queries and fields', bad.length ? (license.length || rest.some(x => x.status === 'fail') ? 'fail' : 'warn') : 'ok', `${passed} of ${r.results.length} checks passed.`));
     return { area: 'salesforce', items };
+  }
+
+  async function numbersAndCampaign() {
+    const items = [];
+    const from = twilio.info.from;
+    const nums = await safe(() => twilio.serviceNumbers(), err => err);
+    if (nums instanceof Error) items.push(item('Vista number in the service', 'warn', msg(nums), 'Check in Twilio → Messaging → Services → Vista → Sender Pool.'));
+    else if (from && !nums.some(n => n.phone_number === from)) items.push(item('Vista number in the service', 'fail', `${from} isn't in the Messaging Service's sender pool.`, `Fix it: Vista adds ${from} to the sender pool.`, 'twilio.addNumber'));
+    else items.push(item('Vista number in the service', 'ok', nums.map(n => n.phone_number).join(', ') || 'Sender pool has numbers.'));
+    const camps = await safe(() => twilio.campaigns(), () => null);
+    if (camps) {
+      const c = camps[0];
+      const st = String(c?.campaign_status || '').toUpperCase();
+      items.push(!c ? item('Texting campaign (A2P 10DLC)', 'fail', 'No campaign is attached to the Messaging Service, so carriers will block texts.', 'Donald: attach the approved Vista campaign to the Messaging Service in Twilio → Trust Hub.')
+        : /VERIFIED|APPROVED|ACTIVE/.test(st) ? item('Texting campaign (A2P 10DLC)', 'ok', `Campaign ${c.campaign_id || c.sid || ''} is ${c.campaign_status}.`)
+        : item('Texting campaign (A2P 10DLC)', 'warn', `Campaign status: ${c.campaign_status || 'unknown'}.`, 'Donald: check the campaign in Twilio → Trust Hub.'));
+    }
+    return items;
   }
 
   async function texting() {
@@ -97,25 +119,18 @@ export function createDiagnose({ deps, optIns, rerunHealth }) {
     }
     items.push(item('Messaging Service', 'ok', `"${svc.friendly_name || svc.sid}" is reachable.`));
     const want = inboundUrl();
+    if (!want) {
+      items.push(item('Incoming texts reach Vista', svc.inbound_request_url && /\/sms\/inbound$/.test(svc.inbound_request_url) ? 'ok' : 'warn',
+        `Twilio sends incoming texts to ${svc.inbound_request_url || 'nowhere'}.`, svc.inbound_request_url ? '' : 'Run the diagnosis from the Vista app so it knows its own address.'));
+      return { area: 'twilio', items: [...items, ...(await numbersAndCampaign())] };
+    }
     const hookOk = want && svc.inbound_request_url === want && String(svc.inbound_method || 'POST').toUpperCase() === 'POST' && !svc.use_inbound_webhook_on_number;
     items.push(hookOk
       ? item('Incoming texts reach Vista', 'ok', want)
       : item('Incoming texts reach Vista', 'fail',
         svc.use_inbound_webhook_on_number ? 'The service lets each number use its own webhook, so texts may skip Vista.' : `The service sends incoming texts to ${svc.inbound_request_url || 'nowhere'}${svc.inbound_request_url ? ` (${svc.inbound_method})` : ''}, not ${want}.`,
         'Fix it: Vista points the Messaging Service\'s incoming-text webhook at itself (POST).', want ? 'twilio.webhook' : null));
-    const from = twilio.info.from;
-    const nums = await safe(() => twilio.serviceNumbers(), err => err);
-    if (nums instanceof Error) items.push(item('Vista number in the service', 'warn', msg(nums), 'Check in Twilio → Messaging → Services → Vista → Sender Pool.'));
-    else if (from && !nums.some(n => n.phone_number === from)) items.push(item('Vista number in the service', 'fail', `${from} isn't in the Messaging Service's sender pool.`, `Fix it: Vista adds ${from} to the sender pool.`, 'twilio.addNumber'));
-    else items.push(item('Vista number in the service', 'ok', nums.map(n => n.phone_number).join(', ') || 'Sender pool has numbers.'));
-    const camps = await safe(() => twilio.campaigns(), () => null);
-    if (camps) {
-      const c = camps[0];
-      const st = String(c?.campaign_status || '').toUpperCase();
-      items.push(!c ? item('Texting campaign (A2P 10DLC)', 'fail', 'No campaign is attached to the Messaging Service, so carriers will block texts.', 'Donald: attach the approved Vista campaign to the Messaging Service in Twilio → Trust Hub.')
-        : /VERIFIED|APPROVED|ACTIVE/.test(st) ? item('Texting campaign (A2P 10DLC)', 'ok', `Campaign ${c.campaign_id || c.sid || ''} is ${c.campaign_status}.`)
-        : item('Texting campaign (A2P 10DLC)', 'warn', `Campaign status: ${c.campaign_status || 'unknown'}.`, 'Donald: check the campaign in Twilio → Trust Hub.'));
-    }
+    items.push(...(await numbersAndCampaign()));
     return { area: 'twilio', items };
   }
 

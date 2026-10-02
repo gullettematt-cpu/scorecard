@@ -714,9 +714,15 @@ test('permission set: read what Vista reads, edit what it writes, nothing more',
   assert.deepEqual(op('Opportunity'), { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, modifyAllRecords: false, viewAllRecords: true });
   assert.ok(![...plan.fieldPerms.keys()].some(k => k.startsWith('Opportunity.')));
   assert.equal((await planAccess({ describe, sharing: { ...sharing, Opportunity: 'ReadWrite' } })).objectPerms.get('Opportunity').viewAllRecords, false);
+  // A lookup Vista reads points to a custom object: Read on that object, so the field isn't hidden.
+  assert.deepEqual(op('Paycheck_Period__c'), { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, viewAllRecords: false, modifyAllRecords: false });
+  assert.ok(fp('SA_Expense__c.Paycheck_Period__c'));
   assert.deepEqual(plan.unresolved, []);
   const xml = permissionSetXml(plan);
   assert.match(xml, /<field>SA_Expense__c\.Approver__c<\/field>/);
+  assert.deepEqual(plan.recordTypes, ['Case.Service']);
+  assert.match(xml, /<recordTypeVisibilities>\s*<recordType>Case\.Service<\/recordType>\s*<visible>true<\/visible>/);
+  assert.ok(xml.indexOf('<objectPermissions>') < xml.indexOf('<recordTypeVisibilities>'), 'metadata order');
   assert.ok(xml.indexOf('<fieldPermissions>') < xml.indexOf('<label>') && xml.indexOf('<label>') < xml.indexOf('<objectPermissions>'), 'metadata element order');
 });
 
@@ -759,6 +765,7 @@ test('diagnose: login errors and check failures come with the cause and the fix'
   assert.match(explainLogin('Salesforce login failed (400): {"error":"invalid_request","error_description":"refresh_token scope is required and the connected app should be installed and preauthorized."}').fix, /Admin approved users are pre-authorized/);
   assert.match(explainLogin("invalid_grant: user hasn't approved this consumer").cause, /pre-approved/);
   assert.match(explainLogin('invalid_client_id: client identifier invalid').fix, /SF_CLIENT_ID/);
+  assert.match(explainLogin('Salesforce login failed (400): {"error":"invalid_grant","error_description":"authentication failure"}').fix, /SF_USERNAME/);
   assert.equal(explainLogin('something else entirely'), null);
   assert.match(fixForCheck({ section: 'reads', name: 'x', detail: "the integration user can't see ServiceAppointment (needs a Field Service permission set license)" }), /--license=salesforce/);
   assert.match(fixForCheck({ section: 'writes', name: 'SA_Expense__c', detail: 'Type__c has no picklist value "Vista"' }), /add-vista-type/);
@@ -829,4 +836,22 @@ test('Twilio client: Diagnose reads the Messaging Service and repairs only its o
   assert.match(posts[0].body, /InboundRequestUrl=https%3A%2F%2Fapi.test%2Fsms%2Finbound&InboundMethod=POST&UseInboundWebhookOnNumber=false/);
   assert.equal(posts[1].url, 'https://messaging.twilio.com/v1/Services/MG1/PhoneNumbers'); assert.equal(posts[1].body, 'PhoneNumberSid=PN1');
   assert.ok(reqs.some(r => r.url === 'https://api.twilio.com/2010-04-01/Accounts/AC1/IncomingPhoneNumbers.json?PhoneNumber=%2B17069552075'));
+});
+
+test('diagnose: knows its own address when PUBLIC_API_URL is not set (no false webhook alarm)', async () => {
+  const deps = await testDeps(); deps.config.publicApiUrl = null; deps.sf.describe = async o => fakeDescribes()[o];
+  deps.twilio.svc.inbound_request_url = 'https://abc123.execute-api.us-east-1.amazonaws.com/sms/inbound';
+  const h = createHandler(async () => deps), owner = signToken({ sub: 'owner', phone: '+17065550001' }, deps.secrets.jwt);
+  const r = await h({ requestContext: { http: { method: 'POST' }, domainName: 'abc123.execute-api.us-east-1.amazonaws.com' }, rawPath: '/admin/run',
+    headers: { authorization: `Bearer ${owner}` }, body: JSON.stringify({ job: 'diagnose' }), isBase64Encoded: false });
+  const hook = JSON.parse(r.body).areas.flatMap(a => a.items).find(i => i.name === 'Incoming texts reach Vista');
+  assert.equal(hook.status, 'ok', hook.detail);
+});
+
+test('permission set: adds Field Service Access when asked, sorted with the API permissions', async () => {
+  const D = fakeDescribes(), plan = await planAccess({ describe: async o => D[o] });
+  const xml = permissionSetXml(plan, { apiOnly: true, userPerms: ['FieldServiceAccess'] });
+  const names = [...xml.matchAll(/<userPermissions>\s*<enabled>true<\/enabled>\s*<name>(\w+)<\/name>/g)].map(m => m[1]);
+  assert.deepEqual(names, ['ApiEnabled', 'ApiUserOnly', 'FieldServiceAccess']);
+  assert.doesNotMatch(permissionSetXml(plan), /userPermissions/);
 });

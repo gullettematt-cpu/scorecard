@@ -154,10 +154,10 @@ export function fakeDescribes() {
   const sys = n => F(n, { permissionable: false, createable: false, updateable: false });
   const ref = (name, relationshipName, to) => F(name, { type: 'reference', relationshipName, referenceTo: [to] });
   const obj = (fields, childRelationships = []) => ({ createable: true, updateable: true, deletable: true, fields, childRelationships,
-    recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', available: true }] });
+    recordTypeInfos: [{ recordTypeId: '0124P000000OMP8QAO', name: 'Service', developerName: 'Service', available: true }] });
   const plain = s => s.split(' ').map(n => F(n));
   return {
-    SA_Expense__c: obj([sys('Id'), sys('Name'), sys('CreatedDate'), ...plain('Date__c Type__c Status__c Amount__c Expense_Type__c Work_Performed_Date__c Did_you_complete_the_job_or_service__c Additional_Work_Performed__c Description_of_Work_Performed__c Additional_Work_Performed_Description__c Approver__c TEST_SA__c Paycheck_Period__c'),
+    SA_Expense__c: obj([sys('Id'), sys('Name'), sys('CreatedDate'), ...plain('Date__c Type__c Status__c Amount__c Expense_Type__c Work_Performed_Date__c Did_you_complete_the_job_or_service__c Additional_Work_Performed__c Description_of_Work_Performed__c Additional_Work_Performed_Description__c Approver__c TEST_SA__c'), ref('Paycheck_Period__c', 'Paycheck_Period__r', 'Paycheck_Period__c'),
       F('Payable_Invoice_New__c', { calculated: true, createable: false, updateable: false }),
       ref('Work_Order__c', 'Work_Order__r', 'WorkOrder'), ref('Job__c', 'Job__r', 'Job__c'), ref('Service_Appointment__c', 'Service_Appointment__r', 'ServiceAppointment'),
       ref('Account__c', 'Account__r', 'Account'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
@@ -175,6 +175,6 @@ export function fakeDescribes() {
     WorkOrderLineItem: obj([sys('Id'), sys('LineItemNumber'), sys('Status'), ...plain('Description Quantity')]),
     Job__c: obj([sys('Id'), sys('Name'), { ...ref('Opportunity__c', 'Opportunity__r', 'Opportunity'), permissionable: false, relationshipOrder: 0 }, ...plain('Sales_Price__c Total_SA_Expense_Labor__c Product_type__c Is_Open__c'), ref('Office__c', 'Office__r', 'Location'), ref('Production_Manager__c', 'Production_Manager__r', 'User')]),
     Account: obj([sys('Id'), sys('Name')]), Contact: obj([sys('Id'), ...plain('Phone MobilePhone')]), Location: obj([sys('Id'), sys('Name')]), WorkType: obj([sys('Id'), sys('Name')]),
-    User: obj([sys('Id'), sys('Name'), sys('IsActive'), ...plain('MobilePhone LanguageLocaleKey')]), RecordType: obj([sys('Id'), sys('Name')]), Opportunity: obj([sys('Id'), sys('Name')])
+    User: obj([sys('Id'), sys('Name'), sys('IsActive'), ...plain('MobilePhone LanguageLocaleKey')]), RecordType: obj([sys('Id'), sys('Name')]), Opportunity: obj([sys('Id'), sys('Name')]), Paycheck_Period__c: obj([sys('Id'), sys('Name')])
   };
 }

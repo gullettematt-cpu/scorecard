@@ -117,6 +117,18 @@ export async function planAccess({ describe, sharing = null }) {
     notes.push(`${m}: Read${objectPerms.get(m).viewAllRecords ? ' + View All' : ''}, because ${detail} is its detail record (no ${m} fields)`);
   }
 
+  // A lookup field is hidden from a user who can't read the object it points to (e.g. SA_Expense__c.Paycheck_Period__c).
+  // Read (no fields) on each custom object a field Vista reads or writes points to.
+  for (const key of fieldPerms.keys()) {
+    const [obj, name] = key.split('.');
+    const f = (await d(obj))?.fields.find(x => x.name === name);
+    for (const target of f?.type === 'reference' ? f.referenceTo || [] : []) {
+      if (objectPerms.has(target) || !/__c$/.test(target) || !(await d(target))) continue;
+      objectPerms.set(target, { allowRead: true, allowCreate: false, allowEdit: false, allowDelete: false, viewAllRecords: false, modifyAllRecords: false });
+      notes.push(`${target}: Read, because ${key} points to it (no ${target} fields)`);
+    }
+  }
+
   // Vista edits records it didn't create: visits (start, complete) and line items (their access follows the work
   // order). If sharing doesn't already allow that, Modify All is the only permission-set way to grant it.
   const needsEditAll = { ServiceAppointment: 'ServiceAppointment', WorkOrderLineItem: 'WorkOrder' };
@@ -127,12 +139,23 @@ export async function planAccess({ describe, sharing = null }) {
     Object.assign(p, { allowRead: true, allowEdit: true, allowDelete: true, viewAllRecords: true, modifyAllRecords: true });
     notes.push(`${holder}: Modify All, because ${model ? `its sharing is "${model}"` : 'its sharing setting could not be read'} and Vista updates ${edited === holder ? 'visits' : 'line items'} other users own`);
   }
-  return { objectPerms, fieldPerms, notes, unresolved: [...new Set(unresolved)] };
+  // Record types Vista creates records with (Case: Service). A full-license user on a minimal profile only gets
+  // them through the permission set.
+  const recordTypes = [];
+  for (const [obj, spec] of Object.entries(WRITES)) {
+    if (!spec.recordType) continue;
+    const rt = (await d(obj))?.recordTypeInfos?.find(r => String(r.recordTypeId).slice(0, 15) === spec.recordType.slice(0, 15));
+    if (rt?.developerName) recordTypes.push(`${obj}.${rt.developerName}`);
+    else notes.push(`${obj}: record type ${spec.recordType} not found, so it isn't added`);
+  }
+  return { objectPerms, fieldPerms, recordTypes, notes, unresolved: [...new Set(unresolved)] };
 }
 
 const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // apiOnly: for a user on a full Salesforce license, block Salesforce logins (the integration profile already does).
-export function permissionSetXml({ objectPerms, fieldPerms }, { apiOnly = false } = {}) {
+// userPerms: extra system permissions, e.g. FieldServiceAccess (Field Service objects stay hidden without it, even with
+// object access and a Field Service permission set license).
+export function permissionSetXml({ objectPerms, fieldPerms, recordTypes = [] }, { apiOnly = false, userPerms = [] } = {}) {
   const fields = [...fieldPerms].sort(([a], [b]) => a.localeCompare(b)).map(([field, p]) =>
     `    <fieldPermissions>\n        <editable>${p.editable}</editable>\n        <field>${x(field)}</field>\n        <readable>${p.readable}</readable>\n    </fieldPermissions>`);
   const objs = [...objectPerms].sort(([a], [b]) => a.localeCompare(b)).map(([obj, p]) =>
@@ -144,7 +167,7 @@ ${fields.join('\n')}
     <hasActivationRequired>false</hasActivationRequired>
     <label>${PERMSET.label}</label>
 ${objs.join('\n')}
-${apiOnly ? ['ApiEnabled', 'ApiUserOnly'].map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
+${recordTypes.map(rt => `    <recordTypeVisibilities>\n        <recordType>${x(rt)}</recordType>\n        <visible>true</visible>\n    </recordTypeVisibilities>`).join('\n')}${recordTypes.length ? '\n' : ''}${(apiOnly || userPerms.length) ? [...(apiOnly ? ['ApiEnabled', 'ApiUserOnly'] : []), ...userPerms].sort().map(n => `    <userPermissions>\n        <enabled>true</enabled>\n        <name>${n}</name>\n    </userPermissions>`).join('\n') + '\n' : ''}</PermissionSet>
 `;
 }
 

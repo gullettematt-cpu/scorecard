@@ -15,6 +15,8 @@ const json = (status, body, origin) => ({ statusCode: status, headers: { 'conten
 export function createHandler(getDeps) {
   return async function handler(event) {
     const deps = await getDeps();
+    // The API's own public address, when the deploy doesn't set PUBLIC_API_URL (Diagnose compares Twilio's webhook to it).
+    if (!deps.config.publicApiUrl && event.requestContext?.domainName) deps.config.publicApiUrl = `https://${event.requestContext.domainName}`;
     const svc = createServices(deps);
     const origin = deps.config.appUrl;
     const method = event.requestContext?.http?.method || event.httpMethod;
