@@ -93,6 +93,14 @@ Everyone who uses Vista, grouped by role and searchable by name, phone or compan
 Resource. Use **Add a person** only when someone's missing or their number in Salesforce is wrong. Also let Matt
 know, so Salesforce gets fixed too.
 
+Each person also shows whether Vista can text them:
+
+| Chip | Meaning |
+|---|---|
+| **Texts on** | They texted START. Vista can text them. |
+| **Hasn't texted START** | Vista can't text them yet. The app still works. Ask them to text START to (706) 955-2075. |
+| **Texted STOP** | They turned texts off. Only they can turn them back on, by texting START. |
+
 Lisa can manage crews, measure techs and PMs. Only Matt (the program owner) can grant admin access, from the same People screen.
 
 ### Rollout
@@ -110,6 +118,15 @@ there. Nothing already in Salesforce changes.
 
 - **Whether Vista is working,** as of the last 2-hour check, and a button to run the check now. If it's failing,
   the screen says whether that's Salesforce (Matt) or AWS (Donald).
+- **Run full diagnosis** checks everything Vista depends on: Salesforce, texting (Twilio), AWS, Claude (Vi) and who
+  has signed up for texts. Each problem comes with its cause and its fix.
+  - Problems Vista can repair itself have a **Fix it** button. Only Matt (the program owner) can press it. It
+    changes only Vista's own texting settings or re-runs the health check, never Salesforce, and every fix is
+    logged.
+  - For anything else, send Matt a screenshot. Each problem names what to change and where.
+- **Check Salesforce** runs every query Vista uses and checks every field it writes, as Vista's integration user.
+  It's read-only and never changes a record. Run it after any change in Salesforce. If it says **Not ready**, send
+  Matt a screenshot; each ✗ names the field, value or permission to fix.
 - **Language requests:** people who asked for Vista in another language. Vi already answers them in it.
 - **Who handles what,** for quick reference.
 - **Sign out.**
@@ -174,11 +191,29 @@ Message to crews (the PM can send it):
 > **START** al **(706) 955-2075**, luego **HOY** para ver sus trabajos. Entre con el código que le mandamos por texto. Se necesita una foto de cada toma requerida para cobrar.
 > Aprobado antes de las 10 a.m. = pagado ese día. Preguntas: llámeme.
 
+## Showing people the text line
+
+Lisa and Matt can show anyone what Vista's texts look like, from their own phone, on sample jobs. Nothing reaches
+Salesforce or anyone else's phone.
+
+| Text to (706) 955-2075 | What happens |
+|---|---|
+| **DEMO** | Your phone becomes Dwayne Tucker (Crew 12) on sample jobs. Then text TODAY, 1, START 1, DONE 1 ALL, PAY 1. |
+| **DEMO PM** | You're Mike, the PM: TODAY, REVIEW 1, APPROVE 1 or FIX 1 2. |
+| **DEMO ES** | You're Luis, a Spanish-speaking crew lead: HOY, COBRAR 1. |
+| **DEMO MEASURE** | You're Rafael, a measure tech. |
+| **DEMO RESET** | Start the sample jobs over. |
+| **DEMO OFF** | Back to the real line. A demo also ends 12 hours after the last text. |
+
+A text that would go to someone else (the crew after a send-back, the PM after a submit) comes back to your phone,
+labelled with who would get it. Crews and PMs who text DEMO just get the normal line.
+
 ---
 
 ## For PMs
 
-- **Every morning:** open **Approve**, or reply **REVIEW** to the 7:30 text. The header counts down to the 10:00 AM
+- **Every morning:** open **Approve**, or reply **REVIEW** to the 7:30 text. By text: **REVIEW 1**, **APPROVE 1**,
+  **FIX 1 2 3** (the numbers after the first are the missing lines), **DRAW 41859 3000 what it covers**. The header counts down to the 10:00 AM
   cutoff.
 - **To review a request:**
   - **Check** the photos and the deliverables list. Vista already checked the photo minimums, the checklist, the
@@ -206,4 +241,4 @@ Message to crews (the PM can send it):
 | **A problem** | On the job, tap **Report a problem**. Add a photo. Tick "Work is stopped" if you can't continue. | En el trabajo, toque **Reportar un problema**. Agregue una foto. Marque "El trabajo está detenido" si no puede seguir. |
 | **Questions** | Ask **Vi** in the app. For safety, money or anything structural, call your PM. | Pregúntele a **Vi** en la app. Para seguridad, dinero o algo estructural, llame a su PM. |
 | **No signal** | Keep working. Vista saves on your phone and sends when you have signal. | Siga trabajando. Vista guarda en su celular y envía cuando haya señal. |
-| **By text** | TODAY, PAY, HELP. ESPAÑOL, ENGLISH or BILINGUAL to change language. | HOY, COBRAR, AYUDA. ESPAÑOL, ENGLISH o BILINGUAL para cambiar el idioma. |
+| **By text** | TODAY, then a number for details. START 1, DONE 1 ALL, PAY 1. HELP. ESPAÑOL, ENGLISH or BILINGUAL to change language. STOP / START for texts. | HOY, luego un número para detalles. EMPEZAR 1, LISTO 1 TODAS, COBRAR 1. AYUDA. ESPAÑOL, ENGLISH o BILINGUAL para cambiar el idioma. STOP / START para los textos. |
